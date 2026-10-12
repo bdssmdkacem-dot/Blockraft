@@ -251,6 +251,10 @@ func _build_interface() -> void:
 func _build_feature_strip() -> void:
     var strip := HBoxContainer.new()
     strip.name = "FeatureStrip"
+    strip.anchor_left = 0.0
+    strip.anchor_top = 0.0
+    strip.anchor_right = 0.0
+    strip.anchor_bottom = 0.0
     strip.position = Vector2(22, 538)
     strip.size = Vector2(1236, 128)
     strip.add_theme_constant_override("separation", 8)
