@@ -1,0 +1,50 @@
+name: Gameplay camera screenshot
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/player.gd"
+      - "scripts/capture_gameplay.gd"
+      - "scenes/**"
+      - "project.godot"
+      - ".github/workflows/gameplay-camera-screenshot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install renderer dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0
+
+      - name: Install Godot 4.4.1
+        run: |
+          curl -fsSL https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          sudo install -m 0755 /tmp/godot/Godot_v4.4.1-stable_linux.x86_64 /usr/local/bin/godot
+          godot --version
+
+      - name: Capture actual gameplay frame
+        run: |
+          mkdir -p artifacts
+          xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 godot --path . --script res://scripts/capture_gameplay.gd
+          test -s artifacts/gameplay-camera.png
+          file artifacts/gameplay-camera.png
+
+      - name: Upload actual screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockraft-gameplay-camera-screenshot
+          path: artifacts/gameplay-camera.png
+          if-no-files-found: warn
+          retention-days: 7
