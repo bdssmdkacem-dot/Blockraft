@@ -1,9 +1,11 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="ArrayMesh" path="res://assets/models/voxel_oak_tree.obj" id="1_tree"]
 [ext_resource type="ArrayMesh" path="res://assets/models/meadow_cottage.obj" id="2_cottage"]
 [ext_resource type="ArrayMesh" path="res://assets/models/crafting_bench.obj" id="3_bench"]
 [ext_resource type="Script" path="res://scripts/asset_gallery.gd" id="4_script"]
+[ext_resource type="ArrayMesh" path="res://assets/models/grass_block.obj" id="5_grass"]
+[ext_resource type="ArrayMesh" path="res://assets/models/ore_outcrop.obj" id="6_ore"]
 
 [node name="AssetGallery" type="Node3D"]
 script = ExtResource("4_script")
@@ -19,6 +21,14 @@ mesh = ExtResource("2_cottage")
 [node name="CraftingBench" type="MeshInstance3D" parent="."]
 position = Vector3(5, 0, 0)
 mesh = ExtResource("3_bench")
+
+[node name="GrassBlock" type="MeshInstance3D" parent="."]
+position = Vector3(-2.5, 0, 2.4)
+mesh = ExtResource("5_grass")
+
+[node name="OreOutcrop" type="MeshInstance3D" parent="."]
+position = Vector3(2.5, 0, 2.4)
+mesh = ExtResource("6_ore")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 rotation = Vector3(-0.85, -0.65, 0)
