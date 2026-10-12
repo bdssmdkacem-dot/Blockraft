@@ -95,9 +95,12 @@ func _setup_camera() -> void:
     camera.fov = 48.0
     camera.near = 0.1
     camera.far = 180.0
-    camera.look_at(Vector3(0.0, 3.8, -4.0), Vector3.UP)
+    # look_at() must run after the camera enters the SceneTree; otherwise the
+    # transform can remain at the default horizontal orientation and the
+    # SubViewport shows only sky instead of the voxel landscape.
     add_child(camera)
-    camera.current = true
+    camera.look_at(Vector3(0.0, 3.8, -4.0), Vector3.UP)
+    camera.make_current()
 
 func _build_landscape() -> void:
     # Layered block terrain creates a readable foreground, mid-ground and horizon.
