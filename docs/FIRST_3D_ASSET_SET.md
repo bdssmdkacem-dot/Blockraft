@@ -1,34 +1,31 @@
-# First 3D Asset Set — Blockraft
+# Blockraft — First 3D Asset Set and Review Gate
 
-## Status
-These are authored, importable voxel-style source meshes and a preview scene. They are **blockout assets, not accepted production art**: the approved north-star image must be present at `assets/reference/blockcraft_visual_north_star.png`, and models still require visual review in Godot and Android.
+## Approved art target
+Use the image attached in the Roblox ChatGPT Project's `source` folder as the mandatory visual north star. It is the project's approved reference. Its image bytes are not stored in this GitHub repository, so the reference is available in project context but not independently embedded in this repo.
 
-## Current model set
-| Asset | Source | Intended use |
-|---|---|---|
-| Oak tree | `assets/models/voxel_oak_tree.obj` | Starter biome vegetation |
-| Meadow cottage | `assets/models/meadow_cottage.obj` | First village landmark |
-| Crafting bench | `assets/models/crafting_bench.obj` | Crafting interaction prop |
-| Grass block | `assets/models/grass_block.obj` | Terrain surface transition sample |
-| Ore outcrop | `assets/models/ore_outcrop.obj` | Resource visual prototype |
-| Shared material palette | `assets/models/blockraft_palette.mtl` | Shared materials |
+## Current source asset inventory
+
+| Asset | Source | Intended use | Review focus |
+|---|---|---|---|
+| Oak tree | `assets/models/voxel_oak_tree.obj` | Meadowlands foliage | Layered canopy, trunk readability, leaf variation |
+| Meadow cottage | `assets/models/meadow_cottage.obj` | Starter village landmark | Roof silhouette, timber/plaster contrast, window scale |
+| Crafting bench | `assets/models/crafting_bench.obj` | Crafting station | Readable work surface, proportions, detail |
+| Terrain/resource block sheet | `assets/models/voxel_block_set.obj` | Palette and shape review | Grass, dirt, stone, sand, copper, crystal, log end, water |
+| Grass block | `assets/models/grass_block.obj` | Core terrain tile | Clear soil/grass layers and grid dimensions |
+| Ore outcrop | `assets/models/ore_outcrop.obj` | Mining landmark | Rock silhouette and ore readability |
+| Shared material palette | `assets/models/blockraft_palette.mtl` | All OBJ models | Consistent original material colors |
 
 ## Preview
-Open `scenes/asset_gallery.tscn` in Godot 4 and run it directly (F6). The current gallery contains the tree, cottage, and bench; add grass and ore to the gallery after their first import/material check.
-
-## Blender workflow
-Run from the repository root with Blender 4.x installed:
-```sh
-blender --background --python tools/blender/build_blockraft_asset_pack.py
-```
-The script is intended to export GLB files and save a review `.blend`. These outputs are not claimed to exist until the script has run successfully.
+- Run `scenes/asset_gallery.tscn` in Godot 4 for the three hero assets.
+- Run `scenes/block_material_gallery.tscn` for the terrain/resource review sheet.
+- Run the Blender review pipeline from the repository root: `blender --background --python tools/blender/build_blockraft_asset_pack.py`. It exports GLB review files for the six OBJ sources and saves a review BLEND scene locally. These outputs are generated locally and are not claimed to exist until the script runs successfully.
 
 ## Acceptance gates
-1. Import every OBJ in Godot 4; verify materials, face winding, scale, and silhouette.
-2. Compare silhouette, palette, and detail density against the approved reference image.
-3. Review/refine in Blender, then export GLB only after inspection.
-4. Add collision and interaction behavior separately from visual geometry.
-5. Test terrain seams, ore readability, collisions, draw calls, and Android frame pacing.
+1. Run the Blender script; verify all six GLBs are emitted without import/export errors.
+2. Inspect the actual review render; check scale, face winding, material assignment, silhouette, and camera framing.
+3. Open both galleries in Godot 4 and verify imported meshes/materials and lighting.
+4. Refine any artifact before using these models in the playable world.
+5. Add collision shapes and mobile-friendly LOD/mesh budgets before integration.
+6. Test on Android for readability, memory use, and frame pacing.
 
-## Limitations
-These are editable source blockouts. No claim is made that polished production art, GLB exports, or runtime/device validation are complete.
+These are source/reference assets, not accepted final production art yet. File presence and a successful build do not substitute for visual review.
