@@ -1,0 +1,22 @@
+name: Godot validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Import project and parse scripts
+        run: godot --headless --path . --editor --quit
+      - name: Launch main menu scene headlessly
+        run: godot --headless --path . --quit-after 3
+      - name: Launch gameplay scene headlessly
+        run: godot --headless --path . res://scenes/main.tscn --quit-after 5
