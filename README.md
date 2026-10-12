@@ -1,0 +1,26 @@
+# Blockraft
+
+An original voxel sandbox game prototype, planned for Android first using Godot 4.
+
+## Current prototype scope
+- Procedurally generated block terrain and simple trees.
+- First-person movement and jumping (desktop keyboard/mouse for this first checkpoint).
+- Raycast-based block mining and placement.
+- Initial local world save prototype.
+
+## Open in Godot
+1. Install Godot 4.x.
+2. Clone/download this repository.
+3. Import the folder containing `project.godot`.
+4. Run the main scene.
+
+## Honest status
+This is an early prototype, not a finished game or Android APK. It has not yet been validated in the Godot runtime. Persistence needs a proper world-diff format that records deletions, and mobile touch controls are not implemented.
+
+## Acceptance gates
+1. Confirm the project imports and runs without parse/runtime errors in Godot 4.
+2. Test player movement, collisions, mining, and placement.
+3. Implement reliable save/load including deleted blocks.
+4. Replace one-node-per-block rendering with chunk meshes and face culling.
+5. Add mobile joystick/look zones and touch action buttons.
+6. Export and test on a real Android device.
