@@ -72,7 +72,7 @@ func _draw() -> void:
     for i in range(16):
         var x := i * 86 - 18
         var y := 625 + int((i % 3) * 13)
-        draw_rect(Rect2(x, y, 88, 25, ), Color("#34854b"))
+        draw_rect(Rect2(x, y, 88, 25), Color("#34854b"))
         draw_rect(Rect2(x, y, 88, 7), Color("#7ed36b"))
         draw_rect(Rect2(x + 6, y + 25, 75, 12), Color("#79543a"))
 
