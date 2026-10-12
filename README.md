@@ -16,6 +16,14 @@ The project starts at `scenes/main_menu.tscn`. `scripts/menu_world_3d.gd` builds
 
 The first original OBJ models are in `assets/models/`: voxel oak tree, meadow cottage, crafting bench, grass block, and ore outcrop, with a shared MTL palette. Open [scenes/asset_gallery.tscn](scenes/asset_gallery.tscn) in Godot 4 to inspect the first five models. See [docs/FIRST_3D_ASSET_SET.md](docs/FIRST_3D_ASSET_SET.md). These are early source meshes, not visually accepted production assets; in-engine and mobile reviews remain required.
 
+## Replica-inspired development records
+
+The implementation is tracked through a project-specific recon, feature acceptance matrix, architecture notes, and test plan in [`replica/`](replica/recon.md). These are adapted workflow artifacts; the Claude-specific Replica Skill itself is not installed in the Godot project.
+
+## Android prototype
+
+The Android touch-control and debug APK-export changes are under review in [PR #4](https://github.com/bdssmdkacem-dot/Blockraft/pull/4). Do not treat an APK as available until the export workflow succeeds and uploads the artifact. The APK is for sideload testing only; it is not a Play Store release.
+
 ## Open in Godot
 
 1. Install Godot 4.x.
@@ -25,7 +33,7 @@ The first original OBJ models are in `assets/models/`: voxel oak tree, meadow co
 
 ## Honest status
 
-This is an early prototype, not a finished game or Android APK. It has not yet been validated in the Godot runtime. Mobile touch controls and production chunk meshing are still required.
+This is an early prototype, not a finished game. Godot headless validation has passed for the current menu work, but the latest menu screenshot still requires visual acceptance and Android touch controls/APK export are awaiting their own CI and device checks. Production chunk meshing is still required.
 
 ## Acceptance gates
 
