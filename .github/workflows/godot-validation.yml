@@ -9,6 +9,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     container:
       image: barichello/godot-ci:4.4.1
     steps:
@@ -21,7 +22,7 @@ jobs:
       - name: Launch gameplay scene headlessly
         run: godot --headless --path . res://scenes/main.tscn --quit-after 5
       - name: Capture main menu for visual review
-        run: godot --headless --path . --script res://tools/capture_main_menu.gd
+        run: timeout 90s godot --headless --path . --script res://tools/capture_main_menu.gd
       - name: Upload main menu screenshot
         uses: actions/upload-artifact@v4
         with:
