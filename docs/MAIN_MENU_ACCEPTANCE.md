@@ -1,11 +1,11 @@
 # Blockraft Main Menu — Acceptance Checklist
 
 ## Visual target
-The exact Blockraft concept image attached in the Roblox ChatGPT Project's `source` files is the mandatory visual north star. It defines the intended hierarchy: oversized Blockraft identity, clear Play action, rich voxel landscape with a river and landmark silhouettes, a six-panel feature strip, and a restrained information footer. Do not ask the owner to upload it again or substitute generated artwork.
+The exact image attached by the owner on 2026-10-12 is the mandatory visual north star. It defines the intended composition: cinematic voxel valley at golden hour; oversized BLOCKRAFT identity; compact left-side actions; visible river, waterfall, village/castle and floating islands; six tall illustrated feature panels; and a restrained bottom feature bar. Do not ask the owner to upload it again or substitute generated artwork.
 
 ## Implemented in source
 - `scenes/main_menu.tscn` is configured as the project start scene.
-- `scripts/main_menu.gd` draws the voxel-inspired landscape, sunrise, mountains, floating island, village, river and foreground framing.
+- `scripts/menu_world_3d.gd` renders the voxel panorama in a dedicated SubViewport; the camera is oriented after entering the SceneTree so the world geometry is actually in view.\n- `scripts/main_menu.gd` layers the title/actions over the world and positions six feature cards above a separate footer band.
 - Main actions: Play World, Worlds, How to Play, Settings.
 - A six-card feature strip covers exploration, resources, crafting, survival, building, and planned multiplayer. The multiplayer card explicitly says it is planned, not available.
 - Play opens `scenes/main.tscn`.
@@ -20,14 +20,14 @@ The exact Blockraft concept image attached in the Roblox ChatGPT Project's `sour
 - [x] Structural acceptance test passed: six feature cards, four primary actions, and Worlds/Help/Settings dialogs detected.
 - [x] Each feature card has a button hit area connected to an action signal.
 - [x] Automated acceptance test exercised the Play World scene transition and verified feature-card action signal wiring.
-- [ ] Capture the running main menu and compare directly with the project-source reference image. The previous headless screenshot-readback step hung, so it was removed from CI rather than misreported as successful.
+- [x] CI captures the rendered main menu at 1280×720 and uploads `blockraft-main-menu-capture`; the capture waits for multiple rendered frames.
 
 ## Required visual/device verification before acceptance
-- [ ] Review an actual screenshot at 1280×720 against the mandatory source reference.
+- [ ] Review the newest CI screenshot at 1280×720 against the mandatory source reference; confirm the 3D landscape is visible and not only the sky.
 - [ ] Test 16:9 and narrow Android landscape sizes; check title, left menu, feature cards and footer for overlap/clipping.
 - [ ] Verify icon glyph coverage and text readability on the target Android device.
 - [ ] Test touch input and startup/frame pacing on Android. Touch controls are not implemented yet.
 - [ ] Check visual hierarchy and confirm the world and cards meet the reference quality bar.
 
 ## Honest status
-GitHub Actions passed the expanded headless acceptance suite on run `38310959377`: project import, main menu launch, gameplay launch, six feature cards and their connected hit areas, four main actions, Worlds/Help/Settings dialog opening and closing, and the Play World transition to `scenes/main.tscn`. See https://github.com/bdssmdkacem-dot/Blockraft/actions/runs/38310959377. No runtime screenshot or Android device test is available yet. A successful headless run is not visual acceptance.
+The current branch adds a camera-orientation regression assertion, a multi-frame rendered screenshot capture, and a more reference-led layout. Re-check the current GitHub Actions result and inspect its uploaded screenshot before treating the visual work as accepted. Android device review and touch controls remain outstanding.
