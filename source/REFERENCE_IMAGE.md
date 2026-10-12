@@ -2,7 +2,7 @@
 
 ## Locked source of truth
 
-The project owner explicitly approved the original image already stored in the ChatGPT **Roblox project source/library**. The exact library filename is **`blockraft_visual_north_star.png`**, located at `/Roblox/blockraft_visual_north_star.png` in the ChatGPT file library. It is a PNG of approximately 2.7 MB. Use that existing image; do not ask the owner to upload it again and do not generate, redraw, crop, or replace it with another image.
+The project owner explicitly approved the exact Blockraft menu reference image attached in the conversation on 2026-10-12. That attachment is the authoritative visual north star: a cinematic voxel valley at golden hour, oversized BLOCKRAFT logo, compact left-side actions, river and waterfall, village/castle, floating islands, six tall illustrated feature cards, and a slim bottom feature bar. Do not ask the owner to upload it again, and do not replace it with a generated or approximate reference.
 
 The image depicts the BLOCKRAFT title/menu over a rich voxel valley: river and waterfalls, village/castle architecture, floating islands, player character, and exploration/mining/crafting/survival feature panels. This is the mandatory visual acceptance reference for the game.
 
