@@ -35,7 +35,7 @@ jobs:
       - name: Configure Android export templates and SDK paths
         run: |
           mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable" "$HOME/.config/godot"
-          curl -fsSL "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz" -o /tmp/godot-export-templates.tpz
+          wget -q "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz" -O /tmp/godot-export-templates.tpz
           mkdir -p /tmp/godot-export-templates
           unzip -q /tmp/godot-export-templates.tpz -d /tmp/godot-export-templates
           cp -a /tmp/godot-export-templates/templates/. "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
