@@ -50,23 +50,23 @@ func _setup_environment() -> void:
     environment.background_mode = Environment.BG_SKY
     var sky := Sky.new()
     var sky_material := ProceduralSkyMaterial.new()
-    sky_material.sky_top_color = Color("#3b82a1")
-    sky_material.sky_horizon_color = Color("#f4c58d")
-    sky_material.ground_bottom_color = Color("#344a49")
-    sky_material.ground_horizon_color = Color("#c4a681")
+    sky_material.sky_top_color = Color("#438dc5")
+    sky_material.sky_horizon_color = Color("#f7b66e")
+    sky_material.ground_bottom_color = Color("#263b35")
+    sky_material.ground_horizon_color = Color("#e8ad70")
     sky_material.sun_angle_max = 18.0
     sky.sky_material = sky_material
     environment.sky = sky
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     environment.ambient_light_color = Color("#b4c8d5")
-    environment.ambient_light_energy = 0.62
+    environment.ambient_light_energy = 0.48
     environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
     environment.tonemap_exposure = 1.0
     environment.glow_enabled = true
-    environment.glow_intensity = 0.24
+    environment.glow_intensity = 0.12
     environment.fog_enabled = true
     environment.fog_light_color = Color("#e2c4a0")
-    environment.fog_density = 0.006
+    environment.fog_density = 0.003
     world.environment = environment
     add_child(world)
 
@@ -91,15 +91,15 @@ func _setup_lighting() -> void:
 func _setup_camera() -> void:
     var camera := Camera3D.new()
     camera.name = "MenuWorldCamera"
-    camera.position = Vector3(0.0, 10.5, 24.0)
-    camera.fov = 48.0
+    camera.position = Vector3(0.0, 16.0, 30.0)
+    camera.fov = 58.0
     camera.near = 0.1
     camera.far = 180.0
     # look_at() must run after the camera enters the SceneTree; otherwise the
     # transform can remain at the default horizontal orientation and the
     # SubViewport shows only sky instead of the voxel landscape.
     add_child(camera)
-    camera.look_at(Vector3(0.0, 3.8, -4.0), Vector3.UP)
+    camera.look_at(Vector3(0.0, 2.6, -7.0), Vector3.UP)
     camera.make_current()
 
 func _build_landscape() -> void:
@@ -117,19 +117,21 @@ func _build_landscape() -> void:
             _box(self, Vector3(x + 0.6, peak + 0.75, z - 0.2), Vector3(2.2, 1.0, 2.0), MAT_STONE_LIGHT)
 
     # Distant keep silhouette, placed above the right side of the village.
-    _box(self, Vector3(12.0, 3.2, -10.5), Vector3(3.6, 7.0, 3.0), MAT_STONE_LIGHT)
-    _box(self, Vector3(12.0, 7.0, -10.5), Vector3(4.2, 0.65, 3.6), MAT_ROOF)
-    for dx in [-1.5, 1.5]:
-        _box(self, Vector3(12.0 + dx, 7.8, -10.5), Vector3(0.8, 1.6, 0.8), MAT_STONE_LIGHT)
-        _box(self, Vector3(12.0 + dx, 8.7, -10.5), Vector3(1.0, 0.3, 1.0), MAT_ROOF)
+    _box(self, Vector3(12.0, 4.0, -14.5), Vector3(4.0, 8.5, 3.2), MAT_STONE_LIGHT)
+    _box(self, Vector3(12.0, 8.5, -14.5), Vector3(4.8, 0.65, 3.8), MAT_ROOF)
+    _box(self, Vector3(12.0, 9.4, -14.5), Vector3(2.0, 1.8, 2.0), MAT_STONE_LIGHT)
+    _box(self, Vector3(12.0, 10.6, -14.5), Vector3(2.4, 0.45, 2.4), MAT_ROOF)
+    for dx in [-1.8, 1.8]:
+        _box(self, Vector3(12.0 + dx, 8.0, -14.5), Vector3(0.8, 2.4, 0.8), MAT_STONE_LIGHT)
+        _box(self, Vector3(12.0 + dx, 9.4, -14.5), Vector3(1.0, 0.3, 1.0), MAT_ROOF)
 
 func _build_river_and_bridge() -> void:
     # Broad segmented water ribbon catches the sun through low-roughness material.
     var water_material := _material(MAT_WATER, 0.22, 0.12)
-    for i in range(8):
-        var z := 7.0 - float(i) * 2.25
-        var x := 7.0 - sin(float(i) * 0.72) * 3.8
-        var water := _box(self, Vector3(x, -0.02, z), Vector3(4.6, 0.12, 3.2), MAT_WATER, 0.22)
+    for i in range(11):
+        var z := 8.0 - float(i) * 2.6
+        var x := 2.4 - sin(float(i) * 0.58) * 3.0
+        var water := _box(self, Vector3(x, -0.02, z), Vector3(6.2, 0.12, 3.6), MAT_WATER, 0.22)
         water.material_override = water_material
     # Stone crossing with chunky parapets and visible depth.
     for i in range(7):
@@ -174,7 +176,7 @@ func _tree(origin: Vector3, scale: float) -> void:
 func _build_floating_island() -> void:
     var island := Node3D.new()
     island.name = "FloatingIsland"
-    island.position = Vector3(10.5, 10.2, -9.0)
+    island.position = Vector3(13.5, 12.0, -15.0)
     add_child(island)
     _box(island, Vector3(0.0, 0.0, 0.0), Vector3(8.2, 1.0, 5.0), MAT_GRASS)
     _box(island, Vector3(0.0, -0.8, 0.0), Vector3(6.8, 0.8, 4.0), MAT_DIRT)
@@ -184,3 +186,15 @@ func _build_floating_island() -> void:
         _box(island, Vector3(-2.0 + float(i) * 1.9, 0.75, -0.6), Vector3(0.75, 1.2 + float(i % 2) * 0.7, 0.75), MAT_STONE_LIGHT)
     _box(island, Vector3(-2.0, -1.9, 1.1), Vector3(0.16, 2.8, 0.16), Color("#7dd6e9"), 0.2)
     _box(island, Vector3(-1.8, -2.1, 1.1), Vector3(0.12, 1.9, 0.12), Color("#b5eff4"), 0.2)
+    # A smaller distant island gives the skyline the layered fantasy silhouette
+    # shown in the approved concept instead of a single floating block.
+    var distant := Node3D.new()
+    distant.name = "DistantFloatingIsland"
+    distant.position = Vector3(-12.5, 12.8, -20.0)
+    distant.scale = Vector3(0.62, 0.62, 0.62)
+    add_child(distant)
+    _box(distant, Vector3.ZERO, Vector3(5.8, 0.7, 3.8), MAT_GRASS_LIGHT)
+    _box(distant, Vector3(0.0, -0.6, 0.0), Vector3(4.6, 0.8, 3.0), MAT_DIRT)
+    _box(distant, Vector3(0.0, -1.3, 0.0), Vector3(2.6, 0.7, 2.0), MAT_STONE)
+    _box(distant, Vector3(0.0, 0.65, 0.0), Vector3(0.8, 1.3, 0.8), MAT_STONE_LIGHT)
+    _box(distant, Vector3(0.0, 1.45, 0.0), Vector3(1.0, 0.35, 1.0), MAT_ROOF)
