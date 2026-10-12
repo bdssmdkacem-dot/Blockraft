@@ -13,11 +13,14 @@ func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
     _build_interface()
     _build_feature_strip()
+    _apply_responsive_layout()
     queue_redraw()
 
 func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         queue_redraw()
+        if is_node_ready():
+            _apply_responsive_layout()
 
 func _unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed("ui_cancel") and is_instance_valid(dialog_layer):
@@ -110,8 +113,40 @@ func _house(x: float, ground_y: float, scale: float, wall: Color, roof: Color) -
     draw_rect(Rect2(x + 7 * scale, ground_y - 33 * scale, 10 * scale, 10 * scale), Color("#77d2df"))
     draw_rect(Rect2(x + 39 * scale, ground_y - 33 * scale, 9 * scale, 10 * scale), Color("#77d2df"))
 
+
+func _apply_responsive_layout() -> void:
+    # Keep the reference composition intact while scaling it uniformly for
+    # smaller Android landscape viewports. Center letterboxed UI rather than
+    # stretching controls or letting the feature strip run off-screen.
+    var viewport_size := size
+    if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+        return
+    var ui_scale := minf(viewport_size.x / DESIGN_SIZE.x, viewport_size.y / DESIGN_SIZE.y)
+    var ui_origin := Vector2(
+        (viewport_size.x - DESIGN_SIZE.x * ui_scale) * 0.5,
+        (viewport_size.y - DESIGN_SIZE.y * ui_scale) * 0.5
+    )
+
+    _place_scaled_control("TopBar", Vector2(38, 24), Vector2(1204, 48), ui_origin, ui_scale)
+    _place_scaled_control("GameTitle", Vector2(66, 110), Vector2(550, 96), ui_origin, ui_scale)
+    _place_scaled_control("Tagline", Vector2(73, 199), Vector2(490, 32), ui_origin, ui_scale)
+    _place_scaled_control("MainMenuPanel", Vector2(52, 245), Vector2(350, 278), ui_origin, ui_scale)
+    _place_scaled_control("FeatureStrip", Vector2(22, 538), Vector2(1236, 128), ui_origin, ui_scale)
+    _place_scaled_control("Footer", Vector2(0, 678), Vector2(1280, 26), ui_origin, ui_scale)
+
+
+func _place_scaled_control(node_name: String, design_position: Vector2, design_size: Vector2, origin: Vector2, ui_scale: float) -> void:
+    var control := get_node_or_null(node_name) as Control
+    if control == null:
+        return
+    control.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+    control.position = origin + design_position * ui_scale
+    control.size = design_size
+    control.scale = Vector2.ONE * ui_scale
+
 func _build_interface() -> void:
     var top_bar := HBoxContainer.new()
+    top_bar.name = "TopBar"
     top_bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
     top_bar.offset_left = 38
     top_bar.offset_top = 24
@@ -138,6 +173,7 @@ func _build_interface() -> void:
     top_bar.add_child(edition)
 
     var title := Label.new()
+    title.name = "GameTitle"
     title.text = "BLOCKRAFT"
     title.position = Vector2(66, 110)
     title.size = Vector2(550, 96)
@@ -151,6 +187,7 @@ func _build_interface() -> void:
     add_child(title)
 
     var tagline := Label.new()
+    tagline.name = "Tagline"
     tagline.text = "BUILD YOUR WORLD. FIND YOUR WILD."
     tagline.position = Vector2(73, 199)
     tagline.size = Vector2(490, 32)
@@ -162,6 +199,7 @@ func _build_interface() -> void:
     add_child(tagline)
 
     var panel := PanelContainer.new()
+    panel.name = "MainMenuPanel"
     panel.position = Vector2(52, 245)
     panel.size = Vector2(350, 278)
     var panel_style := StyleBoxFlat.new()
@@ -194,6 +232,7 @@ func _build_interface() -> void:
     menu_column.add_child(status_label)
 
     var footer := Label.new()
+    footer.name = "Footer"
     footer.text = "PROCEDURAL WORLDS     •     DYNAMIC BIOMES     •     MINE  /  CRAFT  /  BUILD     •     DAY & NIGHT"
     footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
     footer.offset_left = 0
@@ -214,12 +253,10 @@ func _build_feature_strip() -> void:
     strip.name = "FeatureStrip"
     strip.anchor_left = 0.0
     strip.anchor_top = 0.0
-    strip.anchor_right = 1.0
+    strip.anchor_right = 0.0
     strip.anchor_bottom = 0.0
-    strip.offset_left = 22
-    strip.offset_top = 538
-    strip.offset_right = -22
-    strip.offset_bottom = 666
+    strip.position = Vector2(22, 538)
+    strip.size = Vector2(1236, 128)
     strip.add_theme_constant_override("separation", 8)
     strip.mouse_filter = Control.MOUSE_FILTER_PASS
     add_child(strip)
