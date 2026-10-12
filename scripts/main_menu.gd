@@ -251,86 +251,78 @@ func _build_interface() -> void:
 func _build_feature_strip() -> void:
     var strip := HBoxContainer.new()
     strip.name = "FeatureStrip"
-    strip.anchor_left = 0.0
-    strip.anchor_top = 0.0
-    strip.anchor_right = 0.0
-    strip.anchor_bottom = 0.0
     strip.position = Vector2(22, 538)
     strip.size = Vector2(1236, 128)
     strip.add_theme_constant_override("separation", 8)
-    strip.mouse_filter = Control.MOUSE_FILTER_PASS
     add_child(strip)
-
     var features := [
-        {"icon": "◇", "title": "EXPLORE WORLDS", "body": "Mountains, rivers\nand hidden places", "action": "worlds", "tone": "#285f78"},
-        {"icon": "⚒", "title": "GATHER RESOURCES", "body": "Mine stone, ores\nand rare crystals", "action": "help", "tone": "#4a5158"},
-        {"icon": "▦", "title": "CRAFT & BUILD", "body": "Shape a shelter\nblock by block", "action": "help", "tone": "#755337"},
-        {"icon": "☾", "title": "SURVIVE THE NIGHT", "body": "Prepare, explore\nand stay alert", "action": "help", "tone": "#263653"},
-        {"icon": "⌂", "title": "BUILD YOUR DREAMS", "body": "Create your own\nvoxel home", "action": "play", "tone": "#3e6d47"},
-        {"icon": "♧", "title": "MULTIPLAYER", "body": "Friend worlds\nplanned for later", "action": "settings", "tone": "#536b91"}
+        {"title":"EXPLORE WORLDS","body":"Mountains, rivers & secrets","action":"worlds","art":"res://assets/ui/cards/explore.svg"},
+        {"title":"GATHER RESOURCES","body":"Mine stone, ores & crystals","action":"help","art":"res://assets/ui/cards/mining.svg"},
+        {"title":"CRAFT & BUILD","body":"Build block by block","action":"help","art":"res://assets/ui/cards/build.svg"},
+        {"title":"SURVIVE THE NIGHT","body":"Prepare before dark","action":"help","art":"res://assets/ui/cards/survive.svg"},
+        {"title":"BUILD YOUR DREAMS","body":"Create your own home","action":"play","art":"res://assets/ui/cards/dreams.svg"},
+        {"title":"MULTIPLAYER","body":"Friend worlds planned","action":"settings","art":"res://assets/ui/cards/multiplayer.svg"}
     ]
-
     for feature in features:
-        var card := PanelContainer.new()
+        var card := Control.new()
+        card.custom_minimum_size = Vector2(0, 120)
         card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-        card.custom_minimum_size = Vector2(0, 120)
-        var card_style := StyleBoxFlat.new()
-        card_style.bg_color = Color(feature["tone"])
-        card_style.bg_color.a = 0.94
-        card_style.border_color = Color("#d7d6bd")
-        card_style.border_color.a = 0.72
-        card_style.set_border_width_all(1)
-        card_style.set_corner_radius_all(5)
-        card_style.content_margin_left = 9
-        card_style.content_margin_right = 7
-        card_style.content_margin_top = 7
-        card_style.content_margin_bottom = 5
-        card.add_theme_stylebox_override("panel", card_style)
+        card.clip_contents = true
         strip.add_child(card)
-
+        var art := TextureRect.new()
+        art.name = "CardArtwork"
+        art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+        art.stretch_mode = TextureRect.STRETCH_SCALE
+        art.texture = load(feature.art) as Texture2D
+        art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        card.add_child(art)
+        var shade := ColorRect.new()
+        shade.anchor_top = 0.57
+        shade.anchor_right = 1.0
+        shade.anchor_bottom = 1.0
+        shade.color = Color(0.025, 0.055, 0.06, 0.84)
+        shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        card.add_child(shade)
         var content := VBoxContainer.new()
-        content.add_theme_constant_override("separation", 3)
+        content.anchor_top = 0.59
+        content.anchor_right = 1.0
+        content.anchor_bottom = 1.0
+        content.offset_left = 4
+        content.offset_right = -4
+        content.offset_top = 2
+        content.offset_bottom = -2
+        content.add_theme_constant_override("separation", 2)
+        content.mouse_filter = Control.MOUSE_FILTER_IGNORE
         card.add_child(content)
-
-        var icon_label := Label.new()
-        icon_label.text = feature["icon"]
-        icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-        icon_label.add_theme_font_size_override("font_size", 24)
-        icon_label.add_theme_color_override("font_color", Color("#ffe3a0"))
-        icon_label.custom_minimum_size = Vector2(0, 31)
-        content.add_child(icon_label)
-
         var heading := Label.new()
-        heading.text = feature["title"]
+        heading.text = feature.title
         heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        heading.add_theme_font_size_override("font_size", 12)
+        heading.add_theme_font_size_override("font_size", 11)
         heading.add_theme_color_override("font_color", Color("#fff5d9"))
         content.add_child(heading)
-
         var detail := Label.new()
-        detail.text = feature["body"]
+        detail.text = feature.body
         detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-        detail.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        detail.add_theme_font_size_override("font_size", 10)
+        detail.add_theme_font_size_override("font_size", 9)
         detail.add_theme_color_override("font_color", Color("#e0e9db"))
-        detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
         content.add_child(detail)
-
         var hit_area := Button.new()
+        hit_area.name = "CardHitArea"
         hit_area.text = ""
         hit_area.flat = true
         hit_area.focus_mode = Control.FOCUS_ALL
         hit_area.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
         hit_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
         hit_area.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-        var hit_hover := StyleBoxFlat.new()
-        hit_hover.bg_color = Color(1, 1, 1, 0.08)
-        hit_hover.set_corner_radius_all(5)
-        hit_area.add_theme_stylebox_override("hover", hit_hover)
-        hit_area.pressed.connect(_on_menu_action.bind(feature["action"]))
+        var hover := StyleBoxFlat.new()
+        hover.bg_color = Color(1, 1, 1, 0.08)
+        hit_area.add_theme_stylebox_override("hover", hover)
+        hit_area.pressed.connect(_on_menu_action.bind(feature.action))
         card.add_child(hit_area)
 
 func _add_menu_button(caption: String, action: String, primary: bool) -> void:
