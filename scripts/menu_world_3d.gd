@@ -109,8 +109,8 @@ func _build_landscape() -> void:
 
     for i in range(11):
         var x := -24.0 + float(i) * 4.8
-        var peak := 3.8 + float((i * 7) % 5) * 0.72
-        var z := -22.0 - float((i * 3) % 4) * 1.8
+        var peak := 3.2 + float((i * 7) % 5) * 0.60
+        var z := -28.0 - float((i * 3) % 4) * 1.5
         _box(self, Vector3(x, peak * 0.5 - 0.1, z), Vector3(5.4, peak, 5.2), MAT_STONE)
         _box(self, Vector3(x - 0.5, peak + 0.15, z), Vector3(4.4, 0.45, 4.4), MAT_GRASS_LIGHT if i % 3 == 0 else MAT_GRASS)
         if i % 2 == 0:
@@ -129,17 +129,17 @@ func _build_river_and_bridge() -> void:
     # Broad segmented water ribbon catches the sun through low-roughness material.
     var water_material := _material(MAT_WATER, 0.22, 0.12)
     for i in range(11):
-        var z := 8.0 - float(i) * 2.6
-        var x := 2.4 - sin(float(i) * 0.58) * 3.0
-        var water := _box(self, Vector3(x, -0.02, z), Vector3(6.2, 0.12, 3.6), MAT_WATER, 0.22)
+        var z := 5.0 - float(i) * 2.5
+        var x := -0.2 - sin(float(i) * 0.58) * 2.4
+        var water := _box(self, Vector3(x, 0.04, z), Vector3(8.0, 0.18, 3.8), MAT_WATER, 0.22)
         water.material_override = water_material
 
     # Two visible stepped waterfalls connect the elevated valley to the river.
     # Thin layered ribbons avoid a single oversized cyan slab in the panorama.
     var falls_material := _material(Color("#42c5df"), 0.18, 0.08)
     for fall in [
-        {"x": 1.0, "y": 2.15, "z": -12.2, "height": 4.2},
-        {"x": 7.6, "y": 1.7, "z": -10.4, "height": 3.3}
+        {"x": 1.0, "y": 2.15, "z": -8.5, "height": 3.8},
+        {"x": 7.6, "y": 1.7, "z": -10.0, "height": 3.3}
     ]:
         var fx: float = fall["x"]
         var fy: float = fall["y"]
@@ -181,8 +181,8 @@ func _build_forests() -> void:
         _tree(Vector3(x, 0.0, z), scale)
 
     # A few foreground trees frame the screen without obscuring the UI.
-    _tree(Vector3(-17.0, 0.0, 4.0), 1.45)
-    _tree(Vector3(17.0, 0.0, 2.5), 1.35)
+    _tree(Vector3(-13.0, 0.0, 3.0), 1.55)
+    _tree(Vector3(13.0, 0.0, 2.5), 1.5)
 
 func _tree(origin: Vector3, scale: float) -> void:
     _box(self, origin + Vector3(0.0, 1.15 * scale, 0.0), Vector3(0.62, 2.3, 0.62) * scale, MAT_WOOD)
