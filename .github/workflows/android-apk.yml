@@ -15,11 +15,13 @@ on:
     paths:
       - "export_presets.cfg"
       - "project.godot"
-      - "scenes/main.tscn"
-      - "scripts/main.gd"
-      - "scripts/player.gd"
+      - "scenes/**"
+      - "scripts/**"
       - "assets/**"
-      - ".github/workflows/android-apk.yml"
+      - "tools/**"
+      - "replica/**"
+      - "README.md"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 concurrency:
