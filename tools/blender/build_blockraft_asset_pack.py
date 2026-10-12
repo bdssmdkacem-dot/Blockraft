@@ -78,6 +78,9 @@ for asset_name, filename in ASSETS:
         export_materials="EXPORT",
     )
     print("Exported:", export_path)
+    # Keep the source object available for duplication, but out of the review render.
+    model.hide_render = True
+    model.hide_set(True)
 
 # Review layout: separate copies in a simple studio scene.
 review_layout = [
@@ -93,6 +96,8 @@ for name, location in review_layout:
     duplicate.data = source.data.copy()
     duplicate.name = name + "_Review"
     review_collection.objects.link(duplicate)
+    duplicate.hide_set(False)
+    duplicate.hide_render = False
     duplicate.location = Vector(location)
 
 # Ground plane for visual review only; it is not exported with individual models.
