@@ -3,14 +3,22 @@ name: Android APK
 on:
   push:
     branches: [main]
-  pull_request:
     paths:
-      - "project.godot"
       - "export_presets.cfg"
-      - "scenes/**"
-      - "scripts/**"
+      - "project.godot"
+      - "scenes/main.tscn"
+      - "scripts/main.gd"
+      - "scripts/player.gd"
       - "assets/**"
       - ".github/workflows/android-apk.yml"
+  pull_request:
+    paths:
+      - "export_presets.cfg"
+      - "project.godot"
+      - "scenes/main.tscn"
+      - "scripts/main.gd"
+      - "scripts/player.gd"
+      - "assets/**"
   workflow_dispatch:
 
 jobs:
