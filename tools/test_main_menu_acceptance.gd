@@ -21,6 +21,7 @@ func _run_checks() -> void:
         _fail("menu root is not a Control", 3)
         return
     root.add_child(scene)
+    current_scene = scene
     await process_frame
     await process_frame
 
@@ -79,6 +80,15 @@ func _run_checks() -> void:
     if dialog == null:
         _fail("Settings action did not open MenuDialog", 12)
         return
+    scene._on_dialog_action("close")
+    await process_frame
 
-    print("MENU_ACCEPTANCE_PASS: six interactive feature cards, four primary actions, and three dialogs verified at 1280x720")
+    scene._start_game()
+    await process_frame
+    await process_frame
+    if current_scene == null or current_scene.scene_file_path != "res://scenes/main.tscn":
+        _fail("Play World did not transition to scenes/main.tscn", 13)
+        return
+
+    print("MENU_ACCEPTANCE_PASS: six interactive feature cards, four primary actions, three dialogs, and gameplay transition verified")
     quit(0)
