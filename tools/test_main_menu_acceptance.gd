@@ -25,6 +25,28 @@ func _run_checks() -> void:
     await process_frame
     await process_frame
 
+    var backdrop := scene.find_child("ThreeDMenuBackdrop", true, false) as SubViewportContainer
+    if backdrop == null:
+        _fail("real-time 3D menu backdrop is missing", 23)
+        return
+    var world_viewport := backdrop.get_node_or_null("WorldViewport") as SubViewport
+    if world_viewport == null:
+        _fail("3D menu SubViewport is missing", 24)
+        return
+    var world := world_viewport.get_node_or_null("VoxelMenuWorld") as Node3D
+    if world == null:
+        _fail("3D voxel menu world did not instantiate", 25)
+        return
+    if world.find_child("MenuWorldCamera", true, false) == null:
+        _fail("3D menu world has no perspective camera", 26)
+        return
+    if world.find_child("GoldenHourSun", true, false) == null:
+        _fail("3D menu world has no key light", 27)
+        return
+    if world.find_child("FloatingIsland", true, false) == null:
+        _fail("3D menu world is missing its floating island landmark", 28)
+        return
+
     var strip := scene.find_child("FeatureStrip", true, false) as HBoxContainer
     if strip == null:
         _fail("FeatureStrip is missing", 4)
