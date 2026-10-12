@@ -1,34 +1,31 @@
 # First 3D Asset Set — Blockraft
 
 ## Status
+The first authored source meshes are committed. The approved visual north-star image is available in the Roblox ChatGPT Project's attached `source` files and is the mandatory art target; it is not committed as a binary in this GitHub repository. Models are not yet accepted production art because a Godot/Android visual review has not been completed.
 
-These are the first authored, importable voxel-style 3D blockout assets. They are **not yet accepted production art**: the approved north-star image is still missing from `assets/reference/blockcraft_visual_north_star.png`, and these models have not yet been checked in a running Godot viewport or on Android.
+## Source models
 
-## Initial models
-
-| Asset | Source | Intended use | Current dimensions / silhouette |
+| Asset | Source | Intended use | Review focus |
 |---|---|---|---|
-| Voxel oak tree | `assets/models/voxel_oak_tree.obj` | Starter biome vegetation | Layered canopy, visible trunk, chunky readable foliage |
-| Meadow cottage | `assets/models/meadow_cottage.obj` | First village / starter landmark | Plaster walls, timber frame, blue windows, stepped roof, stone footing |
-| Crafting bench | `assets/models/crafting_bench.obj` | First crafting station | Timber body, framed top, metal details, gold focal detail |
-| Shared material palette | `assets/models/blockraft_palette.mtl` | Consistent model materials | Original bark, leaf, stone, plaster, roof, glass, iron, and gold materials |
+| Voxel oak tree | `assets/models/voxel_oak_tree.obj` | Meadowlands vegetation | Layered canopy silhouette, trunk readability, leaf color variation |
+| Meadow cottage | `assets/models/meadow_cottage.obj` | Starter village landmark | Roof silhouette, timber/plaster contrast, window scale, entrance readability |
+| Crafting bench | `assets/models/crafting_bench.obj` | Crafting landmark | Clear tabletop, readable wood/metal detail, usable gameplay scale |
+| Terrain/resource block set | `assets/models/voxel_block_set.obj` | Material/shape reference sheet | Grass, dirt, stone, sand, copper ore, crystal ore, log end grain, water color |
+| Shared material palette | `assets/models/blockraft_palette.mtl` | All source meshes | Consistent original bark, foliage, stone, plaster, roof, glass, metals, terrain and resource colors |
 
-## Preview
+## Preview and export
+- Godot starter preview: open `scenes/asset_gallery.tscn` and run it (F6). It currently displays the original three hero assets.
+- Blender 4.x pipeline: from the repository root run `blender --background --python tools/blender/build_blockraft_asset_pack.py`. The script imports all four OBJ sources and writes GLB review exports plus a `.blend` review scene locally. These generated binary outputs are not committed or runtime-verified yet.
+- The terrain/resource sheet is intentionally spaced as a review model, not a gameplay chunk or optimized runtime mesh.
 
-Open `scenes/asset_gallery.tscn` in Godot 4 and run it directly (F6). This scene is an isolated asset preview and does not replace the game's main menu or gameplay scene.
+## Mandatory visual review
+Use the approved source-folder image as a quality benchmark for rich but readable silhouettes, warm/cool lighting contrast, material separation, environmental richness and mobile UI clarity. Keep all Blockraft designs original; do not copy Minecraft branding or proprietary art.
 
-## Blender workflow
+## Next gates
+1. Run the Blender builder and inspect all generated GLBs plus its review render.
+2. Open the asset gallery in Godot and check material import, camera framing, lighting, scale, and shadow artifacts.
+3. Refine the tree/cottage/bench silhouettes and block palette based on actual previews.
+4. Add collisions and integrate accepted assets into a small Meadowlands test area.
+5. Run on Android and inspect readability, frame pacing, memory, and touch interaction.
 
-A reproducible Blender 4.x build script is available at `tools/blender/build_blockraft_asset_pack.py`. Run it from the repository root with `blender --background --python tools/blender/build_blockraft_asset_pack.py`. It is designed to export per-asset GLB files and save a review `.blend` scene; these outputs are generated locally and are not yet committed or runtime-verified.
-
-## Next production steps
-
-1. Import and visually inspect all three OBJ models in Godot 4; repair material/import issues.
-2. Compare their scale, palette, silhouette, and detail density with the original approved reference once it is committed.
-3. Refine bevels and face/material variation in Blender, then export optimized GLB assets if that workflow is available.
-4. Add collision meshes and integrate the accepted tree and cottage into a small authored starter area; keep the crafting bench as a clear gameplay landmark.
-5. Test draw calls, collision behavior, readability at phone resolution, and frame pacing on Android.
-
-## Important limitation
-
-OBJ models are editable source meshes, not a claim that a polished Blender project, optimized GLB exports, collision setup, or device validation already exists.
+A successful file commit or engine build alone does not pass visual acceptance.
