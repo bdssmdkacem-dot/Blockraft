@@ -1,0 +1,55 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "export_presets.cfg"
+      - "project.godot"
+      - "scenes/main.tscn"
+      - "scripts/main.gd"
+      - "scripts/player.gd"
+      - "assets/**"
+      - ".github/workflows/android-apk.yml"
+  pull_request:
+    paths:
+      - "export_presets.cfg"
+      - "project.godot"
+      - "scenes/main.tscn"
+      - "scripts/main.gd"
+      - "scripts/player.gd"
+      - "assets/**"
+  workflow_dispatch:
+
+jobs:
+  export-debug-apk:
+    name: Export installable Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import project and parse scripts
+        run: godot --headless --path . --editor --quit
+
+      - name: Export Android APK
+        run: |
+          mkdir -p build
+          godot --headless --path . --export-debug "Android" build/Blockraft-debug.apk
+
+      - name: Verify APK output
+        run: |
+          test -s build/Blockraft-debug.apk
+          file build/Blockraft-debug.apk
+          unzip -t build/Blockraft-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockraft-android-debug-apk
+          path: build/Blockraft-debug.apk
+          if-no-files-found: error
+          retention-days: 14
