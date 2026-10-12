@@ -86,6 +86,34 @@ func _draw() -> void:
         draw_rect(Rect2(x, y, 88, 7), Color("#7ed36b"))
         draw_rect(Rect2(x + 6, y + 25, 75, 12), Color("#79543a"))
 
+    # Faceted mountain faces catch the low golden light.
+    _poly([Vector2(350, 210), Vector2(410, 274), Vector2(386, 264), Vector2(367, 244)], Color("#9bc4bd"))
+    _poly([Vector2(625, 245), Vector2(690, 315), Vector2(655, 301), Vector2(638, 279)], Color("#638f99"))
+    _poly([Vector2(905, 225), Vector2(969, 292), Vector2(942, 281), Vector2(923, 257)], Color("#a5c8bd"))
+    _poly([Vector2(1165, 270), Vector2(1205, 310), Vector2(1185, 301), Vector2(1176, 286)], Color("#6b9ba2"))
+
+    # Sunlit rays and soft cloud highlights add depth without competing with the title.
+    _poly([Vector2(1000, 120), Vector2(910, 270), Vector2(948, 286), Vector2(1020, 133)], Color(1.0, 0.88, 0.52, 0.12))
+    _poly([Vector2(1000, 120), Vector2(1100, 286), Vector2(1121, 274), Vector2(1015, 127)], Color(1.0, 0.88, 0.52, 0.10))
+    for glint in [Rect2(810, 545, 24, 3), Rect2(830, 571, 17, 3), Rect2(858, 613, 28, 3), Rect2(838, 659, 21, 3)]:
+        draw_rect(glint, Color(0.88, 1.0, 1.0, 0.54))
+
+    # Stone path leads the eye from the village toward the river crossing.
+    _poly([Vector2(575, 448), Vector2(602, 448), Vector2(659, 515), Vector2(645, 515)], Color("#c5b58d"))
+    _poly([Vector2(645, 515), Vector2(659, 515), Vector2(704, 570), Vector2(684, 570)], Color("#b7a782"))
+    for path_stone in [Rect2(588, 459, 9, 5), Rect2(610, 478, 11, 5), Rect2(646, 520, 10, 5), Rect2(672, 548, 12, 5)]:
+        draw_rect(path_stone, Color("#e5d7b3"))
+
+    # Roof tiles and shaded wall faces make the village read as built architecture.
+    _poly([Vector2(513, 368), Vector2(540, 347), Vector2(547, 353), Vector2(521, 374)], Color("#754839"))
+    _poly([Vector2(540, 347), Vector2(575, 368), Vector2(567, 374), Vector2(547, 353)], Color("#b8754c"))
+    draw_rect(Rect2(529, 385, 7, 13), Color("#ffdb8b"))
+    draw_rect(Rect2(552, 385, 7, 13), Color("#ffdb8b"))
+    draw_rect(Rect2(606, 405, 7, 10), Color("#ffdf9a"))
+    draw_rect(Rect2(627, 405, 7, 10), Color("#ffdf9a"))
+    for roof_tile in [Rect2(1047, 326, 12, 4), Rect2(1061, 319, 12, 4), Rect2(1075, 326, 12, 4), Rect2(1089, 319, 12, 4)]:
+        draw_rect(roof_tile, Color("#80988a"))
+
     # Atmospheric voxel details: layered clouds, floating-island falls,
     # a small stone crossing, and luminous meadow accents.
     for cloud in [
