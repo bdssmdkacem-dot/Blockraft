@@ -19,6 +19,11 @@ func _notification(what: int) -> void:
     if what == NOTIFICATION_RESIZED:
         queue_redraw()
 
+func _unhandled_input(event: InputEvent) -> void:
+    if event.is_action_pressed("ui_cancel") and is_instance_valid(dialog_layer):
+        dialog_layer.queue_free()
+        get_viewport().set_input_as_handled()
+
 func _draw() -> void:
     var sx := size.x / DESIGN_SIZE.x
     var sy := size.y / DESIGN_SIZE.y
@@ -254,7 +259,7 @@ func _build_feature_strip() -> void:
         var icon_label := Label.new()
         icon_label.text = feature["icon"]
         icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-        icon_label.add_theme_font_size_override("font_size", 26)
+        icon_label.add_theme_font_size_override("font_size", 24)
         icon_label.add_theme_color_override("font_color", Color("#ffe3a0"))
         icon_label.custom_minimum_size = Vector2(0, 31)
         content.add_child(icon_label)
@@ -263,7 +268,7 @@ func _build_feature_strip() -> void:
         heading.text = feature["title"]
         heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
         heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        heading.add_theme_font_size_override("font_size", 10)
+        heading.add_theme_font_size_override("font_size", 12)
         heading.add_theme_color_override("font_color", Color("#fff5d9"))
         content.add_child(heading)
 
@@ -272,7 +277,7 @@ func _build_feature_strip() -> void:
         detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
         detail.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        detail.add_theme_font_size_override("font_size", 9)
+        detail.add_theme_font_size_override("font_size", 10)
         detail.add_theme_color_override("font_color", Color("#e0e9db"))
         detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
         content.add_child(detail)
