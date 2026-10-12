@@ -21,11 +21,5 @@ jobs:
         run: godot --headless --path . --quit-after 3
       - name: Launch gameplay scene headlessly
         run: godot --headless --path . res://scenes/main.tscn --quit-after 5
-      - name: Capture main menu for visual review
-        run: timeout 90s godot --headless --path . --script res://tools/capture_main_menu.gd
-      - name: Upload main menu screenshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: blockraft-main-menu-capture
-          path: main_menu_capture.png
-          if-no-files-found: error
+      - name: Verify main menu structure and actions
+        run: godot --headless --path . --script res://tools/test_main_menu_acceptance.gd
