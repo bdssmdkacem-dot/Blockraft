@@ -22,7 +22,7 @@ The implementation is tracked through a project-specific recon, feature acceptan
 
 ## Android prototype
 
-The Android touch-control and debug APK-export changes are under review in [PR #4](https://github.com/bdssmdkacem-dot/Blockraft/pull/4). Do not treat an APK as available until the export workflow succeeds and uploads the artifact. The APK is for sideload testing only; it is not a Play Store release.
+The Android touch-control and debug APK-export changes are under review in [PR #4](https://github.com/bdssmdkacem-dot/Blockraft/pull/4). The CI export now explicitly installs Android SDK platform/build-tools packages and generates an ephemeral debug keystore before export. The workflow trigger covers workflow, README, scene, script, asset, and test changes. Do not treat an APK as available until the export workflow succeeds and uploads the artifact. The APK is for sideload testing only; it is not a Play Store release.
 
 ## Open in Godot
 
