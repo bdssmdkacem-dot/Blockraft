@@ -37,8 +37,12 @@ func _run_checks() -> void:
     if world == null:
         _fail("3D voxel menu world did not instantiate", 25)
         return
-    if world.find_child("MenuWorldCamera", true, false) == null:
+    var camera := world.find_child("MenuWorldCamera", true, false) as Camera3D
+    if camera == null:
         _fail("3D menu world has no perspective camera", 26)
+        return
+    if camera.rotation.x > -0.05:
+        _fail("menu camera is not pitched down toward the voxel landscape", 29)
         return
     if world.find_child("GoldenHourSun", true, false) == null:
         _fail("3D menu world has no key light", 27)
