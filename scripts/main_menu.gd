@@ -12,6 +12,7 @@ func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     mouse_filter = Control.MOUSE_FILTER_STOP
     _build_interface()
+    _build_feature_strip()
     queue_redraw()
 
 func _notification(what: int) -> void:
@@ -76,6 +77,11 @@ func _draw() -> void:
         draw_rect(Rect2(x, y, 88, 25), Color("#34854b"))
         draw_rect(Rect2(x, y, 88, 7), Color("#7ed36b"))
         draw_rect(Rect2(x + 6, y + 25, 75, 12), Color("#79543a"))
+
+    # Foreground framing, warm bloom, and atmospheric depth.
+    draw_rect(Rect2(0, 0, 1280, 10), Color("#f5d99a", 0.85))
+    draw_rect(Rect2(0, 515, 1280, 205), Color("#0a1b22", 0.82))
+    draw_rect(Rect2(0, 515, 1280, 4), Color("#d5bc79", 0.9))
 
     # Subtle vignette at the top keeps the title legible.
     draw_rect(Rect2(0, 0, 1280, 155), Color(0.08, 0.18, 0.20, 0.23))
@@ -151,13 +157,13 @@ func _build_interface() -> void:
     add_child(tagline)
 
     var panel := PanelContainer.new()
-    panel.position = Vector2(70, 268)
-    panel.size = Vector2(355, 322)
+    panel.position = Vector2(52, 245)
+    panel.size = Vector2(350, 278)
     var panel_style := StyleBoxFlat.new()
-    panel_style.bg_color = Color(0.07, 0.18, 0.15, 0.88)
-    panel_style.border_color = Color("#b7d995")
+    panel_style.bg_color = Color(0.035, 0.095, 0.085, 0.94)
+    panel_style.border_color = Color("#c6d9a0")
     panel_style.set_border_width_all(2)
-    panel_style.set_corner_radius_all(12)
+    panel_style.set_corner_radius_all(10)
     panel_style.content_margin_left = 20
     panel_style.content_margin_right = 20
     panel_style.content_margin_top = 18
@@ -166,7 +172,7 @@ func _build_interface() -> void:
     add_child(panel)
 
     menu_column = VBoxContainer.new()
-    menu_column.add_theme_constant_override("separation", 10)
+    menu_column.add_theme_constant_override("separation", 7)
     panel.add_child(menu_column)
     _add_menu_button("▶   PLAY WORLD", "play", true)
     _add_menu_button("▦   WORLDS", "worlds", false)
@@ -174,36 +180,124 @@ func _build_interface() -> void:
     _add_menu_button("⚙   SETTINGS", "settings", false)
 
     status_label = Label.new()
-    status_label.text = "A new world is waiting."
+    status_label.text = "YOUR WORLD. YOUR ADVENTURE."
     status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    status_label.add_theme_font_size_override("font_size", 13)
+    status_label.add_theme_font_size_override("font_size", 11)
     status_label.add_theme_color_override("font_color", Color("#d7f0c6"))
     status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    status_label.custom_minimum_size = Vector2(0, 36)
+    status_label.custom_minimum_size = Vector2(0, 22)
     menu_column.add_child(status_label)
 
     var footer := Label.new()
-    footer.text = "EXPLORE  •  MINE  •  BUILD  •  SURVIVE"
+    footer.text = "PROCEDURAL WORLDS     •     DYNAMIC BIOMES     •     MINE  /  CRAFT  /  BUILD     •     DAY & NIGHT"
     footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
     footer.offset_left = 0
     footer.offset_top = -42
     footer.offset_right = 0
     footer.offset_bottom = -16
     footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    footer.add_theme_font_size_override("font_size", 15)
+    footer.add_theme_font_size_override("font_size", 11)
     footer.add_theme_color_override("font_color", Color("#f1ffe8"))
     footer.add_theme_color_override("font_shadow_color", Color("#17452f"))
     footer.add_theme_constant_override("shadow_offset_x", 2)
     footer.add_theme_constant_override("shadow_offset_y", 2)
     add_child(footer)
 
+
+func _build_feature_strip() -> void:
+    var strip := HBoxContainer.new()
+    strip.name = "FeatureStrip"
+    strip.anchor_left = 0.0
+    strip.anchor_top = 0.0
+    strip.anchor_right = 1.0
+    strip.anchor_bottom = 0.0
+    strip.offset_left = 22
+    strip.offset_top = 538
+    strip.offset_right = -22
+    strip.offset_bottom = 666
+    strip.add_theme_constant_override("separation", 8)
+    strip.mouse_filter = Control.MOUSE_FILTER_PASS
+    add_child(strip)
+
+    var features := [
+        {"icon": "◇", "title": "EXPLORE WORLDS", "body": "Mountains, rivers\nand hidden places", "action": "worlds", "tone": "#285f78"},
+        {"icon": "⚒", "title": "GATHER RESOURCES", "body": "Mine stone, ores\nand rare crystals", "action": "help", "tone": "#4a5158"},
+        {"icon": "▦", "title": "CRAFT & BUILD", "body": "Shape a shelter\nblock by block", "action": "help", "tone": "#755337"},
+        {"icon": "☾", "title": "SURVIVE THE NIGHT", "body": "Prepare, explore\nand stay alert", "action": "help", "tone": "#263653"},
+        {"icon": "⌂", "title": "BUILD YOUR DREAMS", "body": "Create your own\nvoxel home", "action": "play", "tone": "#3e6d47"},
+        {"icon": "♧", "title": "MULTIPLAYER", "body": "Friend worlds\nplanned for later", "action": "settings", "tone": "#536b91"}
+    ]
+
+    for feature in features:
+        var card := PanelContainer.new()
+        card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+        card.custom_minimum_size = Vector2(0, 120)
+        var card_style := StyleBoxFlat.new()
+        card_style.bg_color = Color(feature["tone"])
+        card_style.bg_color.a = 0.94
+        card_style.border_color = Color("#d7d6bd")
+        card_style.border_color.a = 0.72
+        card_style.set_border_width_all(1)
+        card_style.set_corner_radius_all(5)
+        card_style.content_margin_left = 9
+        card_style.content_margin_right = 7
+        card_style.content_margin_top = 7
+        card_style.content_margin_bottom = 5
+        card.add_theme_stylebox_override("panel", card_style)
+        strip.add_child(card)
+
+        var content := VBoxContainer.new()
+        content.add_theme_constant_override("separation", 3)
+        card.add_child(content)
+
+        var icon_label := Label.new()
+        icon_label.text = feature["icon"]
+        icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        icon_label.add_theme_font_size_override("font_size", 26)
+        icon_label.add_theme_color_override("font_color", Color("#ffe3a0"))
+        icon_label.custom_minimum_size = Vector2(0, 31)
+        content.add_child(icon_label)
+
+        var heading := Label.new()
+        heading.text = feature["title"]
+        heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        heading.add_theme_font_size_override("font_size", 10)
+        heading.add_theme_color_override("font_color", Color("#fff5d9"))
+        content.add_child(heading)
+
+        var detail := Label.new()
+        detail.text = feature["body"]
+        detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        detail.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+        detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        detail.add_theme_font_size_override("font_size", 9)
+        detail.add_theme_color_override("font_color", Color("#e0e9db"))
+        detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
+        content.add_child(detail)
+
+        var hit_area := Button.new()
+        hit_area.text = ""
+        hit_area.flat = true
+        hit_area.focus_mode = Control.FOCUS_ALL
+        hit_area.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+        hit_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        hit_area.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+        var hit_hover := StyleBoxFlat.new()
+        hit_hover.bg_color = Color(1, 1, 1, 0.08)
+        hit_hover.set_corner_radius_all(5)
+        hit_area.add_theme_stylebox_override("hover", hit_hover)
+        hit_area.pressed.connect(_on_menu_action.bind(feature["action"]))
+        card.add_child(hit_area)
+
 func _add_menu_button(caption: String, action: String, primary: bool) -> void:
     var button := Button.new()
     button.text = caption
-    button.custom_minimum_size = Vector2(0, 48 if primary else 43)
+    button.custom_minimum_size = Vector2(0, 43 if primary else 39)
     button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     button.focus_mode = Control.FOCUS_ALL
-    button.add_theme_font_size_override("font_size", 18 if primary else 16)
+    button.add_theme_font_size_override("font_size", 16 if primary else 14)
     var normal := StyleBoxFlat.new()
     normal.bg_color = Color("#d8a94d") if primary else Color("#294e3e")
     normal.border_color = Color("#fff0b2") if primary else Color("#8ab878")
