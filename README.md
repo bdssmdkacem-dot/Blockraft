@@ -25,7 +25,7 @@ The first original OBJ models are in `assets/models/`: voxel oak tree, meadow co
 
 ## Honest status
 
-This is an early prototype, not a finished game or Android APK. It has not yet been validated in the Godot runtime. Mobile touch controls and production chunk meshing are still required.
+This is an early prototype, not a finished game or Android APK. Godot CI has passed headless import/launch and menu acceptance checks, and rendered screenshot capture is now available. The screenshot still needs direct comparison with the exact approved source image; Android touch controls/APK export are tracked separately, and production chunk meshing remains required.
 
 ## Acceptance gates
 
