@@ -3,9 +3,7 @@
 An original voxel sandbox game prototype, planned for Android first using Godot 4.
 
 ## Mandatory visual reference
-The project owner approved the uploaded 1536×1024 Blockraft concept image as the mandatory visual north star. Read [source/REFERENCE_IMAGE.md](source/REFERENCE_IMAGE.md) and [docs/VISUAL_ART_DIRECTION.md](docs/VISUAL_ART_DIRECTION.md) before creating or integrating art.
-
-**Reference asset status: pending binary upload.** The canonical location is `source/reference/blockraft_visual_north_star.png`. The current GitHub connector can commit text but cannot upload the image bytes, so the original PNG has not yet been committed. Do not claim the image is present or visual matching is complete until that exact file exists in the repository and is checked against an actual Godot screenshot.
+The project owner approved the original 1536×1024 Blockraft concept image attached in the Roblox ChatGPT Project's `source` files as the mandatory visual north star. Read [source/REFERENCE_IMAGE.md](source/REFERENCE_IMAGE.md) and [docs/VISUAL_ART_DIRECTION.md](docs/VISUAL_ART_DIRECTION.md) before creating or integrating art. The PNG is available in the ChatGPT project context but is not stored as a binary in this GitHub repository; do not claim it is committed here or that visual matching has passed without actual Godot screenshots.
 
 ## Main menu
 The project starts at `scenes/main_menu.tscn`. The menu is drawn in `scripts/main_menu.gd`; Play World opens the prototype scene, while Worlds, How to Play, and Settings open informational dialogs. Only the Meadowlands is playable in this prototype. See [docs/MAIN_MENU_ACCEPTANCE.md](docs/MAIN_MENU_ACCEPTANCE.md) for required checks.
