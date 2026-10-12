@@ -71,7 +71,7 @@ jobs:
           SDKMANAGER="$(find /usr/lib/android-sdk/cmdline-tools -type f -name sdkmanager | head -n 1)"
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
-          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-33" "build-tools;33.0.2" "platforms;android-35" "build-tools;35.0.0"
           keytool -genkeypair -v -keystore /root/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt
 
       - name: Import project and parse scripts
@@ -84,6 +84,8 @@ jobs:
       - name: Export Android APK
         env:
           HOME: /root
+          ANDROID_HOME: /usr/lib/android-sdk
+          ANDROID_SDK_ROOT: /usr/lib/android-sdk
         run: |
           mkdir -p build
           godot --headless --path . --export-debug "Android" build/Blockraft-debug.apk
