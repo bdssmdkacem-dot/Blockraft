@@ -130,7 +130,11 @@ func _setup_ui() -> void:
     var layer := CanvasLayer.new()
     add_child(layer)
     var label := Label.new()
-    label.text = "BLOCKRAFT  |  WASD move  •  Space jump  •  Mouse look  •  Left click mine  •  Right click build"
+    if OS.has_feature("mobile"):
+        label.text = "BLOCKRAFT  |  Drag to look  •  Use the pad to move  •  Mine / Place"
+        label.add_theme_font_size_override("font_size", 13)
+    else:
+        label.text = "BLOCKRAFT  |  WASD move  •  Space jump  •  Mouse look  •  Left click mine  •  Right click build"
+        label.add_theme_font_size_override("font_size", 16)
     label.position = Vector2(16, 14)
-    label.add_theme_font_size_override("font_size", 16)
     layer.add_child(label)
