@@ -103,7 +103,7 @@ func _draw() -> void:
     for bridge_block in range(6):
         draw_rect(Rect2(750 + bridge_block * 14, 478 - bridge_block * 1.1, 12, 5), Color("#8c9b8d"))
     for flower_x in [82, 305, 455, 690, 945, 1140, 1220]:
-        var flower_y := 575 + (flower_x % 3) * 8
+        var flower_y: float = 575.0 + float(flower_x % 3) * 8.0
         draw_rect(Rect2(flower_x, flower_y, 5, 5), Color("#fff0b0"))
         draw_rect(Rect2(flower_x + 5, flower_y + 3, 4, 4), Color("#e8a5c1"))
     # Warm windows and block seams add scale to the village silhouettes.
