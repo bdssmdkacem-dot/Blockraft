@@ -11,6 +11,7 @@ var dialog_layer: Control
 func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     mouse_filter = Control.MOUSE_FILTER_STOP
+    _build_3d_backdrop()
     _build_interface()
     _build_feature_strip()
     _apply_responsive_layout()
@@ -28,125 +29,9 @@ func _unhandled_input(event: InputEvent) -> void:
         get_viewport().set_input_as_handled()
 
 func _draw() -> void:
-    var sx := size.x / DESIGN_SIZE.x
-    var sy := size.y / DESIGN_SIZE.y
-    draw_set_transform(Vector2.ZERO, 0.0, Vector2(sx, sy))
-
-    # Sky, distant haze and a warm sunrise.
-    draw_rect(Rect2(0, 0, 1280, 720), Color("#8bd0e8"))
-    draw_rect(Rect2(0, 0, 1280, 280), Color("#b8e8f0"))
-    draw_circle(Vector2(1000, 120), 58, Color("#fff2b0"))
-    draw_circle(Vector2(1000, 120), 74, Color(1.0, 0.92, 0.62, 0.16))
-
-    # Distant, stepped mountain range.
-    _poly([Vector2(0, 390), Vector2(120, 260), Vector2(210, 330), Vector2(350, 210), Vector2(485, 350), Vector2(625, 245), Vector2(760, 355), Vector2(905, 225), Vector2(1050, 345), Vector2(1165, 270), Vector2(1280, 355), Vector2(1280, 540), Vector2(0, 540)], Color("#7caeb0"))
-    _poly([Vector2(70, 315), Vector2(120, 260), Vector2(155, 300), Vector2(128, 292), Vector2(112, 307)], Color("#e6f3e9"))
-    _poly([Vector2(280, 280), Vector2(350, 210), Vector2(410, 274), Vector2(371, 258), Vector2(350, 269), Vector2(328, 250)], Color("#edf5e7"))
-    _poly([Vector2(838, 292), Vector2(905, 225), Vector2(969, 292), Vector2(932, 274), Vector2(906, 283), Vector2(886, 263)], Color("#f2f5df"))
-    _poly([Vector2(1128, 307), Vector2(1165, 270), Vector2(1205, 310), Vector2(1175, 296), Vector2(1159, 302)], Color("#eaf4e4"))
-
-    # Floating island silhouette and tiny voxel ruins.
-    _poly([Vector2(910, 190), Vector2(950, 177), Vector2(980, 184), Vector2(1008, 174), Vector2(1040, 190), Vector2(1022, 208), Vector2(994, 214), Vector2(978, 238), Vector2(960, 215), Vector2(932, 208)], Color("#4f8760"))
-    for i in range(4):
-        draw_rect(Rect2(942 + i * 15, 180 + (i % 2) * 5, 15, 12), Color("#78a96a"))
-    draw_rect(Rect2(975, 150, 13, 28), Color("#a8b9a0"))
-    draw_rect(Rect2(988, 158, 13, 20), Color("#d9c18b"))
-
-    # Main rolling hills.
-    _poly([Vector2(0, 445), Vector2(160, 390), Vector2(310, 432), Vector2(480, 365), Vector2(650, 418), Vector2(820, 360), Vector2(1010, 420), Vector2(1150, 370), Vector2(1280, 410), Vector2(1280, 720), Vector2(0, 720)], Color("#5fbd69"))
-    _poly([Vector2(0, 520), Vector2(190, 470), Vector2(350, 500), Vector2(540, 445), Vector2(710, 500), Vector2(900, 440), Vector2(1100, 490), Vector2(1280, 450), Vector2(1280, 720), Vector2(0, 720)], Color("#3e9c58"))
-
-    # River winding toward the foreground.
-    _poly([Vector2(780, 405), Vector2(846, 409), Vector2(817, 468), Vector2(876, 520), Vector2(840, 575), Vector2(925, 640), Vector2(912, 720), Vector2(738, 720), Vector2(767, 651), Vector2(728, 594), Vector2(775, 530), Vector2(746, 470)], Color("#6bd4e4"))
-    _poly([Vector2(794, 414), Vector2(817, 419), Vector2(791, 471), Vector2(850, 520), Vector2(815, 575), Vector2(896, 642), Vector2(880, 720), Vector2(849, 720), Vector2(864, 646), Vector2(784, 578), Vector2(821, 521), Vector2(768, 468)], Color("#a5edf1"))
-
-    # Voxel trees: layered block canopy, trunk, and highlight blocks.
-    _tree(140, 390, 1.25)
-    _tree(250, 430, 0.95)
-    _tree(410, 400, 1.1)
-    _tree(1100, 410, 1.35)
-    _tree(1190, 430, 0.95)
-    _tree(1010, 465, 0.75)
-
-    # Starter village and a small stone keep.
-    _house(520, 405, 0.85, Color("#d8b77d"), Color("#9b6046"))
-    _house(610, 430, 0.68, Color("#ead29a"), Color("#8e5140"))
-    _house(1050, 370, 0.95, Color("#c6d0c2"), Color("#647e78"))
-    draw_rect(Rect2(1090, 327, 18, 46), Color("#e6d7ad"))
-    draw_rect(Rect2(1094, 337, 10, 13), Color("#78c8db"))
-    draw_rect(Rect2(1078, 318, 43, 12), Color("#536d62"))
-    draw_rect(Rect2(1086, 307, 12, 11), Color("#536d62"))
-    draw_rect(Rect2(1103, 307, 12, 11), Color("#536d62"))
-
-    # Foreground blocky grass ledges give the scene depth.
-    for i in range(16):
-        var x := i * 86 - 18
-        var y := 625 + int((i % 3) * 13)
-        draw_rect(Rect2(x, y, 88, 25), Color("#34854b"))
-        draw_rect(Rect2(x, y, 88, 7), Color("#7ed36b"))
-        draw_rect(Rect2(x + 6, y + 25, 75, 12), Color("#79543a"))
-
-    # Faceted mountain faces catch the low golden light.
-    _poly([Vector2(350, 210), Vector2(410, 274), Vector2(386, 264), Vector2(367, 244)], Color("#9bc4bd"))
-    _poly([Vector2(625, 245), Vector2(690, 315), Vector2(655, 301), Vector2(638, 279)], Color("#638f99"))
-    _poly([Vector2(905, 225), Vector2(969, 292), Vector2(942, 281), Vector2(923, 257)], Color("#a5c8bd"))
-    _poly([Vector2(1165, 270), Vector2(1205, 310), Vector2(1185, 301), Vector2(1176, 286)], Color("#6b9ba2"))
-
-    # Sunlit rays and soft cloud highlights add depth without competing with the title.
-    _poly([Vector2(1000, 120), Vector2(910, 270), Vector2(948, 286), Vector2(1020, 133)], Color(1.0, 0.88, 0.52, 0.12))
-    _poly([Vector2(1000, 120), Vector2(1100, 286), Vector2(1121, 274), Vector2(1015, 127)], Color(1.0, 0.88, 0.52, 0.10))
-    for glint in [Rect2(810, 545, 24, 3), Rect2(830, 571, 17, 3), Rect2(858, 613, 28, 3), Rect2(838, 659, 21, 3)]:
-        draw_rect(glint, Color(0.88, 1.0, 1.0, 0.54))
-
-    # Stone path leads the eye from the village toward the river crossing.
-    _poly([Vector2(575, 448), Vector2(602, 448), Vector2(659, 515), Vector2(645, 515)], Color("#c5b58d"))
-    _poly([Vector2(645, 515), Vector2(659, 515), Vector2(704, 570), Vector2(684, 570)], Color("#b7a782"))
-    for path_stone in [Rect2(588, 459, 9, 5), Rect2(610, 478, 11, 5), Rect2(646, 520, 10, 5), Rect2(672, 548, 12, 5)]:
-        draw_rect(path_stone, Color("#e5d7b3"))
-
-    # Roof tiles and shaded wall faces make the village read as built architecture.
-    _poly([Vector2(513, 368), Vector2(540, 347), Vector2(547, 353), Vector2(521, 374)], Color("#754839"))
-    _poly([Vector2(540, 347), Vector2(575, 368), Vector2(567, 374), Vector2(547, 353)], Color("#b8754c"))
-    draw_rect(Rect2(529, 385, 7, 13), Color("#ffdb8b"))
-    draw_rect(Rect2(552, 385, 7, 13), Color("#ffdb8b"))
-    draw_rect(Rect2(606, 405, 7, 10), Color("#ffdf9a"))
-    draw_rect(Rect2(627, 405, 7, 10), Color("#ffdf9a"))
-    for roof_tile in [Rect2(1047, 326, 12, 4), Rect2(1061, 319, 12, 4), Rect2(1075, 326, 12, 4), Rect2(1089, 319, 12, 4)]:
-        draw_rect(roof_tile, Color("#80988a"))
-
-    # Atmospheric voxel details: layered clouds, floating-island falls,
-    # a small stone crossing, and luminous meadow accents.
-    for cloud in [
-        Rect2(115, 92, 62, 13), Rect2(132, 80, 38, 12), Rect2(168, 92, 42, 10),
-        Rect2(690, 105, 76, 12), Rect2(710, 92, 42, 13), Rect2(752, 105, 36, 10)
-    ]:
-        draw_rect(cloud, Color(0.96, 0.99, 0.97, 0.72))
-    draw_rect(Rect2(976, 222, 8, 35), Color("#79d8e7", 0.92))
-    draw_rect(Rect2(984, 236, 7, 28), Color("#b6f1ed", 0.88))
-    draw_rect(Rect2(971, 256, 5, 17), Color("#72cfe2", 0.72))
-
-    # Stone bridge crossing the river in the mid-ground.
-    _poly([Vector2(742, 474), Vector2(832, 466), Vector2(857, 481), Vector2(766, 491)], Color("#b8b8a0"))
-    _poly([Vector2(744, 474), Vector2(832, 466), Vector2(832, 473), Vector2(744, 481)], Color("#e1d7b8"))
-    for bridge_block in range(6):
-        draw_rect(Rect2(750 + bridge_block * 14, 478 - bridge_block * 1.1, 12, 5), Color("#8c9b8d"))
-    for flower_x in [82, 305, 455, 690, 945, 1140, 1220]:
-        var flower_y: float = 575.0 + float(flower_x % 3) * 8.0
-        draw_rect(Rect2(flower_x, flower_y, 5, 5), Color("#fff0b0"))
-        draw_rect(Rect2(flower_x + 5, flower_y + 3, 4, 4), Color("#e8a5c1"))
-    # Warm windows and block seams add scale to the village silhouettes.
-    for window in [Rect2(533, 421, 8, 11), Rect2(565, 421, 8, 11), Rect2(619, 442, 7, 9)]:
-        draw_rect(window, Color("#ffe4a0"))
-    draw_rect(Rect2(0, 355, 1280, 2), Color(1.0, 1.0, 1.0, 0.08))
-
-    # Foreground framing, warm bloom, and atmospheric depth.
-    draw_rect(Rect2(0, 0, 1280, 10), Color("#f5d99a", 0.85))
-    draw_rect(Rect2(0, 515, 1280, 205), Color("#0a1b22", 0.82))
-    draw_rect(Rect2(0, 515, 1280, 4), Color("#d5bc79", 0.9))
-
-    # Subtle vignette at the top keeps the title legible.
-    draw_rect(Rect2(0, 0, 1280, 155), Color(0.08, 0.18, 0.20, 0.23))
-    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+    # The former flat polygon panorama has been retired. The menu now renders
+    # a real 3D voxel world in a SubViewport behind the interface.
+    pass
 
 func _poly(points: Array, color: Color) -> void:
     draw_colored_polygon(PackedVector2Array(points), color)
@@ -196,6 +81,31 @@ func _place_scaled_control(node_name: String, design_position: Vector2, design_s
     control.position = origin + design_position * ui_scale
     control.size = design_size
     control.scale = Vector2.ONE * ui_scale
+
+func _build_3d_backdrop() -> void:
+    var backdrop := SubViewportContainer.new()
+    backdrop.name = "ThreeDMenuBackdrop"
+    backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    backdrop.stretch = true
+    backdrop.size = size
+    backdrop.z_index = -100
+    add_child(backdrop)
+    move_child(backdrop, 0)
+
+    var viewport := SubViewport.new()
+    viewport.name = "WorldViewport"
+    viewport.size = Vector2i(1280, 720)
+    viewport.disable_3d = false
+    viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    viewport.handle_input_locally = false
+    backdrop.add_child(viewport)
+
+    var world := Node3D.new()
+    world.name = "VoxelMenuWorld"
+    world.set_script(load("res://scripts/menu_world_3d.gd"))
+    viewport.add_child(world)
+
 
 func _build_interface() -> void:
     var top_bar := HBoxContainer.new()
