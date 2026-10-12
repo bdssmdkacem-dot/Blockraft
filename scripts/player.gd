@@ -3,6 +3,8 @@ extends CharacterBody3D
 const SPEED := 6.0
 const JUMP_VELOCITY := 5.0
 const REACH := 6.0
+const CAMERA_START_PITCH := deg_to_rad(-12.0)
+const CAMERA_SENSITIVITY := 0.0025
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var camera: Camera3D
 
@@ -14,18 +16,27 @@ func _ready() -> void:
     collider.shape = capsule
     collider.position.y = 0.9
     add_child(collider)
+
     camera = Camera3D.new()
+    camera.name = "PlayerCamera"
     camera.position = Vector3(0, 1.55, 0)
-    camera.current = true
+    camera.rotation.x = CAMERA_START_PITCH
+    camera.fov = 75.0
+    camera.near = 0.05
+    camera.far = 500.0
     add_child(camera)
+    # Set current after entering the scene tree so this camera is unambiguously active.
+    camera.make_current()
     Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
         Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
+    if event is InputEventMouseButton and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
+        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
     if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-        rotate_y(-event.relative.x * 0.0025)
-        camera.rotate_x(-event.relative.y * 0.0025)
+        rotate_y(-event.relative.x * CAMERA_SENSITIVITY)
+        camera.rotate_x(-event.relative.y * CAMERA_SENSITIVITY)
         camera.rotation.x = clamp(camera.rotation.x, -1.45, 1.45)
     if event is InputEventMouseButton and event.pressed:
         if event.button_index == MOUSE_BUTTON_LEFT:
