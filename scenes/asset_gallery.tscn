@@ -1,8 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=5 format=3]
 
-[ext_resource type="Mesh" path="res://assets/models/voxel_oak_tree.obj" id="1_tree"]
-[ext_resource type="Mesh" path="res://assets/models/meadow_cottage.obj" id="2_cottage"]
-[ext_resource type="Mesh" path="res://assets/models/crafting_bench.obj" id="3_bench"]
+[ext_resource type="ArrayMesh" path="res://assets/models/voxel_oak_tree.obj" id="1_tree"]
+[ext_resource type="ArrayMesh" path="res://assets/models/meadow_cottage.obj" id="2_cottage"]
+[ext_resource type="ArrayMesh" path="res://assets/models/crafting_bench.obj" id="3_bench"]
 [ext_resource type="Script" path="res://scripts/asset_gallery.gd" id="4_script"]
 
 [node name="AssetGallery" type="Node3D"]
