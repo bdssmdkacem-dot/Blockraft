@@ -91,15 +91,15 @@ func _setup_lighting() -> void:
 func _setup_camera() -> void:
     var camera := Camera3D.new()
     camera.name = "MenuWorldCamera"
-    camera.position = Vector3(0.0, 16.0, 30.0)
-    camera.fov = 58.0
+    camera.position = Vector3(0.0, 14.0, 28.0)
+    camera.fov = 62.0
     camera.near = 0.1
     camera.far = 180.0
-    # look_at() must run after the camera enters the SceneTree; otherwise the
-    # transform can remain at the default horizontal orientation and the
-    # SubViewport shows only sky instead of the voxel landscape.
+    # Keep the horizon above the valley while pitching down enough to show
+    # terrain, river, bridge and village in the unobstructed centre/right area.
+    # Orient only after entering the SceneTree for deterministic capture.
     add_child(camera)
-    camera.look_at(Vector3(0.0, 2.6, -7.0), Vector3.UP)
+    camera.look_at(Vector3(0.0, -2.5, -4.0), Vector3.UP)
     camera.make_current()
 
 func _build_landscape() -> void:
