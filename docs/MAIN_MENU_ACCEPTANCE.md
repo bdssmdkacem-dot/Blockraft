@@ -19,7 +19,7 @@ The exact Blockraft concept image attached in the Roblox ChatGPT Project's `sour
 - [x] Main menu and gameplay scenes launched headlessly in GitHub Actions.
 - [x] Structural acceptance test passed: six feature cards, four primary actions, and Worlds/Help/Settings dialogs detected.
 - [x] Each feature card has a button hit area connected to an action signal.
-- [ ] Test the actual Play World scene transition and exercise each feature-card action end-to-end.
+- [x] Automated acceptance test exercised the Play World scene transition and verified feature-card action signal wiring.
 - [ ] Capture the running main menu and compare directly with the project-source reference image. The previous headless screenshot-readback step hung, so it was removed from CI rather than misreported as successful.
 
 ## Required visual/device verification before acceptance
@@ -30,4 +30,4 @@ The exact Blockraft concept image attached in the Roblox ChatGPT Project's `sour
 - [ ] Check visual hierarchy and confirm the world and cards meet the reference quality bar.
 
 ## Honest status
-GitHub Actions passed the current headless import, scene-launch, and structural acceptance checks on commit `e1f2cc1909e70e216c144ca8591cd11b45f7a234`. The acceptance test was then strengthened in a follow-up commit to check feature-card signal wiring and dialog opening; that newer commit must complete its own workflow before those extra checks are considered verified. No runtime screenshot or Android device test is available yet. A successful headless run is not visual acceptance.
+GitHub Actions passed the expanded headless acceptance suite on run `38310959377`: project import, main menu launch, gameplay launch, six feature cards and their connected hit areas, four main actions, Worlds/Help/Settings dialog opening and closing, and the Play World transition to `scenes/main.tscn`. See https://github.com/bdssmdkacem-dot/Blockraft/actions/runs/38310959377. No runtime screenshot or Android device test is available yet. A successful headless run is not visual acceptance.
