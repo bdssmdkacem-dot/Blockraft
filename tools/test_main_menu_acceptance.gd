@@ -44,7 +44,8 @@ func _run_checks() -> void:
             return
 
     for card in strip.get_children():
-        var hit_area := card.get_node_or_null("Button") as Button
+        var hit_nodes := card.find_children("*", "Button", true, false)
+        var hit_area := hit_nodes[0] as Button if not hit_nodes.is_empty() else null
         if hit_area == null:
             _fail("a feature card has no accessible hit area", 7)
             return
