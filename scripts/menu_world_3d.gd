@@ -95,9 +95,11 @@ func _setup_camera() -> void:
     camera.fov = 48.0
     camera.near = 0.1
     camera.far = 180.0
-    camera.look_at(Vector3(0.0, 3.8, -4.0), Vector3.UP)
+    # Enter the scene tree before orienting the camera. This makes the
+    # transform deterministic in headless capture and runtime startup paths.
     add_child(camera)
-    camera.current = true
+    camera.look_at(Vector3(0.0, 3.8, -4.0), Vector3.UP)
+    camera.make_current()
 
 func _build_landscape() -> void:
     # Layered block terrain creates a readable foreground, mid-ground and horizon.
