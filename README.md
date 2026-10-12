@@ -33,7 +33,7 @@ The Android touch-control and debug APK-export changes are under review in [PR #
 
 ## Honest status
 
-This is an early prototype, not a finished game. Godot headless validation has passed for the current menu work, but the latest menu screenshot still requires visual acceptance and Android touch controls/APK export are awaiting their own CI and device checks. Production chunk meshing is still required.
+This is an early prototype, not a finished game or Android APK. Godot CI has passed headless import/launch and menu acceptance checks, and rendered screenshot capture is now available. The screenshot still needs direct comparison with the exact approved source image; Android touch controls/APK export are tracked separately, and production chunk meshing remains required.
 
 ## Acceptance gates
 
