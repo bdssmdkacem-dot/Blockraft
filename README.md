@@ -10,7 +10,7 @@ The original PNG binary is not yet committed in this repository because raw-byte
 
 ## Main menu
 
-The project starts at `scenes/main_menu.tscn`. The menu is drawn in `scripts/main_menu.gd`; Play World opens the prototype scene, while Worlds, How to Play, and Settings open informational dialogs. Only the Meadowlands is playable in this prototype. See [docs/MAIN_MENU_ACCEPTANCE.md](docs/MAIN_MENU_ACCEPTANCE.md) for required checks.
+The project starts at `scenes/main_menu.tscn`. The menu is drawn in `scripts/main_menu.gd`, with a sunrise voxel landscape, primary actions, and a six-card feature strip for exploration, resources, crafting, survival, building, and planned multiplayer. Play World opens the prototype scene, while Worlds, How to Play, and Settings open informational dialogs. Only the Meadowlands is playable in this prototype. See [docs/MAIN_MENU_ACCEPTANCE.md](docs/MAIN_MENU_ACCEPTANCE.md) for required checks.
 
 ## First 3D assets
 
