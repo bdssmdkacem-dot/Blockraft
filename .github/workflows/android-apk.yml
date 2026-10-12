@@ -19,6 +19,7 @@ on:
       - "scripts/main.gd"
       - "scripts/player.gd"
       - "assets/**"
+      - ".github/workflows/android-apk.yml"
   workflow_dispatch:
 
 concurrency:
