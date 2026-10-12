@@ -21,6 +21,8 @@ ASSETS = [
     ("meadow_cottage", "meadow_cottage.obj"),
     ("crafting_bench", "crafting_bench.obj"),
     ("voxel_block_set", "voxel_block_set.obj"),
+    ("grass_block", "grass_block.obj"),
+    ("ore_outcrop", "ore_outcrop.obj"),
 ]
 
 # Start from a clean scene so repeated runs are deterministic.
@@ -89,6 +91,8 @@ review_layout = [
     ("meadow_cottage", (0.0, 0.0, 0.0)),
     ("crafting_bench", (5.0, 0.0, 0.0)),
     ("voxel_block_set", (0.0, 0.0, -5.5)),
+    ("grass_block", (-4.0, 0.0, -6.0)),
+    ("ore_outcrop", (4.0, 0.0, -6.0)),
 ]
 for name, location in review_layout:
     source = bpy.data.objects.get(name)
