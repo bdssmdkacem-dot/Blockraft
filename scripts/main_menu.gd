@@ -86,6 +86,31 @@ func _draw() -> void:
         draw_rect(Rect2(x, y, 88, 7), Color("#7ed36b"))
         draw_rect(Rect2(x + 6, y + 25, 75, 12), Color("#79543a"))
 
+    # Atmospheric voxel details: layered clouds, floating-island falls,
+    # a small stone crossing, and luminous meadow accents.
+    for cloud in [
+        Rect2(115, 92, 62, 13), Rect2(132, 80, 38, 12), Rect2(168, 92, 42, 10),
+        Rect2(690, 105, 76, 12), Rect2(710, 92, 42, 13), Rect2(752, 105, 36, 10)
+    ]:
+        draw_rect(cloud, Color(0.96, 0.99, 0.97, 0.72))
+    draw_rect(Rect2(976, 222, 8, 35), Color("#79d8e7", 0.92))
+    draw_rect(Rect2(984, 236, 7, 28), Color("#b6f1ed", 0.88))
+    draw_rect(Rect2(971, 256, 5, 17), Color("#72cfe2", 0.72))
+
+    # Stone bridge crossing the river in the mid-ground.
+    _poly([Vector2(742, 474), Vector2(832, 466), Vector2(857, 481), Vector2(766, 491)], Color("#b8b8a0"))
+    _poly([Vector2(744, 474), Vector2(832, 466), Vector2(832, 473), Vector2(744, 481)], Color("#e1d7b8"))
+    for bridge_block in range(6):
+        draw_rect(Rect2(750 + bridge_block * 14, 478 - bridge_block * 1.1, 12, 5), Color("#8c9b8d"))
+    for flower_x in [82, 305, 455, 690, 945, 1140, 1220]:
+        var flower_y := 575 + (flower_x % 3) * 8
+        draw_rect(Rect2(flower_x, flower_y, 5, 5), Color("#fff0b0"))
+        draw_rect(Rect2(flower_x + 5, flower_y + 3, 4, 4), Color("#e8a5c1"))
+    # Warm windows and block seams add scale to the village silhouettes.
+    for window in [Rect2(533, 421, 8, 11), Rect2(565, 421, 8, 11), Rect2(619, 442, 7, 9)]:
+        draw_rect(window, Color("#ffe4a0"))
+    draw_rect(Rect2(0, 355, 1280, 2), Color(1.0, 1.0, 1.0, 0.08))
+
     # Foreground framing, warm bloom, and atmospheric depth.
     draw_rect(Rect2(0, 0, 1280, 10), Color("#f5d99a", 0.85))
     draw_rect(Rect2(0, 515, 1280, 205), Color("#0a1b22", 0.82))
