@@ -6,6 +6,7 @@ const DESIGN_SIZE := Vector2(1280.0, 720.0)
 var menu_column: VBoxContainer
 var status_label: Label
 var settings_open := false
+var dialog_layer: Control
 
 func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -227,11 +228,121 @@ func _add_menu_button(caption: String, action: String, primary: bool) -> void:
 func _on_menu_action(action: String) -> void:
     match action:
         "play":
-            get_tree().change_scene_to_file(GAME_SCENE)
+            _start_game()
         "worlds":
-            status_label.text = "WORLD SELECT  •  The Meadowlands is ready. More biomes are coming."
+            _show_dialog(
+                "CHOOSE YOUR WORLD",
+                "One world is playable in this prototype. Locked regions are shown honestly and will be added after their terrain and gameplay are ready.",
+                [
+                    {"label": "▶  PLAY THE MEADOWLANDS", "action": "play", "primary": true},
+                    {"label": "MOUNTAIN FRONTIER  ·  LOCKED", "action": "locked_mountains"},
+                    {"label": "SUNSCORCHED DESERT  ·  LOCKED", "action": "locked_desert"},
+                    {"label": "DEEP BLUE OCEAN  ·  LOCKED", "action": "locked_ocean"},
+                    {"label": "BACK", "action": "close"}
+                ]
+            )
         "help":
-            status_label.text = "WASD: move   •   SPACE: jump   •   MOUSE: look   •   LEFT CLICK: mine   •   RIGHT CLICK: build"
+            _show_dialog(
+                "HOW TO PLAY",
+                "DESKTOP CONTROLS\nW A S D  ·  Move\nSPACE  ·  Jump\nMOUSE  ·  Look around\nLEFT CLICK  ·  Mine the block under the crosshair\nRIGHT CLICK  ·  Place a block\n\nMobile touch controls are not implemented yet.",
+                [{"label": "GOT IT", "action": "close", "primary": true}]
+            )
         "settings":
-            settings_open = not settings_open
-            status_label.text = "SETTINGS  •  Audio and graphics options will be added after the first playable build." if settings_open else "A new world is waiting."
+            _show_dialog(
+                "SETTINGS",
+                "This prototype currently uses the project's default graphics settings. Audio, sensitivity, and graphics controls are not wired yet, so this menu does not pretend those options already work.",
+                [{"label": "BACK", "action": "close", "primary": true}]
+            )
+
+func _start_game() -> void:
+    get_tree().change_scene_to_file(GAME_SCENE)
+
+func _show_dialog(dialog_title: String, description: String, options: Array) -> void:
+    if is_instance_valid(dialog_layer):
+        dialog_layer.queue_free()
+
+    dialog_layer = Control.new()
+    dialog_layer.name = "MenuDialog"
+    dialog_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    dialog_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+    add_child(dialog_layer)
+
+    var shade := ColorRect.new()
+    shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    shade.color = Color(0.025, 0.07, 0.055, 0.76)
+    shade.mouse_filter = Control.MOUSE_FILTER_STOP
+    dialog_layer.add_child(shade)
+
+    var panel := PanelContainer.new()
+    panel.anchor_left = 0.06
+    panel.anchor_top = 0.12
+    panel.anchor_right = 0.94
+    panel.anchor_bottom = 0.88
+    var panel_style := StyleBoxFlat.new()
+    panel_style.bg_color = Color("#102d25")
+    panel_style.border_color = Color("#c3dca0")
+    panel_style.set_border_width_all(2)
+    panel_style.set_corner_radius_all(14)
+    panel_style.content_margin_left = 20
+    panel_style.content_margin_right = 20
+    panel_style.content_margin_top = 20
+    panel_style.content_margin_bottom = 20
+    panel.add_theme_stylebox_override("panel", panel_style)
+    dialog_layer.add_child(panel)
+
+    var content_box := VBoxContainer.new()
+    content_box.add_theme_constant_override("separation", 12)
+    panel.add_child(content_box)
+
+    var heading := Label.new()
+    heading.text = dialog_title
+    heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    heading.add_theme_font_size_override("font_size", 25)
+    heading.add_theme_color_override("font_color", Color("#ffe8a2"))
+    content_box.add_child(heading)
+
+    var body := Label.new()
+    body.text = description
+    body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    body.add_theme_font_size_override("font_size", 15)
+    body.add_theme_color_override("font_color", Color("#e6f2df"))
+    content_box.add_child(body)
+
+    var button_stack := VBoxContainer.new()
+    button_stack.add_theme_constant_override("separation", 8)
+    content_box.add_child(button_stack)
+
+    for option in options:
+        var option_button := Button.new()
+        option_button.text = str(option.get("label", "BACK"))
+        option_button.custom_minimum_size = Vector2(0, 42)
+        option_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        option_button.add_theme_font_size_override("font_size", 15)
+        var option_style := StyleBoxFlat.new()
+        var is_primary := bool(option.get("primary", false))
+        option_style.bg_color = Color("#d8a94d") if is_primary else Color("#294e3e")
+        option_style.border_color = Color("#fff0b2") if is_primary else Color("#8ab878")
+        option_style.set_border_width_all(1)
+        option_style.set_corner_radius_all(6)
+        option_button.add_theme_stylebox_override("normal", option_style)
+        var hover_style := option_style.duplicate() as StyleBoxFlat
+        hover_style.bg_color = Color("#f1c86c") if is_primary else Color("#3d6c4b")
+        option_button.add_theme_stylebox_override("hover", hover_style)
+        option_button.add_theme_color_override("font_color", Color("#173729") if is_primary else Color("#f0f8e6"))
+        option_button.pressed.connect(_on_dialog_action.bind(str(option.get("action", "close"))))
+        button_stack.add_child(option_button)
+
+func _on_dialog_action(action: String) -> void:
+    match action:
+        "play":
+            _start_game()
+        "close":
+            if is_instance_valid(dialog_layer):
+                dialog_layer.queue_free()
+        "locked_mountains":
+            _show_dialog("MOUNTAIN FRONTIER", "LOCKED REGION\nThis biome needs its own reviewed terrain, landmarks, resources, and mobile performance checks before it can be selected.", [{"label": "BACK TO WORLDS", "action": "worlds", "primary": true}, {"label": "CLOSE", "action": "close"}])
+        "locked_desert":
+            _show_dialog("SUNSCORCHED DESERT", "LOCKED REGION\nThe desert will be selectable only after its original block palette, dunes, oasis landmarks, and resource loop are implemented.", [{"label": "BACK TO WORLDS", "action": "worlds", "primary": true}, {"label": "CLOSE", "action": "close"}])
+        "locked_ocean":
+            _show_dialog("DEEP BLUE OCEAN", "LOCKED REGION\nThe ocean needs water rendering, underwater readability, and a distinct exploration loop before it is considered playable.", [{"label": "BACK TO WORLDS", "action": "worlds", "primary": true}, {"label": "CLOSE", "action": "close"}])
