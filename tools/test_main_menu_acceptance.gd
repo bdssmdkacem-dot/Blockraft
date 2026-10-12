@@ -53,9 +53,22 @@ func _run_checks() -> void:
             _fail("a feature card's hit area has no action connection", 8)
             return
 
-    if strip.offset_left < 0 or strip.offset_right > 0:
-        _fail("feature strip horizontal anchors/offsets are invalid", 9)
-        return
+    # Exercise the same layout function at common 16:9 and narrow Android
+    # landscape sizes, then ensure the scaled feature strip remains in bounds.
+    for viewport_size in [Vector2(1280, 720), Vector2(960, 540), Vector2(854, 480), Vector2(800, 360)]:
+        scene.size = viewport_size
+        scene._apply_responsive_layout()
+        await process_frame
+        var strip_rect := strip.get_global_rect()
+        if strip_rect.position.x < -1.0 or strip_rect.end.x > viewport_size.x + 1.0:
+            _fail("feature strip exceeds horizontal bounds at %s" % viewport_size, 9)
+            return
+        if strip_rect.position.y < -1.0 or strip_rect.end.y > viewport_size.y + 1.0:
+            _fail("feature strip exceeds vertical bounds at %s" % viewport_size, 14)
+            return
+    scene.size = Vector2(1280, 720)
+    scene._apply_responsive_layout()
+    await process_frame
 
     scene._on_menu_action("worlds")
     await process_frame
@@ -91,5 +104,5 @@ func _run_checks() -> void:
         _fail("Play World did not transition to scenes/main.tscn", 13)
         return
 
-    print("MENU_ACCEPTANCE_PASS: six interactive feature cards, four primary actions, three dialogs, and gameplay transition verified")
+    print("MENU_ACCEPTANCE_PASS: responsive layout at four viewport sizes, six interactive feature cards, four primary actions, three dialogs, and gameplay transition verified")
     quit(0)
