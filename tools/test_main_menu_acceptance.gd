@@ -86,16 +86,16 @@ func _run_checks() -> void:
             _fail("feature strip exceeds vertical bounds at %s" % viewport_size, 14)
             return
         var previous_card_end := strip_rect.position.x
-        for card_index in range(strip.get_child_count()):
-            var card := strip.get_child(card_index) as Control
+        for card_i in range(strip.get_child_count()):
+            var card := strip.get_child(card_i) as Control
             var card_rect := card.get_global_rect()
             if card_rect.position.x < strip_rect.position.x - 1.0 or card_rect.end.x > strip_rect.end.x + 1.0:
-                _fail("card %s exceeds strip horizontal bounds at %s" % [card_index, viewport_size], 20)
+                _fail("card %s exceeds strip horizontal bounds at %s" % [card_i, viewport_size], 20)
                 return
             if card_rect.position.y < strip_rect.position.y - 1.0 or card_rect.end.y > strip_rect.end.y + 1.0:
-                _fail("card %s exceeds strip vertical bounds at %s" % [card_index, viewport_size], 21)
+                _fail("card %s exceeds strip vertical bounds at %s" % [card_i, viewport_size], 21)
                 return
-            if card_index > 0 and card_rect.position.x < previous_card_end - 1.0:
+            if card_i > 0 and card_rect.position.x < previous_card_end - 1.0:
                 _fail("feature cards overlap at %s" % viewport_size, 22)
                 return
             previous_card_end = card_rect.end.x
