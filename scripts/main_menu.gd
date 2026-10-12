@@ -89,7 +89,10 @@ func _build_3d_backdrop() -> void:
     backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
     backdrop.stretch = true
     backdrop.size = size
-    backdrop.z_index = -100
+    # Keep the viewport texture in the normal canvas layer. A strongly negative
+    # z-index can place it behind the root canvas clear in the CI capture path.
+    backdrop.z_index = 0
+    backdrop.z_as_relative = false
     add_child(backdrop)
     move_child(backdrop, 0)
 
@@ -97,6 +100,7 @@ func _build_3d_backdrop() -> void:
     viewport.name = "WorldViewport"
     viewport.size = Vector2i(1280, 720)
     viewport.disable_3d = false
+    viewport.transparent_bg = false
     viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
     viewport.handle_input_locally = false
     backdrop.add_child(viewport)
