@@ -38,30 +38,35 @@ jobs:
 
       - name: Configure Android export templates and SDK paths
         run: |
+          export HOME=/root
           mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable" "$HOME/.config/godot"
-          wget -q "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz" -O /tmp/godot-export-templates.tpz
-          mkdir -p /tmp/godot-export-templates
-          unzip -q /tmp/godot-export-templates.tpz -d /tmp/godot-export-templates
-          cp -a /tmp/godot-export-templates/templates/. "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
-          SETTINGS="$HOME/.config/godot/editor_settings-4.4.tres"
-          if [ ! -f "$SETTINGS" ]; then
-            printf '%s\n' '[gd_resource type="EditorSettings" format=3]' '' '[resource]' > "$SETTINGS"
+          if [ -f "$HOME/.local/share/godot/templates/4.4.1.stable/android_debug.apk" ]; then
+            cp -a "$HOME/.local/share/godot/templates/4.4.1.stable/." "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+          else
+            wget -q "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz" -O /tmp/godot-export-templates.tpz
+            mkdir -p /tmp/godot-export-templates
+            unzip -q /tmp/godot-export-templates.tpz -d /tmp/godot-export-templates
+            cp -a /tmp/godot-export-templates/templates/. "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
           fi
-          cat >> "$SETTINGS" <<'EOF'
-          export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
-          export/android/android_sdk_path = "/usr/lib/android-sdk"
-          export/android/debug_keystore = "/root/debug.keystore"
-          export/android/debug_keystore_user = "androiddebugkey"
-          export/android/debug_keystore_pass = "android"
-          export/android/adb = "/usr/bin/adb"
-          export/android/jarsigner = "/usr/bin/jarsigner"
-          export/android/force_system_user = false
-          EOF
+          SETTINGS="$HOME/.config/godot/editor_settings-4.4.tres"
+          printf '%s\\n' '[gd_resource type="EditorSettings" format=3]' '' '[resource]' \
+            'export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"' \
+            'export/android/android_sdk_path = "/usr/lib/android-sdk"' \
+            'export/android/debug_keystore = "/root/debug.keystore"' \
+            'export/android/debug_keystore_user = "androiddebugkey"' \
+            'export/android/debug_keystore_pass = "android"' \
+            'export/android/adb = "/usr/bin/adb"' \
+            'export/android/jarsigner = "/usr/bin/jarsigner"' \
+            'export/android/force_system_user = false' > "$SETTINGS"
 
       - name: Import project and parse scripts
+        env:
+          HOME: /root
         run: godot --headless --path . --editor --quit
 
       - name: Export Android APK
+        env:
+          HOME: /root
         run: |
           mkdir -p build
           godot --headless --path . --export-debug "Android" build/Blockraft-debug.apk
