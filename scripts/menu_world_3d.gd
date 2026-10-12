@@ -3,11 +3,11 @@ extends Node3D
 ## Geometry is deliberately assembled in 3D, with depth, perspective, shadows,
 ## material response and atmospheric lighting rather than CanvasItem polygons.
 
-const MAT_GRASS := Color("#5baf57")
-const MAT_GRASS_LIGHT := Color("#86cf65")
+const MAT_GRASS := Color("#438b49")
+const MAT_GRASS_LIGHT := Color("#70b956")
 const MAT_DIRT := Color("#79513a")
-const MAT_STONE := Color("#87979a")
-const MAT_STONE_LIGHT := Color("#c2c7b5")
+const MAT_STONE := Color("#687b80")
+const MAT_STONE_LIGHT := Color("#9eafa8")
 const MAT_WOOD := Color("#70472f")
 const MAT_LEAF_DARK := Color("#276747")
 const MAT_LEAF := Color("#3d8a4b")
@@ -59,9 +59,9 @@ func _setup_environment() -> void:
     environment.sky = sky
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     environment.ambient_light_color = Color("#b4c8d5")
-    environment.ambient_light_energy = 0.48
+    environment.ambient_light_energy = 0.34
     environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-    environment.tonemap_exposure = 1.0
+    environment.tonemap_exposure = 0.78
     environment.glow_enabled = true
     environment.glow_intensity = 0.12
     environment.fog_enabled = true
@@ -75,7 +75,7 @@ func _setup_lighting() -> void:
     sun.name = "GoldenHourSun"
     sun.rotation_degrees = Vector3(-37.0, -28.0, 0.0)
     sun.light_color = Color("#ffe0a3")
-    sun.light_energy = 1.45
+    sun.light_energy = 1.18
     sun.shadow_enabled = true
     sun.directional_shadow_max_distance = 90.0
     add_child(sun)
@@ -84,7 +84,7 @@ func _setup_lighting() -> void:
     fill.name = "CoolSkyFill"
     fill.rotation_degrees = Vector3(-18.0, 145.0, 0.0)
     fill.light_color = Color("#a6d9f0")
-    fill.light_energy = 0.42
+    fill.light_energy = 0.28
     fill.shadow_enabled = false
     add_child(fill)
 
@@ -133,6 +133,23 @@ func _build_river_and_bridge() -> void:
         var x := 2.4 - sin(float(i) * 0.58) * 3.0
         var water := _box(self, Vector3(x, -0.02, z), Vector3(6.2, 0.12, 3.6), MAT_WATER, 0.22)
         water.material_override = water_material
+
+    # Two visible stepped waterfalls connect the elevated valley to the river.
+    # Thin layered ribbons avoid a single oversized cyan slab in the panorama.
+    var falls_material := _material(Color("#42c5df"), 0.18, 0.08)
+    for fall in [
+        {"x": 1.0, "y": 2.15, "z": -12.2, "height": 4.2},
+        {"x": 7.6, "y": 1.7, "z": -10.4, "height": 3.3}
+    ]:
+        var fx: float = fall["x"]
+        var fy: float = fall["y"]
+        var fz: float = fall["z"]
+        var fh: float = fall["height"]
+        var sheet := _box(self, Vector3(fx, fy, fz), Vector3(0.72, fh, 0.16), Color("#42c5df"), 0.18)
+        sheet.material_override = falls_material
+        _box(self, Vector3(fx + 0.22, fy - fh * 0.2, fz + 0.1), Vector3(0.18, fh * 0.55, 0.12), Color("#a5f0f4"), 0.2)
+        _box(self, Vector3(fx, 0.05, fz + 0.45), Vector3(2.0, 0.08, 1.2), Color("#68d8e8"), 0.2)
+
     # Stone crossing with chunky parapets and visible depth.
     for i in range(7):
         var x := 3.2 + float(i) * 0.8
