@@ -89,3 +89,60 @@ Ka 0.1 0.06 0.01
 Ks 0.2 0.15 0.05
 Ns 20
 illum 2
+
+# Additional terrain and resource block materials
+newmtl grass_top
+Kd 0.27 0.57 0.19
+Ka 0.059 0.125 0.042
+Ks 0.08 0.08 0.08
+Ns 10
+illum 2
+
+newmtl dirt
+Kd 0.34 0.2 0.1
+Ka 0.075 0.044 0.022
+Ks 0.08 0.08 0.08
+Ns 10
+illum 2
+
+newmtl stone_dark
+Kd 0.28 0.31 0.32
+Ka 0.062 0.068 0.070
+Ks 0.08 0.08 0.08
+Ns 10
+illum 2
+
+newmtl sand
+Kd 0.76 0.66 0.42
+Ka 0.167 0.145 0.092
+Ks 0.08 0.08 0.08
+Ns 10
+illum 2
+
+newmtl ore_copper
+Kd 0.68 0.31 0.13
+Ka 0.150 0.068 0.029
+Ks 0.08 0.08 0.08
+Ns 10
+illum 2
+
+newmtl ore_crystal
+Kd 0.25 0.78 0.88
+Ka 0.055 0.172 0.194
+Ks 0.08 0.08 0.08
+Ns 10
+illum 2
+
+newmtl wood_end
+Kd 0.62 0.4 0.2
+Ka 0.136 0.088 0.044
+Ks 0.08 0.08 0.08
+Ns 10
+illum 2
+
+newmtl water
+Kd 0.12 0.48 0.72
+Ka 0.026 0.106 0.158
+Ks 0.08 0.08 0.08
+Ns 10
+illum 2
