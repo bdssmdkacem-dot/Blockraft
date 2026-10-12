@@ -301,17 +301,26 @@ func _show_dialog(dialog_title: String, description: String, options: Array) -> 
     heading.add_theme_color_override("font_color", Color("#ffe8a2"))
     content_box.add_child(heading)
 
+    var scroll := ScrollContainer.new()
+    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    content_box.add_child(scroll)
+
+    var scroll_content := VBoxContainer.new()
+    scroll_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    scroll_content.add_theme_constant_override("separation", 12)
+    scroll.add_child(scroll_content)
+
     var body := Label.new()
     body.text = description
-    body.size_flags_vertical = Control.SIZE_EXPAND_FILL
     body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     body.add_theme_font_size_override("font_size", 15)
     body.add_theme_color_override("font_color", Color("#e6f2df"))
-    content_box.add_child(body)
+    scroll_content.add_child(body)
 
     var button_stack := VBoxContainer.new()
     button_stack.add_theme_constant_override("separation", 8)
-    content_box.add_child(button_stack)
+    scroll_content.add_child(button_stack)
 
     for option in options:
         var option_button := Button.new()
