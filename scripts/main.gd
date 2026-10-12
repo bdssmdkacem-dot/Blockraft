@@ -17,7 +17,7 @@ func _ready() -> void:
     player = get_node("Player")
     _setup_materials()
     _generate_world()
-    _load_world_overlay()
+    _load_world_snapshot()
     _build_world()
     _setup_ui()
 
@@ -106,21 +106,25 @@ func save_world() -> void:
         serialized.append({"x": p.x, "y": p.y, "z": p.z, "kind": blocks[p]})
     var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
     if file:
-        file.store_string(JSON.stringify(serialized))
+        file.store_string(JSON.stringify({"version": 1, "blocks": serialized}))
 
-func _load_world_overlay() -> void:
-    # Prototype only: saved blocks overlay generated terrain. Deletions are not persisted yet.
+func _load_world_snapshot() -> void:
     if not FileAccess.file_exists(SAVE_PATH):
         return
     var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
     if not file:
+        push_warning("Could not open saved world; using generated terrain.")
         return
     var parsed = JSON.parse_string(file.get_as_text())
-    if typeof(parsed) != TYPE_ARRAY:
+    if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("blocks") or typeof(parsed["blocks"]) != TYPE_ARRAY:
+        push_warning("Saved world format is invalid; using generated terrain.")
         return
-    for entry in parsed:
+    var restored: Dictionary = {}
+    for entry in parsed["blocks"]:
         if typeof(entry) == TYPE_DICTIONARY and entry.has("x") and entry.has("y") and entry.has("z") and entry.has("kind"):
-            blocks[Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))] = str(entry["kind"])
+            restored[Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))] = str(entry["kind"])
+    # Replace the generated snapshot completely so removed blocks stay removed after restart.
+    blocks = restored
 
 func _setup_ui() -> void:
     var layer := CanvasLayer.new()
