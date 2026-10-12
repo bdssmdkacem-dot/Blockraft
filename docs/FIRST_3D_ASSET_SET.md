@@ -17,6 +17,10 @@ These are the first authored, importable voxel-style 3D blockout assets. They ar
 
 Open `scenes/asset_gallery.tscn` in Godot 4 and run it directly (F6). This scene is an isolated asset preview and does not replace the game's main menu or gameplay scene.
 
+## Blender workflow
+
+A reproducible Blender 4.x build script is available at `tools/blender/build_blockraft_asset_pack.py`. Run it from the repository root with `blender --background --python tools/blender/build_blockraft_asset_pack.py`. It is designed to export per-asset GLB files and save a review `.blend` scene; these outputs are generated locally and are not yet committed or runtime-verified.
+
 ## Next production steps
 
 1. Import and visually inspect all three OBJ models in Godot 4; repair material/import issues.
