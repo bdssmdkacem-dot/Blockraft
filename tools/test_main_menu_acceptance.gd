@@ -43,15 +43,34 @@ func _run_checks() -> void:
             _fail("missing main action button: %s" % caption, 6)
             return
 
-    for card in strip.get_children():
+    var card_index := 0
+    for card_node in strip.get_children():
+        var card := card_node as Control
+        if card == null:
+            _fail("feature card %s is not a Control" % card_index, 15)
+            return
+        var art := card.find_child("CardArtwork", true, false) as TextureRect
+        if art == null:
+            _fail("feature card %s is missing CardArtwork" % card_index, 16)
+            return
+        if art.texture == null:
+            _fail("feature card %s failed to load its SVG texture" % card_index, 17)
+            return
+        if art.size.x <= 0.0 or art.size.y <= 0.0:
+            _fail("feature card %s artwork has zero size" % card_index, 18)
+            return
+        if art.stretch_mode != TextureRect.STRETCH_SCALE:
+            _fail("feature card %s artwork is not configured to fill its card" % card_index, 19)
+            return
         var hit_nodes := card.find_children("*", "Button", true, false)
         var hit_area := hit_nodes[0] as Button if not hit_nodes.is_empty() else null
         if hit_area == null:
-            _fail("a feature card has no accessible hit area", 7)
+            _fail("feature card %s has no accessible hit area" % card_index, 7)
             return
         if hit_area.pressed.get_connections().is_empty():
-            _fail("a feature card's hit area has no action connection", 8)
+            _fail("feature card %s hit area has no action connection" % card_index, 8)
             return
+        card_index += 1
 
     # Exercise the same layout function at common 16:9 and narrow Android
     # landscape sizes, then ensure the scaled feature strip remains in bounds.
@@ -66,6 +85,20 @@ func _run_checks() -> void:
         if strip_rect.position.y < -1.0 or strip_rect.end.y > viewport_size.y + 1.0:
             _fail("feature strip exceeds vertical bounds at %s" % viewport_size, 14)
             return
+        var previous_card_end := strip_rect.position.x
+        for card_index in range(strip.get_child_count()):
+            var card := strip.get_child(card_index) as Control
+            var card_rect := card.get_global_rect()
+            if card_rect.position.x < strip_rect.position.x - 1.0 or card_rect.end.x > strip_rect.end.x + 1.0:
+                _fail("card %s exceeds strip horizontal bounds at %s" % [card_index, viewport_size], 20)
+                return
+            if card_rect.position.y < strip_rect.position.y - 1.0 or card_rect.end.y > strip_rect.end.y + 1.0:
+                _fail("card %s exceeds strip vertical bounds at %s" % [card_index, viewport_size], 21)
+                return
+            if card_index > 0 and card_rect.position.x < previous_card_end - 1.0:
+                _fail("feature cards overlap at %s" % viewport_size, 22)
+                return
+            previous_card_end = card_rect.end.x
     scene.size = Vector2(1280, 720)
     scene._apply_responsive_layout()
     await process_frame
@@ -104,5 +137,5 @@ func _run_checks() -> void:
         _fail("Play World did not transition to scenes/main.tscn", 13)
         return
 
-    print("MENU_ACCEPTANCE_PASS: responsive layout at four viewport sizes, six interactive feature cards, four primary actions, three dialogs, and gameplay transition verified")
+    print("MENU_ACCEPTANCE_PASS: responsive layout at four viewport sizes, six loaded SVG artworks with per-card bounds, six interactive feature cards, four primary actions, three dialogs, and gameplay transition verified")
     quit(0)
