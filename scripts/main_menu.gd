@@ -198,6 +198,18 @@ func _build_interface() -> void:
     status_label.custom_minimum_size = Vector2(0, 22)
     menu_column.add_child(status_label)
 
+    var footer_band := ColorRect.new()
+    footer_band.name = "FooterBand"
+    footer_band.anchor_left = 0.0
+    footer_band.anchor_top = 1.0
+    footer_band.anchor_right = 1.0
+    footer_band.anchor_bottom = 1.0
+    footer_band.offset_top = -70
+    footer_band.offset_bottom = 0
+    footer_band.color = Color("#07141c")
+    footer_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    add_child(footer_band)
+
     var footer := Label.new()
     footer.name = "Footer"
     footer.text = "◇  PROCEDURAL WORLDS     •     🌲  DYNAMIC BIOMES     •     ⛏  MINE / CRAFT / BUILD     •     ☀  DAY & NIGHT"
