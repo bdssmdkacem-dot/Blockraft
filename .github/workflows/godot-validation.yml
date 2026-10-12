@@ -9,7 +9,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     container:
       image: barichello/godot-ci:4.4.1
     steps:
@@ -23,14 +23,19 @@ jobs:
         run: godot --headless --path . res://scenes/main.tscn --quit-after 5
       - name: Verify main menu structure, interactions, and responsive layout
         run: godot --headless --path . --script res://tools/test_main_menu_acceptance.gd
+      - name: Install virtual display for rendered capture
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends xvfb
       - name: Capture rendered main menu at 1280x720
-        continue-on-error: true
-        run: timeout 30s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_main_menu.gd
+        run: timeout 45s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_main_menu.gd
+      - name: Verify screenshot was generated
+        run: test -s main_menu_capture.png
       - name: Upload rendered menu screenshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-main-menu-capture
           path: main_menu_capture.png
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
