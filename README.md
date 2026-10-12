@@ -2,17 +2,16 @@
 
 An original voxel sandbox game prototype, planned for Android first using Godot 4.
 
-## Current prototype scope
-- Procedurally generated block terrain and simple trees.
-- First-person movement and jumping (desktop keyboard/mouse for this first checkpoint).
-- Raycast-based block mining and placement.
-- Initial local world save prototype.
+## Mandatory visual reference
+The project owner approved the uploaded 1536×1024 Blockraft concept image as the mandatory visual north star. Read [source/REFERENCE_IMAGE.md](source/REFERENCE_IMAGE.md) and [docs/VISUAL_ART_DIRECTION.md](docs/VISUAL_ART_DIRECTION.md) before creating or integrating art.
+
+**Reference asset status: pending binary upload.** The canonical location is `source/reference/blockraft_visual_north_star.png`. The current GitHub connector can commit text but cannot upload the image bytes, so the original PNG has not yet been committed. Do not claim the image is present or visual matching is complete until that exact file exists in the repository and is checked against an actual Godot screenshot.
 
 ## Main menu
-The project now starts at `scenes/main_menu.tscn`. The menu is drawn in `scripts/main_menu.gd`; Play World opens the existing prototype scene, while Worlds, How to Play, and Settings open informational dialogs. Only the Meadowlands is playable in this prototype. See [`docs/MAIN_MENU_ACCEPTANCE.md`](docs/MAIN_MENU_ACCEPTANCE.md) for the required visual and runtime checks. The approved visual reference is still required at `assets/reference/blockraft_visual_north_star.png`; do not claim reference matching until the original image is committed and compared against a real Godot screenshot.
+The project starts at `scenes/main_menu.tscn`. The menu is drawn in `scripts/main_menu.gd`; Play World opens the prototype scene, while Worlds, How to Play, and Settings open informational dialogs. Only the Meadowlands is playable in this prototype. See [docs/MAIN_MENU_ACCEPTANCE.md](docs/MAIN_MENU_ACCEPTANCE.md) for required checks.
 
 ## First 3D assets
-The first original OBJ models are now in `assets/models/`: a voxel oak tree, meadow cottage, and crafting bench, with a shared MTL palette. Open [`scenes/asset_gallery.tscn`](scenes/asset_gallery.tscn) in Godot 4 and run it directly to inspect the models together. See [`docs/FIRST_3D_ASSET_SET.md`](docs/FIRST_3D_ASSET_SET.md) for scope and acceptance gates. These are early source meshes, not yet visually accepted production assets; the original north-star reference and runtime/mobile reviews are still required.
+The first original OBJ models are in `assets/models/`: voxel oak tree, meadow cottage, and crafting bench, with a shared MTL palette. Open [scenes/asset_gallery.tscn](scenes/asset_gallery.tscn) in Godot 4 to inspect them. See [docs/FIRST_3D_ASSET_SET.md](docs/FIRST_3D_ASSET_SET.md). These are early source meshes, not visually accepted production assets; the north-star image and runtime/mobile reviews are still required.
 
 ## Open in Godot
 1. Install Godot 4.x.
@@ -21,12 +20,13 @@ The first original OBJ models are now in `assets/models/`: a voxel oak tree, mea
 4. Run the main scene.
 
 ## Honest status
-This is an early prototype, not a finished game or Android APK. It has not yet been validated in the Godot runtime. Persistence needs a proper world-diff format that records deletions, and mobile touch controls are not implemented.
+This is an early prototype, not a finished game or Android APK. It has not yet been validated in the Godot runtime. Mobile touch controls and production chunk meshing are still required.
 
 ## Acceptance gates
 1. Confirm the project imports and runs without parse/runtime errors in Godot 4.
-2. Test player movement, collisions, mining, and placement.
+2. Test movement, collisions, mining, and placement.
 3. Implement reliable save/load including deleted blocks.
 4. Replace one-node-per-block rendering with chunk meshes and face culling.
 5. Add mobile joystick/look zones and touch action buttons.
 6. Export and test on a real Android device.
+7. Verify the original reference PNG is committed at the canonical path and visually compare actual in-engine screenshots against it.
