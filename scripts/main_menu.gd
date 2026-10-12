@@ -80,8 +80,8 @@ func _draw() -> void:
     draw_rect(Rect2(0, 0, 1280, 155), Color(0.08, 0.18, 0.20, 0.23))
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-func _poly(points: PackedVector2Array, color: Color) -> void:
-    draw_colored_polygon(points, color)
+func _poly(points: Array, color: Color) -> void:
+    draw_colored_polygon(PackedVector2Array(points), color)
 
 func _tree(x: float, ground_y: float, scale: float) -> void:
     draw_rect(Rect2(x - 5 * scale, ground_y - 48 * scale, 12 * scale, 51 * scale), Color("#805334"))
