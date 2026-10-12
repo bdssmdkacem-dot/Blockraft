@@ -50,23 +50,23 @@ func _setup_environment() -> void:
     environment.background_mode = Environment.BG_SKY
     var sky := Sky.new()
     var sky_material := ProceduralSkyMaterial.new()
-    sky_material.sky_top_color = Color("#438dc5")
-    sky_material.sky_horizon_color = Color("#f7b66e")
+    sky_material.sky_top_color = Color("#247bb5")
+    sky_material.sky_horizon_color = Color("#f5bd79")
     sky_material.ground_bottom_color = Color("#263b35")
-    sky_material.ground_horizon_color = Color("#e8ad70")
+    sky_material.ground_horizon_color = Color("#d7a879")
     sky_material.sun_angle_max = 18.0
     sky.sky_material = sky_material
     environment.sky = sky
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    environment.ambient_light_color = Color("#b4c8d5")
+    environment.ambient_light_color = Color("#b9d7e7")
     environment.ambient_light_energy = 0.34
     environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-    environment.tonemap_exposure = 0.78
+    environment.tonemap_exposure = 0.92
     environment.glow_enabled = true
     environment.glow_intensity = 0.12
     environment.fog_enabled = true
-    environment.fog_light_color = Color("#e2c4a0")
-    environment.fog_density = 0.003
+    environment.fog_light_color = Color("#a8cddd")
+    environment.fog_density = 0.0012
     world.environment = environment
     add_child(world)
 
@@ -91,15 +91,15 @@ func _setup_lighting() -> void:
 func _setup_camera() -> void:
     var camera := Camera3D.new()
     camera.name = "MenuWorldCamera"
-    camera.position = Vector3(0.0, 14.0, 28.0)
-    camera.fov = 62.0
+    camera.position = Vector3(0.0, 11.0, 34.0)
+    camera.fov = 58.0
     camera.near = 0.1
     camera.far = 180.0
     # Keep the horizon above the valley while pitching down enough to show
     # terrain, river, bridge and village in the unobstructed centre/right area.
     # Orient only after entering the SceneTree for deterministic capture.
     add_child(camera)
-    camera.look_at(Vector3(0.0, -2.5, -4.0), Vector3.UP)
+    camera.look_at(Vector3(0.0, -0.5, -6.0), Vector3.UP)
     camera.make_current()
 
 func _build_landscape() -> void:
@@ -109,8 +109,8 @@ func _build_landscape() -> void:
 
     for i in range(11):
         var x := -24.0 + float(i) * 4.8
-        var peak := 5.0 + float((i * 7) % 5) * 1.15
-        var z := -19.0 - float((i * 3) % 4) * 1.6
+        var peak := 3.8 + float((i * 7) % 5) * 0.72
+        var z := -22.0 - float((i * 3) % 4) * 1.8
         _box(self, Vector3(x, peak * 0.5 - 0.1, z), Vector3(5.4, peak, 5.2), MAT_STONE)
         _box(self, Vector3(x - 0.5, peak + 0.15, z), Vector3(4.4, 0.45, 4.4), MAT_GRASS_LIGHT if i % 3 == 0 else MAT_GRASS)
         if i % 2 == 0:
