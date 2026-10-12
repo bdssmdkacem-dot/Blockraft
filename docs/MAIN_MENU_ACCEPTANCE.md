@@ -30,4 +30,4 @@ The exact image attached by the owner on 2026-10-12 is the mandatory visual nort
 - [ ] Check visual hierarchy and confirm the world and cards meet the reference quality bar.
 
 ## Honest status
-The current branch adds a camera-orientation regression assertion, a multi-frame rendered screenshot capture, and a more reference-led layout. Re-check the current GitHub Actions result and inspect its uploaded screenshot before treating the visual work as accepted. Android device review and touch controls remain outstanding.
+The first rendered 1280×720 capture after the camera fix confirmed that 3D geometry was visible, but the composition still fell well short of the approved reference: the sky was flat, the landscape read as oversized pale blocks, and the footer lacked a dedicated dark band. The next iteration widens the camera view, aims farther into the valley, strengthens the sky palette, widens the river, adds a second floating island, enlarges the castle silhouette, and adds a separate footer band. Review the latest CI screenshot before accepting these changes. Android device review and touch controls remain outstanding.
