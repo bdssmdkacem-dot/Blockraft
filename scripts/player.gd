@@ -145,7 +145,7 @@ func _set_touch_direction(direction: Vector2, pressed: bool) -> void:
         touch_directions.erase(direction)
     touch_move = Vector2.ZERO
     for key in touch_directions.keys():
-        touch_move += key as Vector2
+        touch_move += Vector2(key)
     touch_move = touch_move.limit_length(1.0)
 
 func _set_touch_jump(pressed: bool) -> void:
