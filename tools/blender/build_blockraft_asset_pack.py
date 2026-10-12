@@ -20,6 +20,7 @@ ASSETS = [
     ("voxel_oak_tree", "voxel_oak_tree.obj"),
     ("meadow_cottage", "meadow_cottage.obj"),
     ("crafting_bench", "crafting_bench.obj"),
+    ("voxel_block_set", "voxel_block_set.obj"),
 ]
 
 # Start from a clean scene so repeated runs are deterministic.
@@ -87,6 +88,7 @@ review_layout = [
     ("voxel_oak_tree", (-5.0, 0.0, 0.0)),
     ("meadow_cottage", (0.0, 0.0, 0.0)),
     ("crafting_bench", (5.0, 0.0, 0.0)),
+    ("voxel_block_set", (0.0, 0.0, -5.5)),
 ]
 for name, location in review_layout:
     source = bpy.data.objects.get(name)
@@ -101,7 +103,7 @@ for name, location in review_layout:
     duplicate.location = Vector(location)
 
 # Ground plane for visual review only; it is not exported with individual models.
-bpy.ops.mesh.primitive_plane_add(size=22, location=(0, -0.05, 0))
+bpy.ops.mesh.primitive_plane_add(size=28, location=(0, -0.05, 0))
 ground = bpy.context.object
 ground.name = "ReviewGround"
 ground_mat = bpy.data.materials.new("ReviewGround_Moss")
