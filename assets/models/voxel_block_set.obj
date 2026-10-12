@@ -1,0 +1,139 @@
+# Blockraft Terrain & Resource Block Set — original voxel source meshes
+mtllib blockraft_palette.mtl
+# Each block is centered on its own local origin; blocks are spaced out for review.
+o GrassBlock
+g GrassBlock
+usemtl grass_top
+v -4.5 -0.5 -0.5
+v -3.5 -0.5 -0.5
+v -3.5 0.5 -0.5
+v -4.5 0.5 -0.5
+v -4.5 -0.5 0.5
+v -3.5 -0.5 0.5
+v -3.5 0.5 0.5
+v -4.5 0.5 0.5
+f -8 -5 -6 -7
+f -4 -3 -2 -1
+f -8 -4 -1 -5
+f -5 -1 -2 -6
+f -6 -2 -3 -7
+f -7 -3 -4 -8
+o DirtBlock
+g DirtBlock
+usemtl dirt
+v -3 -0.5 -0.5
+v -2 -0.5 -0.5
+v -2 0.5 -0.5
+v -3 0.5 -0.5
+v -3 -0.5 0.5
+v -2 -0.5 0.5
+v -2 0.5 0.5
+v -3 0.5 0.5
+f -8 -5 -6 -7
+f -4 -3 -2 -1
+f -8 -4 -1 -5
+f -5 -1 -2 -6
+f -6 -2 -3 -7
+f -7 -3 -4 -8
+o StoneBlock
+g StoneBlock
+usemtl stone
+v -1.5 -0.5 -0.5
+v -0.5 -0.5 -0.5
+v -0.5 0.5 -0.5
+v -1.5 0.5 -0.5
+v -1.5 -0.5 0.5
+v -0.5 -0.5 0.5
+v -0.5 0.5 0.5
+v -1.5 0.5 0.5
+f -8 -5 -6 -7
+f -4 -3 -2 -1
+f -8 -4 -1 -5
+f -5 -1 -2 -6
+f -6 -2 -3 -7
+f -7 -3 -4 -8
+o SandBlock
+g SandBlock
+usemtl sand
+v 0 -0.5 -0.5
+v 1 -0.5 -0.5
+v 1 0.5 -0.5
+v 0 0.5 -0.5
+v 0 -0.5 0.5
+v 1 -0.5 0.5
+v 1 0.5 0.5
+v 0 0.5 0.5
+f -8 -5 -6 -7
+f -4 -3 -2 -1
+f -8 -4 -1 -5
+f -5 -1 -2 -6
+f -6 -2 -3 -7
+f -7 -3 -4 -8
+o CopperOreBlock
+g CopperOreBlock
+usemtl ore_copper
+v 1.5 -0.5 -0.5
+v 2.5 -0.5 -0.5
+v 2.5 0.5 -0.5
+v 1.5 0.5 -0.5
+v 1.5 -0.5 0.5
+v 2.5 -0.5 0.5
+v 2.5 0.5 0.5
+v 1.5 0.5 0.5
+f -8 -5 -6 -7
+f -4 -3 -2 -1
+f -8 -4 -1 -5
+f -5 -1 -2 -6
+f -6 -2 -3 -7
+f -7 -3 -4 -8
+o CrystalOreBlock
+g CrystalOreBlock
+usemtl ore_crystal
+v 3 -0.5 -0.5
+v 4 -0.5 -0.5
+v 4 0.5 -0.5
+v 3 0.5 -0.5
+v 3 -0.5 0.5
+v 4 -0.5 0.5
+v 4 0.5 0.5
+v 3 0.5 0.5
+f -8 -5 -6 -7
+f -4 -3 -2 -1
+f -8 -4 -1 -5
+f -5 -1 -2 -6
+f -6 -2 -3 -7
+f -7 -3 -4 -8
+o LogEndBlock
+g LogEndBlock
+usemtl wood_end
+v -3 1 -0.5
+v -2 1 -0.5
+v -2 2 -0.5
+v -3 2 -0.5
+v -3 1 0.5
+v -2 1 0.5
+v -2 2 0.5
+v -3 2 0.5
+f -8 -5 -6 -7
+f -4 -3 -2 -1
+f -8 -4 -1 -5
+f -5 -1 -2 -6
+f -6 -2 -3 -7
+f -7 -3 -4 -8
+o WaterBlock
+g WaterBlock
+usemtl water
+v -1 1 -0.5
+v 0 1 -0.5
+v 0 2 -0.5
+v -1 2 -0.5
+v -1 1 0.5
+v 0 1 0.5
+v 0 2 0.5
+v -1 2 0.5
+f -8 -5 -6 -7
+f -4 -3 -2 -1
+f -8 -4 -1 -5
+f -5 -1 -2 -6
+f -6 -2 -3 -7
+f -7 -3 -4 -8
