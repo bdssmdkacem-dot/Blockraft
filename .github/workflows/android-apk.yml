@@ -41,7 +41,7 @@ jobs:
           cp -a /tmp/godot-export-templates/templates/. "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
           SETTINGS="$HOME/.config/godot/editor_settings-4.4.tres"
           if [ ! -f "$SETTINGS" ]; then
-            printf '[gd_resource type="EditorSettings" format=3]\\n\\n[resource]\\n' > "$SETTINGS"
+            printf '%s\n' '[gd_resource type="EditorSettings" format=3]' '' '[resource]' > "$SETTINGS"
           fi
           cat >> "$SETTINGS" <<'EOF'
           export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
