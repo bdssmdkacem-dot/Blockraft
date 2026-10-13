@@ -25,6 +25,7 @@ func _ready() -> void:
     _build_village()
     _build_forests()
     _build_floating_island()
+    _build_landmark_details()
 
 func _material(color: Color, roughness: float = 0.88, metallic: float = 0.0) -> StandardMaterial3D:
     var material := StandardMaterial3D.new()
@@ -93,8 +94,8 @@ func _setup_lighting() -> void:
 func _setup_camera() -> void:
     var camera := Camera3D.new()
     camera.name = "MenuWorldCamera"
-    camera.position = Vector3(0.0, 12.0, 31.0)
-    camera.fov = 62.0
+    camera.position = Vector3(0.0, 10.5, 31.0)
+    camera.fov = 60.0
     camera.near = 0.1
     camera.far = 180.0
     # Compose the valley for a wide menu backdrop: a lower camera and a
@@ -102,7 +103,7 @@ func _setup_camera() -> void:
     # the visible center instead of leaving a large empty sky above the cards.
     # Add the camera before orienting it; look_at requires SceneTree membership.
     add_child(camera)
-    camera.look_at(Vector3(0.0, -8.0, -5.0), Vector3.UP)
+    camera.look_at(Vector3(0.0, -10.0, -5.0), Vector3.UP)
     camera.make_current()
 
 func _build_landscape() -> void:
@@ -204,7 +205,7 @@ func _tree(origin: Vector3, scale: float) -> void:
 func _build_floating_island() -> void:
     var island := Node3D.new()
     island.name = "FloatingIsland"
-    island.position = Vector3(13.5, 12.0, -15.0)
+    island.position = Vector3(13.5, 9.6, -15.0)
     add_child(island)
     _box(island, Vector3(0.0, 0.0, 0.0), Vector3(8.2, 1.0, 5.0), MAT_GRASS)
     _box(island, Vector3(0.0, -0.8, 0.0), Vector3(6.8, 0.8, 4.0), MAT_DIRT)
@@ -218,7 +219,7 @@ func _build_floating_island() -> void:
     # shown in the approved concept instead of a single floating block.
     var distant := Node3D.new()
     distant.name = "DistantFloatingIsland"
-    distant.position = Vector3(-12.5, 12.8, -20.0)
+    distant.position = Vector3(-12.5, 10.5, -20.0)
     distant.scale = Vector3(0.62, 0.62, 0.62)
     add_child(distant)
     _box(distant, Vector3.ZERO, Vector3(5.8, 0.7, 3.8), MAT_GRASS_LIGHT)
@@ -226,3 +227,85 @@ func _build_floating_island() -> void:
     _box(distant, Vector3(0.0, -1.3, 0.0), Vector3(2.6, 0.7, 2.0), MAT_STONE)
     _box(distant, Vector3(0.0, 0.65, 0.0), Vector3(0.8, 1.3, 0.8), MAT_STONE_LIGHT)
     _box(distant, Vector3(0.0, 1.45, 0.0), Vector3(1.0, 0.35, 1.0), MAT_ROOF)
+
+
+func _build_landmark_details() -> void:
+    # Break up the silhouette with a readable, layered castle instead of a
+    # single stack of large cubes. These details are deliberately placed behind
+    # the menu panel and above the feature strip's horizon line.
+    var castle_x := 12.0
+    var castle_z := -14.5
+    var stone_trim := Color("#c0c8bc")
+    var window_glow := Color("#ffd98a")
+    var roof_shadow := Color("#754238")
+
+    # Main keep: corner buttresses, inset windows and a stepped crown.
+    for side_x in [-1.72, 1.72]:
+        _box(self, Vector3(castle_x + side_x, 3.6, castle_z + 1.66), Vector3(0.46, 6.4, 0.42), stone_trim)
+        for level in range(3):
+            _box(self, Vector3(castle_x + side_x, 2.0 + float(level) * 2.0, castle_z + 1.91), Vector3(0.25, 0.72, 0.08), window_glow, 0.34)
+
+    for level in range(4):
+        var y := 1.8 + float(level) * 1.65
+        _box(self, Vector3(castle_x, y, castle_z + 1.67), Vector3(0.28, 0.82, 0.08), Color("#f5c979"), 0.35)
+        _box(self, Vector3(castle_x - 0.68, y, castle_z + 1.67), Vector3(0.18, 0.62, 0.08), Color("#f5c979"), 0.35)
+        _box(self, Vector3(castle_x + 0.68, y, castle_z + 1.67), Vector3(0.18, 0.62, 0.08), Color("#f5c979"), 0.35)
+
+    # Four crenellations across the roofline.
+    for i in range(5):
+        _box(self, Vector3(castle_x - 1.65 + float(i) * 0.82, 8.62, castle_z + 1.5), Vector3(0.42, 0.48, 0.55), stone_trim)
+
+    # Narrow tower turrets with warm roofs create a recognizable skyline.
+    for tower in [
+        {"x": castle_x - 2.0, "y": 7.2, "z": castle_z - 0.2, "h": 3.6},
+        {"x": castle_x + 2.0, "y": 7.5, "z": castle_z - 0.25, "h": 4.2},
+        {"x": castle_x, "y": 10.3, "z": castle_z - 0.45, "h": 3.8}
+    ]:
+        var tx: float = tower["x"]
+        var ty: float = tower["y"]
+        var tz: float = tower["z"]
+        var th: float = tower["h"]
+        _box(self, Vector3(tx, ty, tz), Vector3(1.05, th, 1.05), stone_trim)
+        _box(self, Vector3(tx, ty + th * 0.5 + 0.24, tz), Vector3(1.38, 0.42, 1.38), roof_shadow)
+        _box(self, Vector3(tx, ty + th * 0.5 + 0.72, tz), Vector3(0.82, 0.65, 0.82), MAT_ROOF)
+        _box(self, Vector3(tx, ty + th * 0.5 + 1.12, tz), Vector3(0.2, 0.5, 0.2), Color("#f6d78c"), 0.28)
+        _box(self, Vector3(tx, ty, tz + 0.55), Vector3(0.18, 0.75, 0.08), window_glow, 0.32)
+
+    # Village lanterns and signposts give the settlement scale and warmth.
+    for lamp in [
+        {"x": -7.1, "z": -3.1},
+        {"x": -1.8, "z": -4.0},
+        {"x": 4.4, "z": -3.4},
+        {"x": 8.8, "z": -5.1}
+    ]:
+        var lx: float = lamp["x"]
+        var lz: float = lamp["z"]
+        _box(self, Vector3(lx, 1.05, lz), Vector3(0.12, 2.1, 0.12), MAT_WOOD)
+        _box(self, Vector3(lx, 2.05, lz), Vector3(0.62, 0.16, 0.62), MAT_WOOD)
+        var glow := _box(self, Vector3(lx, 1.72, lz), Vector3(0.32, 0.38, 0.32), Color("#ffca6b"), 0.28)
+        var glow_material := glow.material_override as StandardMaterial3D
+        glow_material.emission_enabled = true
+        glow_material.emission = Color("#ffb84d")
+        glow_material.emission_energy_multiplier = 1.4
+
+    # Rocky outcrops and grass-topped stepping stones add foreground depth.
+    for i in range(13):
+        var x := -14.0 + float(i) * 2.3
+        var z := 4.2 + float((i * 5) % 4) * 0.45
+        var radius := 0.48 + float(i % 3) * 0.18
+        _box(self, Vector3(x, 0.14, z), Vector3(radius * 1.8, 0.28, radius * 1.3), MAT_STONE)
+        if i % 2 == 0:
+            _box(self, Vector3(x + 0.12, 0.31, z - 0.05), Vector3(radius * 1.6, 0.12, radius), MAT_GRASS_LIGHT)
+
+    # A few tiny, high-contrast flower patches make the ground less uniform.
+    for flower in [
+        {"x": -10.0, "z": 1.0, "c": "#f4d36e"},
+        {"x": -7.7, "z": 2.0, "c": "#f3a8a0"},
+        {"x": 8.2, "z": 1.2, "c": "#f4d36e"},
+        {"x": 10.1, "z": 2.0, "c": "#b8a6f0"}
+    ]:
+        var fx: float = flower["x"]
+        var fz: float = flower["z"]
+        var petal_color: Color = Color(flower["c"])
+        _box(self, Vector3(fx, 0.34, fz), Vector3(0.16, 0.16, 0.16), petal_color, 0.55)
+        _box(self, Vector3(fx, 0.23, fz), Vector3(0.08, 0.22, 0.08), MAT_LEAF_DARK)
