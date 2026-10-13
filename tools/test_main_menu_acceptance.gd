@@ -121,9 +121,37 @@ func _run_checks() -> void:
                 _fail("feature cards overlap at %s" % viewport_size, 22)
                 return
             previous_card_end = card_rect.end.x
+    # Portrait Android must use a readable composed layout rather than
+    # shrinking the entire 16:9 design into a narrow viewport.
+    scene.size = Vector2(393, 852)
+    scene._apply_responsive_layout()
+    await process_frame
+    var portrait_panel := scene.find_child("MainMenuPanel", true, false) as Control
+    var portrait_title := scene.find_child("GameTitle", true, false) as Control
+    if strip.visible:
+        _fail("feature gallery should be hidden in portrait to preserve readable touch targets", 29)
+        return
+    if portrait_panel == null or portrait_panel.scale != Vector2.ONE:
+        _fail("portrait main menu panel is missing or incorrectly scaled", 30)
+        return
+    var portrait_rect := portrait_panel.get_global_rect()
+    if portrait_rect.position.x < 0.0 or portrait_rect.end.x > 393.0:
+        _fail("portrait main menu panel exceeds viewport bounds", 31)
+        return
+    if portrait_title == null or portrait_title.scale != Vector2.ONE:
+        _fail("portrait title is missing or incorrectly scaled", 32)
+        return
+    var portrait_footer := scene.find_child("Footer", true, false) as Control
+    if portrait_footer != null and portrait_footer.visible:
+        _fail("footer should be hidden in portrait layout", 33)
+        return
+
     scene.size = Vector2(1280, 720)
     scene._apply_responsive_layout()
     await process_frame
+    if not strip.visible or (portrait_footer != null and not portrait_footer.visible):
+        _fail("landscape layout did not restore feature gallery and footer", 34)
+        return
 
     scene._on_menu_action("worlds")
     await process_frame
