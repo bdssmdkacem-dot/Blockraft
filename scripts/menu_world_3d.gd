@@ -50,23 +50,25 @@ func _setup_environment() -> void:
     environment.background_mode = Environment.BG_SKY
     var sky := Sky.new()
     var sky_material := ProceduralSkyMaterial.new()
-    sky_material.sky_top_color = Color("#247bb5")
-    sky_material.sky_horizon_color = Color("#f5bd79")
-    sky_material.ground_bottom_color = Color("#263b35")
-    sky_material.ground_horizon_color = Color("#d7a879")
+    # A deeper blue overhead and a warmer horizon make the valley read as
+    # golden-hour scenery instead of a flat, overexposed cyan backdrop.
+    sky_material.sky_top_color = Color("#1e5688")
+    sky_material.sky_horizon_color = Color("#e9a86a")
+    sky_material.ground_bottom_color = Color("#1a2b2a")
+    sky_material.ground_horizon_color = Color("#bb8d69")
     sky_material.sun_angle_max = 18.0
     sky.sky_material = sky_material
     environment.sky = sky
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    environment.ambient_light_color = Color("#b9d7e7")
-    environment.ambient_light_energy = 0.34
+    environment.ambient_light_color = Color("#91b6ca")
+    environment.ambient_light_energy = 0.22
     environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-    environment.tonemap_exposure = 0.92
+    environment.tonemap_exposure = 0.78
     environment.glow_enabled = true
     environment.glow_intensity = 0.12
     environment.fog_enabled = true
-    environment.fog_light_color = Color("#a8cddd")
-    environment.fog_density = 0.0012
+    environment.fog_light_color = Color("#7fabbf")
+    environment.fog_density = 0.00055
     world.environment = environment
     add_child(world)
 
@@ -75,7 +77,7 @@ func _setup_lighting() -> void:
     sun.name = "GoldenHourSun"
     sun.rotation_degrees = Vector3(-37.0, -28.0, 0.0)
     sun.light_color = Color("#ffe0a3")
-    sun.light_energy = 1.18
+    sun.light_energy = 0.95
     sun.shadow_enabled = true
     sun.directional_shadow_max_distance = 90.0
     add_child(sun)
@@ -84,7 +86,7 @@ func _setup_lighting() -> void:
     fill.name = "CoolSkyFill"
     fill.rotation_degrees = Vector3(-18.0, 145.0, 0.0)
     fill.light_color = Color("#a6d9f0")
-    fill.light_energy = 0.28
+    fill.light_energy = 0.16
     fill.shadow_enabled = false
     add_child(fill)
 
@@ -95,11 +97,11 @@ func _setup_camera() -> void:
     camera.fov = 58.0
     camera.near = 0.1
     camera.far = 180.0
-    # Keep the horizon above the valley while pitching down enough to show
-    # terrain, river, bridge and village in the unobstructed centre/right area.
+    # Aim farther into the valley so more terrain, river and village appear
+    # above the feature cards while keeping the floating islands in frame.
     # Orient only after entering the SceneTree for deterministic capture.
     add_child(camera)
-    camera.look_at(Vector3(0.0, -2.0, -6.0), Vector3.UP)
+    camera.look_at(Vector3(0.0, -4.5, -6.0), Vector3.UP)
     camera.make_current()
 
 func _build_landscape() -> void:
