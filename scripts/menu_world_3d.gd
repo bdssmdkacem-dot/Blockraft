@@ -91,7 +91,7 @@ func _setup_lighting() -> void:
 func _setup_camera() -> void:
     var camera := Camera3D.new()
     camera.name = "MenuWorldCamera"
-    camera.position = Vector3(0.0, 11.0, 34.0)
+    camera.position = Vector3(0.0, 13.0, 32.0)
     camera.fov = 58.0
     camera.near = 0.1
     camera.far = 180.0
@@ -99,7 +99,7 @@ func _setup_camera() -> void:
     # terrain, river, bridge and village in the unobstructed centre/right area.
     # Orient only after entering the SceneTree for deterministic capture.
     add_child(camera)
-    camera.look_at(Vector3(0.0, -0.5, -6.0), Vector3.UP)
+    camera.look_at(Vector3(0.0, -1.5, -6.0), Vector3.UP)
     camera.make_current()
 
 func _build_landscape() -> void:
