@@ -138,11 +138,20 @@ func _build_landscape() -> void:
 		_box(self, Vector3(x - 0.1, peak + 0.16, z), Vector3(width * 0.82, 0.34, 3.1), MAT_GRASS_LIGHT if i % 3 == 0 else MAT_GRASS)
 
 func _build_horizon_layers() -> void:
-	for i in range(16):
-		var x := -40.0 + float(i) * 5.4
-		var h := 5.0 + float((i * 13) % 8) * 0.85
-		var z := -52.0 - float((i * 5) % 4) * 1.8
-		_box(self, Vector3(x, h * 0.42, z), Vector3(6.2, h * 0.84, 5.5), Color("#4a6578"))
+	# Break the former continuous wall of oversized rectangular mountains into
+	# layered, irregular silhouettes. Keep them distant so the village and castle
+	# remain the focal points instead of being hidden behind a grey block wall.
+	for i in range(23):
+		var x := -42.0 + float(i) * 3.8
+		var h := 3.8 + float((i * 13) % 7) * 0.72
+		var z := -54.0 - float((i * 5) % 4) * 2.1
+		var width := 3.0 + float(i % 3) * 0.42
+		var depth := 3.4 + float((i + 1) % 3) * 0.55
+		var shade := Color("#4a6578") if i % 3 == 0 else (Color("#526c7b") if i % 3 == 1 else Color("#5c7180"))
+		_box(self, Vector3(x, h * 0.36, z), Vector3(width, h * 0.72, depth), shade)
+		# Small offset upper mass creates a broken peak line rather than a flat top.
+		var crown_h := h * (0.20 if i % 4 == 0 else 0.13)
+		_box(self, Vector3(x + width * 0.12, h * 0.72 + crown_h * 0.5, z - 0.15), Vector3(width * 0.56, crown_h, depth * 0.72), shade.lightened(0.08))
 
 func _build_river_and_bridge() -> void:
 	var water_material := _material(MAT_WATER, 0.18, 0.15)
@@ -182,23 +191,49 @@ func _tree(origin: Vector3, scale: float) -> void:
 	_box(self, origin + Vector3(0.0, 3.5 * scale, 0.0), Vector3(1.6, 1.1, 1.6) * scale, MAT_LEAF)
 
 func _build_floating_islands() -> void:
+	# Three distinct silhouettes across the upper panorama; keep their scale
+	# modest enough that none is clipped by the 16:9 menu camera.
+	_create_floating_island("FloatingIsland_Left", Vector3(-15.0, 8.4, -19.0), Vector3(5.8, 3.8, 4.0))
+	_create_floating_island("FloatingIsland_Center", Vector3(1.0, 11.0, -25.0), Vector3(7.2, 4.6, 4.8))
+	_create_floating_island("FloatingIsland_Right", Vector3(15.0, 8.8, -18.0), Vector3(6.2, 4.0, 4.2))
+
+func _create_floating_island(island_name: String, origin: Vector3, dimensions: Vector3) -> void:
 	var island := Node3D.new()
-	island.name = "FloatingIsland"
-	island.position = Vector3(15.0, 10.5, -16.0)
+	island.name = island_name
+	island.position = origin
 	add_child(island)
-	_box(island, Vector3(0.0, 0.0, 0.0), Vector3(9.0, 1.1, 5.5), MAT_GRASS)
-	_box(island, Vector3(0.0, -0.85, 0.0), Vector3(7.5, 0.9, 4.4), MAT_DIRT)
-	_box(island, Vector3(-0.3, -1.75, 0.0), Vector3(5.2, 1.0, 3.0), MAT_STONE)
+	_box(island, Vector3(0.0, 0.0, 0.0), dimensions, MAT_GRASS)
+	_box(island, Vector3(0.0, -0.72, 0.0), dimensions * Vector3(0.82, 0.72, 0.82), MAT_DIRT)
+	_box(island, Vector3(-0.16, -1.45, 0.0), dimensions * Vector3(0.56, 0.66, 0.58), MAT_STONE)
+	# Hanging rock points break up the otherwise flat underside.
+	for i in range(3):
+		var dx := (float(i) - 1.0) * dimensions.x * 0.22
+		_box(island, Vector3(dx, -2.08 - float(i % 2) * 0.18, 0.12), Vector3(0.62, 1.0, 0.7), MAT_STONE)
 
 func _build_gatehouse_castle() -> void:
 	var root := Node3D.new()
 	root.name = "GatehouseCastle"
-	root.position = Vector3(11.5, 1.0, -13.5)
+	# Pull the landmark into the camera's readable midground instead of letting
+	# the village roofs and distant silhouettes swallow it at the right edge.
+	root.position = Vector3(8.0, 0.0, -12.5)
 	add_child(root)
-	_box(root, Vector3(0.0, 2.4, 0.0), Vector3(7.5, 4.8, 4.2), MAT_STONE_CASTLE)
-	_box(root, Vector3(0.0, 1.4, 2.15), Vector3(2.4, 2.8, 0.35), Color("#5a6560"))
+	_box(root, Vector3(0.0, 2.4, 0.0), Vector3(5.8, 4.8, 3.6), MAT_STONE_CASTLE)
+	_box(root, Vector3(0.0, 1.4, 1.85), Vector3(1.9, 2.8, 0.28), Color("#5a6560"))
 	for side in [-1.0, 1.0]:
-		_box(root, Vector3(side * 4.2, 3.5, 0.2), Vector3(2.4, 7.0, 2.6), MAT_STONE_CASTLE)
+		_box(root, Vector3(side * 3.25, 3.5, 0.1), Vector3(1.7, 7.0, 2.3), MAT_STONE_CASTLE)
+		_box(root, Vector3(side * 3.25, 7.15, 0.1), Vector3(2.0, 0.3, 2.6), MAT_STONE_LIGHT)
+		for crenel in range(3):
+			_box(root, Vector3(side * 3.25 + (float(crenel) - 1.0) * 0.48, 7.48, 0.1), Vector3(0.3, 0.36, 2.25), MAT_STONE_LIGHT)
+	# Warm windows and stone courses add scale cues to the main keep.
+	for side in [-1.0, 1.0]:
+		for level in range(2):
+			var wy := 2.0 + float(level) * 1.45
+			_box(root, Vector3(side * 1.65, wy, 1.84), Vector3(0.26, 0.48, 0.06), Color("#414f50"))
+			var window := _box(root, Vector3(side * 1.65, wy, 1.89), Vector3(0.12, 0.31, 0.035), Color("#ffd27b"), 0.3)
+			window.material_override = _emissive(Color("#ffca70"), 1.25)
+	for row in range(5):
+		var yy := 0.7 + float(row) * 0.82
+		_box(root, Vector3(0.0, yy, 1.82), Vector3(5.6, 0.045, 0.04), Color("#65716e"))
 
 func _build_landmark_details() -> void:
 	for lamp in [{"x": -7.5, "z": -2.8}, {"x": -2.0, "z": -3.6}, {"x": 4.0, "z": -3.0}]:
