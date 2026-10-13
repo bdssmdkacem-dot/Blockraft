@@ -113,15 +113,18 @@ func _build_landscape() -> void:
     # valley rather than one continuous wall of oversized blocks.
     for i in range(11):
         var x := -25.0 + float(i) * 5.0
-        var peak := 2.6 + float((i * 7) % 5) * 0.48
-        var z := -30.0 - float((i * 3) % 4) * 1.8
-        var lower_height := peak * 0.64
+        # Keep the skyline low and staggered. Tall, tightly packed blocks
+        # read as a wall in the menu camera and hide the valley landmarks.
+        var peak := 1.75 + float((i * 7) % 5) * 0.38
+        var z := -35.0 - float((i * 3) % 4) * 1.7
+        var lower_height := peak * 0.62
         var upper_height := peak - lower_height
-        _box(self, Vector3(x, lower_height * 0.5 - 0.1, z), Vector3(4.2, lower_height, 4.2), MAT_STONE)
-        _box(self, Vector3(x + 0.18, lower_height + upper_height * 0.5 - 0.05, z), Vector3(3.1, upper_height, 3.25), MAT_STONE)
-        _box(self, Vector3(x - 0.1, peak + 0.18, z), Vector3(3.55, 0.42, 3.6), MAT_GRASS_LIGHT if i % 3 == 0 else MAT_GRASS)
+        var width := 3.25 if i % 3 == 1 else 3.7
+        _box(self, Vector3(x, lower_height * 0.5 - 0.1, z), Vector3(width, lower_height, 3.7), MAT_STONE)
+        _box(self, Vector3(x + 0.18, lower_height + upper_height * 0.5 - 0.05, z), Vector3(width * 0.72, upper_height, 2.8), MAT_STONE)
+        _box(self, Vector3(x - 0.1, peak + 0.16, z), Vector3(width * 0.84, 0.34, 3.0), MAT_GRASS_LIGHT if i % 3 == 0 else MAT_GRASS)
         if i % 3 == 0:
-            _box(self, Vector3(x + 0.5, peak + 0.48, z - 0.2), Vector3(1.1, 0.22, 1.2), Color("#899995"))
+            _box(self, Vector3(x + 0.5, peak + 0.38, z - 0.2), Vector3(0.9, 0.18, 0.95), Color("#899995"))
 
     # Distant keep silhouette, placed above the right side of the village.
     _box(self, Vector3(12.0, 4.0, -14.5), Vector3(4.0, 8.5, 3.2), MAT_STONE_LIGHT)
