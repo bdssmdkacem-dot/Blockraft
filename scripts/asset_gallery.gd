@@ -90,13 +90,11 @@ func _build_protagonist(origin: Vector3) -> void:
         _block(root, "Sleeve", Vector3(side * 0.59, 2.18, 0), Vector3(0.3, 0.65, 0.46), Color("#08b7ad"))
         _block(root, "Arm", Vector3(side * 0.6, 1.69, 0.02), Vector3(0.24, 0.48, 0.3), Color("#e9b58b"))
         _block(root, "Leg_Blue", Vector3(side * 0.23, 0.92, 0), Vector3(0.37, 0.76, 0.43), Color("#0756a7"))
-        _block(root, "Boot", Vector3(side * 0.23, 0.38, 0.07), Vector3(0.4, 0.25, 0.53), Color("#343b43"))
-
+        _block(root, "Knee_Seam", Vector3(side * 0.23, 1.14, 0.224), Vector3(0.3, 0.055, 0.035), Color("#3b79bd"))\n        _block(root, "Boot", Vector3(side * 0.23, 0.38, 0.07), Vector3(0.4, 0.25, 0.53), Color("#343b43"))\n        _block(root, "Boot_Sole", Vector3(side * 0.23, 0.245, 0.09), Vector3(0.42, 0.06, 0.55), Color("#1f252c"))\n
     # Backpack: body, lid, straps and two small side pockets.
     _block(root, "Backpack_Main", Vector3(0, 2.06, -0.36), Vector3(0.62, 0.78, 0.3), Color("#8a542e"))
     _block(root, "Backpack_Lid", Vector3(0, 2.43, -0.38), Vector3(0.67, 0.16, 0.34), Color("#b8783d"))
-    _block(root, "Backpack_Pocket", Vector3(0, 1.91, -0.54), Vector3(0.36, 0.29, 0.12), Color("#6c3d25"))
-    for strap_x in [-0.29, 0.29]:
+    _block(root, "Backpack_Pocket", Vector3(0, 1.91, -0.54), Vector3(0.36, 0.29, 0.12), Color("#6c3d25"))\n    _block(root, "Backpack_Buckle", Vector3(0, 2.29, -0.565), Vector3(0.16, 0.09, 0.035), Color("#d9b35f"), 0.4, 0.25)\n    for pocket_x in [-0.34, 0.34]:\n        _block(root, "Backpack_Side_Pocket", Vector3(pocket_x, 1.98, -0.34), Vector3(0.14, 0.32, 0.26), Color("#754426"))\n    for strap_x in [-0.29, 0.29]:
         _block(root, "Backpack_Strap", Vector3(strap_x, 2.12, 0.25), Vector3(0.09, 0.72, 0.06), Color("#8a542e"))
 
     # A readable cyan diamond pickaxe held at the character's right side.
@@ -140,8 +138,7 @@ func _build_castle_gatehouse(origin: Vector3) -> void:
         for side in [-1.0, 1.0]:
             _block(root, "Front_Mortar_Line", Vector3(side, yy, 0.472), Vector3(0.69, 0.035, 0.025), mortar)
             _block(root, "Front_Stone_Block", Vector3(side + (0.18 if y % 2 == 0 else -0.18), yy + 0.19, 0.49), Vector3(0.28, 0.32, 0.055), stone_light if y % 3 == 0 else stone)
-    _block(root, "Back_Wall", Vector3(0, 1.38, -0.42), Vector3(2.75, 2.76, 0.12), stone)
-    # Wall walk and crenellated parapet extend the gatehouse into a fortification.
+    # Keep the passage open from front to back; the earlier backing slab made\n    # the gate look like a painted arch instead of a usable 3D opening.\n    _block(root, "Arch_Keystone", Vector3(0, 2.55, 0.49), Vector3(0.28, 0.34, 0.08), Color("#c6bda6"))\n    for side in [-1.0, 1.0]:\n        _block(root, "Arch_Inner_Pillar", Vector3(side * 0.68, 1.28, 0.39), Vector3(0.12, 1.75, 0.16), stone_light)\n        _block(root, "Arch_Base", Vector3(side * 0.68, 0.28, 0.39), Vector3(0.22, 0.22, 0.2), Color("#c6bda6"))\n    # Recessed, partly-open timber gate leaf sits beside the passage rather than across it.\n    _block(root, "Gate_Door_Leaf", Vector3(-0.42, 1.14, -0.24), Vector3(0.28, 1.78, 0.09), Color("#5b3928"))\n    for y in range(4):\n        _block(root, "Gate_Door_Plank", Vector3(-0.42, 0.48 + float(y) * 0.42, -0.185), Vector3(0.3, 0.035, 0.025), Color("#a16a3e"))\n    _block(root, "Gate_Door_Hinge", Vector3(-0.27, 1.22, -0.17), Vector3(0.035, 0.62, 0.035), Color("#d0b16c"), 0.38, 0.45)\n    # Wall walk and crenellated parapet extend the gatehouse into a fortification.
     _block(root, "Wall_Left", Vector3(-2.05, 1.0, -0.05), Vector3(1.45, 2.0, 0.7), stone)
     _block(root, "Wall_Right", Vector3(2.05, 1.0, -0.05), Vector3(1.45, 2.0, 0.7), stone)
     for side in [-1.0, 1.0]:
