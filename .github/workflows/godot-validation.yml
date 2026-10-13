@@ -47,3 +47,15 @@ jobs:
           path: main_menu_capture.png
           if-no-files-found: error
           retention-days: 7
+      - name: Capture rendered reference asset gallery at 1280x720
+        run: timeout 45s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_reference_assets.gd
+      - name: Verify reference asset screenshot was generated
+        run: test -s reference_assets_capture.png
+      - name: Upload rendered reference asset screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockraft-reference-assets-capture
+          path: reference_assets_capture.png
+          if-no-files-found: error
+          retention-days: 7
