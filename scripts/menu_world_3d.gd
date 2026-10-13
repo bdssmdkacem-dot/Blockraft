@@ -24,9 +24,9 @@ const MAT_BROWN_PACK := Color("#8b5a2b")
 
 func _ready() -> void:
 	_setup_environment()
-	_build_sky_backdrop()
 	_setup_lighting()
 	_setup_camera()
+	_build_sky_backdrop()
 	_build_landscape()
 	_build_horizon_layers()
 	_build_river_and_bridge()
@@ -92,8 +92,8 @@ func _setup_environment() -> void:
 
 
 func _build_sky_backdrop() -> void:
-	# Compatibility-renderer-safe sunset gradient: the procedural sky can collapse
-	# to a flat clear color on some Android/CI drivers, so use a real textured quad.
+	# Parent the gradient to the camera so it always fills the view on desktop and Android.
+	# A world-space quad can sit above/below the camera frustum after pitch changes.
 	var gradient := Gradient.new()
 	gradient.set_color(0, Color("#244c82"))
 	gradient.add_point(0.42, Color("#6e8eaa"))
@@ -110,14 +110,17 @@ func _build_sky_backdrop() -> void:
 	var quad := QuadMesh.new()
 	quad.size = Vector2(180.0, 100.0)
 	sky_mesh.mesh = quad
-	sky_mesh.position = Vector3(0.0, 22.0, -62.0)
+	sky_mesh.position = Vector3(0.0, 0.0, -100.0)
 	var sky_material := StandardMaterial3D.new()
 	sky_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	sky_material.albedo_texture = texture
 	sky_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
 	sky_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	sky_material.no_depth_test = true
 	sky_mesh.material_override = sky_material
-	add_child(sky_mesh)
+	var camera := get_node_or_null("MenuWorldCamera") as Camera3D
+	if camera != null:
+		camera.add_child(sky_mesh)
 
 func _setup_lighting() -> void:
 	var sun := DirectionalLight3D.new()
