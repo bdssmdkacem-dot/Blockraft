@@ -1,14 +1,17 @@
 extends CharacterBody3D
-## First-person player with a voxel body matching the official protagonist sheet:
-## teal shirt, blue pants, brown backpack, diamond pickaxe in hand.
+## Third-person player with a fully visible voxel body matching the official
+## protagonist sheet: teal shirt, blue pants, brown backpack, diamond pickaxe.
 
 const SPEED := 6.0
 const JUMP_VELOCITY := 5.0
-const REACH := 6.0
-const CAMERA_START_PITCH := deg_to_rad(-12.0)
+const REACH := 7.0
 const CAMERA_SENSITIVITY := 0.0025
 const TOUCH_LOOK_SENSITIVITY := 0.0032
 const TOUCH_BUTTON_SIZE := Vector2(56.0, 56.0)
+const CAMERA_DISTANCE := 4.2
+const CAMERA_HEIGHT := 2.4
+const CAMERA_MIN_PITCH := deg_to_rad(-55.0)
+const CAMERA_MAX_PITCH := deg_to_rad(25.0)
 
 const MAT_SKIN := Color("#e8b896")
 const MAT_TEAL := Color("#2ec4b6")
@@ -22,13 +25,18 @@ const MAT_HANDLE := Color("#8b5a2b")
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var camera: Camera3D
+var camera_pivot: Node3D
+var camera_arm: Node3D
+var yaw := 0.0
+var pitch := deg_to_rad(-18.0)
 var touch_controls_enabled := false
 var touch_move := Vector2.ZERO
 var touch_directions: Dictionary = {}
 var touch_jump_pressed := false
 var body_root: Node3D
-var view_model: Node3D
+var pickaxe_node: Node3D
 var pickaxe_swing_t := 0.0
+var walk_phase := 0.0
 
 func _ready() -> void:
 	var collider := CollisionShape3D.new()
@@ -38,10 +46,8 @@ func _ready() -> void:
 	collider.shape = capsule
 	collider.position.y = 0.9
 	add_child(collider)
-
 	_build_character_body()
-	_build_camera_and_view_model()
-
+	_build_third_person_camera()
 	touch_controls_enabled = OS.has_feature("mobile")
 	if touch_controls_enabled:
 		_build_touch_controls()
@@ -69,49 +75,65 @@ func _build_character_body() -> void:
 	body_root = Node3D.new()
 	body_root.name = "VoxelBody"
 	add_child(body_root)
-	_box(body_root, Vector3(-0.18, 0.42, 0.0), Vector3(0.32, 0.84, 0.3), MAT_BLUE)
-	_box(body_root, Vector3(0.18, 0.42, 0.0), Vector3(0.32, 0.84, 0.3), MAT_BLUE)
-	_box(body_root, Vector3(-0.18, 0.06, 0.06), Vector3(0.34, 0.14, 0.4), MAT_BOOT)
-	_box(body_root, Vector3(0.18, 0.06, 0.06), Vector3(0.34, 0.14, 0.4), MAT_BOOT)
-	_box(body_root, Vector3(0.0, 1.15, 0.0), Vector3(0.82, 0.85, 0.42), MAT_TEAL)
-	_box(body_root, Vector3(-0.55, 1.12, 0.0), Vector3(0.28, 0.78, 0.28), MAT_SKIN)
-	_box(body_root, Vector3(0.55, 1.12, 0.0), Vector3(0.28, 0.78, 0.28), MAT_SKIN)
-	_box(body_root, Vector3(0.0, 1.18, -0.32), Vector3(0.65, 0.7, 0.28), MAT_PACK)
-	_box(body_root, Vector3(0.0, 1.4, -0.34), Vector3(0.48, 0.16, 0.3), MAT_PACK_FLAP)
-	var head := _box(body_root, Vector3(0.0, 1.78, 0.0), Vector3(0.58, 0.58, 0.55), MAT_SKIN)
-	head.name = "Head"
-	head.layers = 2
-	_box(body_root, Vector3(0.0, 2.05, -0.04), Vector3(0.62, 0.22, 0.58), MAT_HAIR).layers = 2
-	_box(body_root, Vector3(0.0, 1.88, -0.22), Vector3(0.6, 0.35, 0.16), MAT_HAIR).layers = 2
+	var leg_l := _box(body_root, Vector3(-0.18, 0.42, 0.0), Vector3(0.32, 0.84, 0.3), MAT_BLUE)
+	leg_l.name = "LegL"
+	var leg_r := _box(body_root, Vector3(0.18, 0.42, 0.0), Vector3(0.32, 0.84, 0.3), MAT_BLUE)
+	leg_r.name = "LegR"
+	_box(body_root, Vector3(-0.18, 0.06, 0.08), Vector3(0.34, 0.14, 0.42), MAT_BOOT)
+	_box(body_root, Vector3(0.18, 0.06, 0.08), Vector3(0.34, 0.14, 0.42), MAT_BOOT)
+	_box(body_root, Vector3(0.0, 1.15, 0.0), Vector3(0.85, 0.88, 0.44), MAT_TEAL)
+	var arm_l := _box(body_root, Vector3(-0.58, 1.12, 0.0), Vector3(0.28, 0.8, 0.28), MAT_SKIN)
+	arm_l.name = "ArmL"
+	var arm_r := _box(body_root, Vector3(0.58, 1.12, 0.0), Vector3(0.28, 0.8, 0.28), MAT_SKIN)
+	arm_r.name = "ArmR"
+	_box(body_root, Vector3(0.0, 1.2, -0.34), Vector3(0.68, 0.72, 0.3), MAT_PACK)
+	_box(body_root, Vector3(0.0, 1.42, -0.36), Vector3(0.5, 0.18, 0.32), MAT_PACK_FLAP)
+	_box(body_root, Vector3(0.0, 1.82, 0.0), Vector3(0.6, 0.6, 0.58), MAT_SKIN)
+	_box(body_root, Vector3(0.0, 2.1, -0.04), Vector3(0.64, 0.24, 0.6), MAT_HAIR)
+	_box(body_root, Vector3(0.0, 1.92, -0.24), Vector3(0.62, 0.38, 0.18), MAT_HAIR)
+	_box(body_root, Vector3(-0.14, 1.85, 0.28), Vector3(0.1, 0.1, 0.06), Color("#1a1a1a"))
+	_box(body_root, Vector3(0.14, 1.85, 0.28), Vector3(0.1, 0.1, 0.06), Color("#1a1a1a"))
+	pickaxe_node = Node3D.new()
+	pickaxe_node.name = "DiamondPickaxe"
+	pickaxe_node.position = Vector3(0.72, 0.95, 0.25)
+	pickaxe_node.rotation_degrees = Vector3(20.0, 0.0, -35.0)
+	body_root.add_child(pickaxe_node)
+	_box(pickaxe_node, Vector3(0.0, 0.0, 0.0), Vector3(0.08, 0.85, 0.08), MAT_HANDLE)
+	_box(pickaxe_node, Vector3(0.0, 0.48, 0.0), Vector3(0.48, 0.16, 0.14), MAT_DIAMOND, 0.3)
+	_box(pickaxe_node, Vector3(-0.2, 0.36, 0.0), Vector3(0.14, 0.22, 0.12), MAT_DIAMOND, 0.3)
+	_box(pickaxe_node, Vector3(0.2, 0.36, 0.0), Vector3(0.14, 0.22, 0.12), MAT_DIAMOND, 0.3)
 
-func _build_camera_and_view_model() -> void:
+func _build_third_person_camera() -> void:
+	camera_pivot = Node3D.new()
+	camera_pivot.name = "CameraPivot"
+	camera_pivot.position = Vector3(0.0, 1.35, 0.0)
+	add_child(camera_pivot)
+	camera_arm = Node3D.new()
+	camera_arm.name = "CameraArm"
+	camera_pivot.add_child(camera_arm)
 	camera = Camera3D.new()
 	camera.name = "PlayerCamera"
-	camera.position = Vector3(0, 1.62, 0.08)
-	camera.rotation.x = CAMERA_START_PITCH
-	camera.fov = 75.0
-	camera.near = 0.05
+	camera.position = Vector3(0.0, 0.0, CAMERA_DISTANCE)
+	camera.fov = 70.0
+	camera.near = 0.1
 	camera.far = 500.0
-	camera.cull_mask = 0xFFFFF - 2
-	add_child(camera)
+	camera_arm.add_child(camera)
 	camera.make_current()
+	_apply_camera_rotation()
 
-	view_model = Node3D.new()
-	view_model.name = "ViewModel"
-	camera.add_child(view_model)
-	view_model.position = Vector3(0.38, -0.32, -0.55)
-	view_model.rotation_degrees = Vector3(8.0, 12.0, -8.0)
-	_box(view_model, Vector3(0.0, 0.0, 0.12), Vector3(0.14, 0.14, 0.42), MAT_SKIN)
-	_box(view_model, Vector3(0.0, 0.0, -0.12), Vector3(0.16, 0.16, 0.16), MAT_SKIN)
-	var pick := Node3D.new()
-	pick.name = "DiamondPickaxe"
-	pick.position = Vector3(0.05, 0.02, -0.28)
-	pick.rotation_degrees = Vector3(55.0, 0.0, 25.0)
-	view_model.add_child(pick)
-	_box(pick, Vector3(0.0, 0.0, 0.0), Vector3(0.07, 0.72, 0.07), MAT_HANDLE)
-	_box(pick, Vector3(0.0, 0.42, 0.0), Vector3(0.42, 0.14, 0.12), MAT_DIAMOND, 0.35)
-	_box(pick, Vector3(-0.18, 0.32, 0.0), Vector3(0.12, 0.2, 0.1), MAT_DIAMOND, 0.35)
-	_box(pick, Vector3(0.18, 0.32, 0.0), Vector3(0.12, 0.2, 0.1), MAT_DIAMOND, 0.35)
+func _apply_camera_rotation() -> void:
+	camera_pivot.rotation.y = yaw
+	camera_arm.rotation.x = pitch
+	var from := camera_pivot.global_position
+	var desired := from + camera_arm.global_transform.basis * Vector3(0, 0, CAMERA_DISTANCE)
+	var query := PhysicsRayQueryParameters3D.create(from, desired)
+	query.exclude = [self]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit:
+		var dist := from.distance_to(hit.position) - 0.25
+		camera.position.z = clampf(dist, 1.2, CAMERA_DISTANCE)
+	else:
+		camera.position.z = CAMERA_DISTANCE
 
 func _build_touch_controls() -> void:
 	var layer := CanvasLayer.new()
@@ -146,25 +168,15 @@ func _build_touch_controls() -> void:
 	actions.add_theme_constant_override("separation", 8)
 	root.add_child(actions)
 	var jump := _make_touch_button("JUMP", Vector2(132, 48))
-	jump.name = "JumpButton"
 	jump.button_down.connect(_set_touch_jump.bind(true))
 	jump.button_up.connect(_set_touch_jump.bind(false))
 	actions.add_child(jump)
 	var mine := _make_touch_button("MINE", Vector2(132, 48))
-	mine.name = "MineButton"
 	mine.pressed.connect(_interact.bind(false))
 	actions.add_child(mine)
 	var place := _make_touch_button("PLACE", Vector2(132, 48))
-	place.name = "PlaceButton"
 	place.pressed.connect(_interact.bind(true))
 	actions.add_child(place)
-	var look_hint := Label.new()
-	look_hint.name = "LookHint"
-	look_hint.text = "DRAG TO LOOK"
-	look_hint.position = Vector2(viewport_size.x * 0.43, viewport_size.y - 42.0)
-	look_hint.add_theme_font_size_override("font_size", 13)
-	look_hint.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.72))
-	root.add_child(look_hint)
 
 func _add_pad_slot(parent: GridContainer) -> void:
 	var slot := Control.new()
@@ -173,7 +185,6 @@ func _add_pad_slot(parent: GridContainer) -> void:
 
 func _add_direction_button(parent: GridContainer, caption: String, direction: Vector2) -> void:
 	var button := _make_touch_button(caption, TOUCH_BUTTON_SIZE)
-	button.name = "Move_" + caption
 	button.add_theme_font_size_override("font_size", 25)
 	button.button_down.connect(_set_touch_direction.bind(direction, true))
 	button.button_up.connect(_set_touch_direction.bind(direction, false))
@@ -190,11 +201,8 @@ func _make_touch_button(caption: String, minimum_size: Vector2) -> Button:
 	normal.border_color = Color(0.75, 0.9, 0.75, 0.82)
 	normal.set_border_width_all(2)
 	normal.set_corner_radius_all(12)
-	normal.content_margin_left = 6
-	normal.content_margin_right = 6
 	var pressed := normal.duplicate() as StyleBoxFlat
 	pressed.bg_color = Color(0.76, 0.58, 0.25, 0.92)
-	pressed.border_color = Color(1.0, 0.91, 0.62, 1.0)
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", pressed)
 	button.add_theme_stylebox_override("pressed", pressed)
@@ -221,9 +229,9 @@ func _input(event: InputEvent) -> void:
 		var drag := event as InputEventScreenDrag
 		if drag.position.x < get_viewport().get_visible_rect().size.x * 0.45:
 			return
-		rotate_y(-drag.relative.x * TOUCH_LOOK_SENSITIVITY)
-		camera.rotate_x(-drag.relative.y * TOUCH_LOOK_SENSITIVITY)
-		camera.rotation.x = clamp(camera.rotation.x, -1.45, 1.45)
+		yaw -= drag.relative.x * TOUCH_LOOK_SENSITIVITY
+		pitch -= drag.relative.y * TOUCH_LOOK_SENSITIVITY
+		pitch = clampf(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
@@ -231,9 +239,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * CAMERA_SENSITIVITY)
-		camera.rotate_x(-event.relative.y * CAMERA_SENSITIVITY)
-		camera.rotation.x = clamp(camera.rotation.x, -1.45, 1.45)
+		yaw -= event.relative.x * CAMERA_SENSITIVITY
+		pitch -= event.relative.y * CAMERA_SENSITIVITY
+		pitch = clampf(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_interact(false)
@@ -241,6 +249,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_interact(true)
 
 func _physics_process(delta: float) -> void:
+	_apply_camera_rotation()
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	elif Input.is_key_pressed(KEY_SPACE) or touch_jump_pressed:
@@ -250,20 +259,36 @@ func _physics_process(delta: float) -> void:
 		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
 	) + touch_move
 	input_dir = input_dir.limit_length(1.0)
-	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+	var basis := Basis(Vector3.UP, yaw)
+	var direction := (basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 	velocity.x = direction.x * SPEED
 	velocity.z = direction.z * SPEED
 	move_and_slide()
-	if view_model:
-		var bob := 0.0
-		if input_dir.length() > 0.1 and is_on_floor():
-			bob = sin(Time.get_ticks_msec() * 0.012) * 0.02
-		view_model.position.y = -0.32 + bob
+	if direction.length() > 0.05:
+		var target_yaw := atan2(-direction.x, -direction.z)
+		body_root.rotation.y = lerp_angle(body_root.rotation.y, target_yaw, 1.0 - exp(-12.0 * delta))
+		walk_phase += delta * 10.0
+		var swing := sin(walk_phase) * 0.35
+		var leg_l := body_root.get_node_or_null("LegL") as MeshInstance3D
+		var leg_r := body_root.get_node_or_null("LegR") as MeshInstance3D
+		var arm_l := body_root.get_node_or_null("ArmL") as MeshInstance3D
+		var arm_r := body_root.get_node_or_null("ArmR") as MeshInstance3D
+		if leg_l: leg_l.rotation.x = swing
+		if leg_r: leg_r.rotation.x = -swing
+		if arm_l: arm_l.rotation.x = -swing * 0.7
+		if arm_r: arm_r.rotation.x = swing * 0.7
+	else:
+		walk_phase = 0.0
+		for n in ["LegL", "LegR", "ArmL", "ArmR"]:
+			var part := body_root.get_node_or_null(n) as MeshInstance3D
+			if part: part.rotation.x = lerpf(part.rotation.x, 0.0, 1.0 - exp(-10.0 * delta))
+	if pickaxe_node:
 		if pickaxe_swing_t > 0.0:
-			pickaxe_swing_t = maxf(0.0, pickaxe_swing_t - delta * 4.0)
-			view_model.rotation_degrees.x = 8.0 + sin((1.0 - pickaxe_swing_t) * PI) * 25.0
+			pickaxe_swing_t = maxf(0.0, pickaxe_swing_t - delta * 4.5)
+			var t := 1.0 - pickaxe_swing_t
+			pickaxe_node.rotation_degrees = Vector3(20.0 + sin(t * PI) * 50.0, 0.0, -35.0 - sin(t * PI) * 20.0)
 		else:
-			view_model.rotation_degrees.x = 8.0
+			pickaxe_node.rotation_degrees = Vector3(20.0, 0.0, -35.0)
 
 func _interact(place: bool) -> void:
 	pickaxe_swing_t = 1.0
