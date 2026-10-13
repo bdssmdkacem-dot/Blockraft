@@ -125,9 +125,35 @@ func _run_checks() -> void:
                 _fail("feature cards overlap at %s" % viewport_size, 22)
                 return
             previous_card_end = card_rect.end.x
+    scene.size = Vector2(393, 852)
+    scene._apply_responsive_layout()
+    await process_frame
+    var portrait_panel := scene.find_child("MainMenuPanel", true, false) as Control
+    var portrait_title := scene.find_child("GameTitle", true, false) as Control
+    var portrait_footer := scene.find_child("Footer", true, false) as Control
+    if strip.visible:
+        _fail("feature gallery should be hidden in portrait", 29)
+        return
+    if portrait_panel == null or portrait_panel.scale != Vector2.ONE:
+        _fail("portrait menu panel missing or incorrectly scaled", 30)
+        return
+    var portrait_rect := portrait_panel.get_global_rect()
+    if portrait_rect.position.x < 0.0 or portrait_rect.end.x > 393.0:
+        _fail("portrait menu panel exceeds viewport bounds", 31)
+        return
+    if portrait_title == null or portrait_title.scale != Vector2.ONE:
+        _fail("portrait title missing or incorrectly scaled", 32)
+        return
+    if portrait_footer != null and portrait_footer.visible:
+        _fail("footer should be hidden in portrait", 33)
+        return
+
     scene.size = Vector2(1280, 720)
     scene._apply_responsive_layout()
     await process_frame
+    if not strip.visible or (portrait_footer != null and not portrait_footer.visible):
+        _fail("landscape elements were not restored", 34)
+        return
 
     scene._on_menu_action("worlds")
     await process_frame
