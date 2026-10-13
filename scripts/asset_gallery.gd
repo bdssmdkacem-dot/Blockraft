@@ -3,7 +3,7 @@ extends Node3D
 func _ready() -> void:
     var camera := get_node_or_null("Camera3D") as Camera3D
     if camera:
-        camera.look_at(Vector3(0, 2.2, 0), Vector3.UP)
+        camera.look_at(Vector3(0, 2.0, 1.4), Vector3.UP)
 
     var environment := WorldEnvironment.new()
     var world := Environment.new()
@@ -24,9 +24,9 @@ func _ready() -> void:
 
     var floor := MeshInstance3D.new()
     var floor_mesh := BoxMesh.new()
-    floor_mesh.size = Vector3(20, 0.2, 8)
+    floor_mesh.size = Vector3(22, 0.2, 13)
     floor.mesh = floor_mesh
-    floor.position = Vector3(0, -0.15, 0)
+    floor.position = Vector3(0, -0.15, 1.6)
     var floor_material := StandardMaterial3D.new()
     floor_material.albedo_color = Color("#354b38")
     floor_material.roughness = 1.0
@@ -37,9 +37,9 @@ func _ready() -> void:
     # Reference-aligned production prototypes: protagonist, diamond pickaxe,
     # castle gatehouse, and still-water voxel. These are built as real 3D meshes
     # so their silhouettes/materials can be inspected in the asset gallery.
-    _build_protagonist(Vector3(-5.0, 0.0, -2.7))
-    _build_castle_gatehouse(Vector3(0.0, 0.0, -2.7))
-    _build_still_water_cube(Vector3(5.0, 0.0, -2.7))
+    _build_protagonist(Vector3(-5.2, 0.0, 3.0))
+    _build_castle_gatehouse(Vector3(0.0, 0.0, 3.0))
+    _build_still_water_cube(Vector3(5.2, 0.0, 3.0))
 
 
 func _mat(color: Color, roughness: float = 0.82, metallic: float = 0.0, transparent: bool = false) -> StandardMaterial3D:
