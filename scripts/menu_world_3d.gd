@@ -187,9 +187,14 @@ func _build_forests() -> void:
 	_tree(Vector3(14.5, 0.0, 2.8), 1.55)
 
 func _tree(origin: Vector3, scale: float) -> void:
-	_box(self, origin + Vector3(0.0, 1.15 * scale, 0.0), Vector3(0.6, 2.3, 0.6) * scale, MAT_WOOD)
-	_box(self, origin + Vector3(0.0, 2.6 * scale, 0.0), Vector3(2.3, 1.3, 2.15) * scale, MAT_LEAF_DARK)
-	_box(self, origin + Vector3(0.0, 3.5 * scale, 0.0), Vector3(1.6, 1.1, 1.6) * scale, MAT_LEAF)
+	# Layered, offset canopy masses give the voxel trees a fuller silhouette
+	# and avoid the single oversized rectangular crown from the early prototype.
+	_box(self, origin + Vector3(0.0, 1.15 * scale, 0.0), Vector3(0.48, 2.3, 0.48) * scale, MAT_WOOD)
+	_box(self, origin + Vector3(0.0, 2.25 * scale, 0.0), Vector3(1.65, 1.25, 1.55) * scale, MAT_LEAF_DARK)
+	_box(self, origin + Vector3(-0.18 * scale, 2.85 * scale, 0.02 * scale), Vector3(1.7, 1.15, 1.6) * scale, MAT_LEAF)
+	_box(self, origin + Vector3(0.16 * scale, 3.45 * scale, -0.08 * scale), Vector3(1.18, 0.95, 1.2) * scale, MAT_LEAF_LIGHT)
+	_box(self, origin + Vector3(-0.42 * scale, 2.95 * scale, 0.42 * scale), Vector3(0.58, 0.62, 0.55) * scale, MAT_LEAF)
+	_box(self, origin + Vector3(0.46 * scale, 2.72 * scale, -0.35 * scale), Vector3(0.62, 0.66, 0.58) * scale, MAT_LEAF_DARK)
 
 func _build_floating_islands() -> void:
 	# Three distinct silhouettes across the upper panorama; keep their scale
