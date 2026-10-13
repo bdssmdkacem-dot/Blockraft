@@ -53,18 +53,71 @@ func _house(x: float, ground_y: float, scale: float, wall: Color, roof: Color) -
 
 
 func _apply_responsive_layout() -> void:
-    # Keep the reference composition intact while scaling it uniformly for
-    # smaller Android landscape viewports. Center letterboxed UI rather than
-    # stretching controls or letting the feature strip run off-screen.
     var viewport_size := size
     if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
         return
+
+    var title := get_node_or_null("GameTitle") as Label
+    var tagline := get_node_or_null("Tagline") as Label
+    var top_bar := get_node_or_null("TopBar") as Control
+    var menu_panel := get_node_or_null("MainMenuPanel") as Control
+    var feature_strip := get_node_or_null("FeatureStrip") as Control
+    var footer := get_node_or_null("Footer") as Control
+
+    # Portrait is a deliberately composed mobile layout, not a tiny scaled
+    # landscape screenshot. Keep the primary action large and hide only the
+    # secondary feature gallery/footer that cannot fit without harming play.
+    if viewport_size.x < viewport_size.y:
+        if top_bar != null:
+            top_bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+            top_bar.offset_left = 16
+            top_bar.offset_top = 14
+            top_bar.offset_right = -16
+            top_bar.offset_bottom = 52
+        if title != null:
+            title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+            title.offset_left = 20
+            title.offset_top = 62
+            title.offset_right = -20
+            title.offset_bottom = 120
+            title.add_theme_font_size_override("font_size", 42)
+            title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        if tagline != null:
+            tagline.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+            tagline.offset_left = 16
+            tagline.offset_top = 119
+            tagline.offset_right = -16
+            tagline.offset_bottom = 150
+            tagline.add_theme_font_size_override("font_size", 12)
+            tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        if menu_panel != null:
+            menu_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+            menu_panel.offset_left = 18
+            menu_panel.offset_top = 166
+            menu_panel.offset_right = -18
+            menu_panel.offset_bottom = 430
+        if feature_strip != null:
+            feature_strip.visible = false
+        if footer != null:
+            footer.visible = false
+        return
+
+    if feature_strip != null:
+        feature_strip.visible = true
+    if footer != null:
+        footer.visible = true
+    if title != null:
+        title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        title.add_theme_font_size_override("font_size", 68)
+    if tagline != null:
+        tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        tagline.add_theme_font_size_override("font_size", 17)
+
     var ui_scale := minf(viewport_size.x / DESIGN_SIZE.x, viewport_size.y / DESIGN_SIZE.y)
     var ui_origin := Vector2(
         (viewport_size.x - DESIGN_SIZE.x * ui_scale) * 0.5,
         (viewport_size.y - DESIGN_SIZE.y * ui_scale) * 0.5
     )
-
     _place_scaled_control("TopBar", Vector2(38, 24), Vector2(1204, 48), ui_origin, ui_scale)
     _place_scaled_control("GameTitle", Vector2(66, 110), Vector2(550, 96), ui_origin, ui_scale)
     _place_scaled_control("Tagline", Vector2(73, 199), Vector2(490, 32), ui_origin, ui_scale)
