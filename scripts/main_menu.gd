@@ -163,12 +163,12 @@ func _add_menu_button(caption: String, action: String, primary: bool) -> void:
 
 func _build_feature_strip() -> void:
 	var features := [
-		{"title": "EXPLORE VAST WORLDS", "body": "Endless procedural landscapes", "action": "help"},
-		{"title": "GATHER RESOURCES", "body": "Mine ores, chop wood, craft", "action": "help"},
-		{"title": "CRAFT & BUILD", "body": "Workbench recipes & tools", "action": "help"},
-		{"title": "SURVIVE THE NIGHT", "body": "Health, hunger & monsters", "action": "help"},
-		{"title": "BUILD YOUR DREAMS", "body": "Castles, cottages, floating isles", "action": "help"},
-		{"title": "MULTIPLAYER (OPTIONAL)", "body": "Play with friends online", "action": "help"},
+		{"title": "EXPLORE VAST WORLDS", "body": "Endless procedural landscapes", "image": "res://assets/ui/cards/explore.svg", "action": "help"},
+		{"title": "GATHER RESOURCES", "body": "Mine ores, chop wood, craft", "image": "res://assets/ui/cards/mining.svg", "action": "help"},
+		{"title": "CRAFT & BUILD", "body": "Workbench recipes & tools", "image": "res://assets/ui/cards/build.svg", "action": "help"},
+		{"title": "SURVIVE THE NIGHT", "body": "Health, hunger & monsters", "image": "res://assets/ui/cards/survive.svg", "action": "help"},
+		{"title": "BUILD YOUR DREAMS", "body": "Castles, cottages, floating isles", "image": "res://assets/ui/cards/dreams.svg", "action": "help"},
+		{"title": "MULTIPLAYER (OPTIONAL)", "body": "Play with friends online", "image": "res://assets/ui/cards/multiplayer.svg", "action": "help"},
 	]
 	var strip := HBoxContainer.new()
 	strip.name = "FeatureStrip"
@@ -181,30 +181,39 @@ func _build_feature_strip() -> void:
 		card.custom_minimum_size = Vector2(198, 100)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.05, 0.08, 0.10, 0.78)
+		style.bg_color = Color(0.05, 0.08, 0.10, 0.86)
 		style.border_color = Color("#6ab88a")
 		style.set_border_width_all(1)
 		style.set_corner_radius_all(6)
-		style.content_margin_left = 8
-		style.content_margin_right = 8
-		style.content_margin_top = 8
-		style.content_margin_bottom = 8
+		style.content_margin_left = 7
+		style.content_margin_right = 7
+		style.content_margin_top = 6
+		style.content_margin_bottom = 6
 		card.add_theme_stylebox_override("panel", style)
 		var content := VBoxContainer.new()
-		content.add_theme_constant_override("separation", 4)
+		content.add_theme_constant_override("separation", 3)
 		card.add_child(content)
+		var artwork := TextureRect.new()
+		artwork.name = "FeatureArtwork"
+		artwork.texture = load(str(feature.image)) as Texture2D
+		artwork.custom_minimum_size = Vector2(0, 48)
+		artwork.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		artwork.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		artwork.stretch_mode = TextureRect.STRETCH_SCALE
+		artwork.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		content.add_child(artwork)
 		var heading := Label.new()
 		heading.text = feature.title
 		heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		heading.add_theme_font_size_override("font_size", 12)
+		heading.add_theme_font_size_override("font_size", 11)
 		heading.add_theme_color_override("font_color", Color("#fff5d9"))
 		content.add_child(heading)
 		var detail := Label.new()
 		detail.text = feature.body
 		detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		detail.add_theme_font_size_override("font_size", 10)
+		detail.add_theme_font_size_override("font_size", 9)
 		detail.add_theme_color_override("font_color", Color("#c8dcc8"))
 		content.add_child(detail)
 		var hit_area := Button.new()
