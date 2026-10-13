@@ -108,9 +108,9 @@ func _build_sky_backdrop() -> void:
 	var sky_mesh := MeshInstance3D.new()
 	sky_mesh.name = "SunsetGradientBackdrop"
 	var quad := QuadMesh.new()
-	quad.size = Vector2(180.0, 100.0)
+	quad.size = Vector2(400.0, 240.0)
 	sky_mesh.mesh = quad
-	sky_mesh.position = Vector3(0.0, 0.0, -100.0)
+	sky_mesh.position = Vector3(0.0, 0.0, -150.0)
 	var sky_material := StandardMaterial3D.new()
 	sky_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	sky_material.albedo_texture = texture
