@@ -93,15 +93,16 @@ func _setup_lighting() -> void:
 func _setup_camera() -> void:
     var camera := Camera3D.new()
     camera.name = "MenuWorldCamera"
-    camera.position = Vector3(0.0, 14.0, 30.0)
-    camera.fov = 58.0
+    camera.position = Vector3(0.0, 12.0, 31.0)
+    camera.fov = 62.0
     camera.near = 0.1
     camera.far = 180.0
-    # Aim farther into the valley so more terrain, river and village appear
-    # above the feature cards while keeping the floating islands in frame.
-    # Orient only after entering the SceneTree for deterministic capture.
+    # Compose the valley for a wide menu backdrop: a lower camera and a
+    # stronger downward pitch bring the river, village roofs and terrain into
+    # the visible center instead of leaving a large empty sky above the cards.
+    # Add the camera before orienting it; look_at requires SceneTree membership.
     add_child(camera)
-    camera.look_at(Vector3(0.0, -4.5, -6.0), Vector3.UP)
+    camera.look_at(Vector3(0.0, -8.0, -5.0), Vector3.UP)
     camera.make_current()
 
 func _build_landscape() -> void:
