@@ -67,9 +67,9 @@ func _apply_responsive_layout() -> void:
 
     _place_scaled_control("TopBar", Vector2(42, 20), Vector2(1196, 42), ui_origin, ui_scale)
     _place_scaled_control("GameTitle", Vector2(42, 58), Vector2(570, 86), ui_origin, ui_scale)
-    _place_scaled_control("Tagline", Vector2(58, 139), Vector2(500, 30), ui_origin, ui_scale)
+    _place_scaled_control("Tagline", Vector2(58, 145), Vector2(500, 28), ui_origin, ui_scale)
     _place_scaled_control("MainMenuPanel", Vector2(44, 184), Vector2(258, 252), ui_origin, ui_scale)
-    _place_scaled_control("FeatureStrip", Vector2(18, 452), Vector2(1244, 194), ui_origin, ui_scale)
+    _place_scaled_control("FeatureStrip", Vector2(18, 480), Vector2(1244, 166), ui_origin, ui_scale)
     _place_scaled_control("Footer", Vector2(0, 672), Vector2(1280, 32), ui_origin, ui_scale)
 
 
@@ -156,8 +156,8 @@ func _build_interface() -> void:
     var tagline := Label.new()
     tagline.name = "Tagline"
     tagline.text = "BUILD YOUR WORLD. FIND YOUR WILD."
-    tagline.position = Vector2(58, 139)
-    tagline.size = Vector2(500, 30)
+    tagline.position = Vector2(58, 145)
+    tagline.size = Vector2(500, 28)
     tagline.add_theme_font_size_override("font_size", 17)
     tagline.add_theme_color_override("font_color", Color("#f4ffec"))
     tagline.add_theme_color_override("font_shadow_color", Color("#214a35"))
@@ -234,8 +234,8 @@ func _build_feature_strip() -> void:
     strip.anchor_top = 0.0
     strip.anchor_right = 0.0
     strip.anchor_bottom = 0.0
-    strip.position = Vector2(18, 452)
-    strip.size = Vector2(1244, 194)
+    strip.position = Vector2(18, 480)
+    strip.size = Vector2(1244, 166)
     strip.add_theme_constant_override("separation", 8)
     add_child(strip)
     var features := [
@@ -248,7 +248,7 @@ func _build_feature_strip() -> void:
     ]
     for feature in features:
         var card := Control.new()
-        card.custom_minimum_size = Vector2(0, 188)
+        card.custom_minimum_size = Vector2(0, 160)
         card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         card.size_flags_vertical = Control.SIZE_EXPAND_FILL
         card.clip_contents = true
