@@ -109,14 +109,19 @@ func _build_landscape() -> void:
     _box(self, Vector3(0.0, -1.2, -4.0), Vector3(42.0, 2.0, 34.0), MAT_DIRT)
     _box(self, Vector3(0.0, -0.15, -5.0), Vector3(42.0, 0.34, 31.0), MAT_GRASS)
 
+    # Separate the ridge into stepped peaks with gaps, so the scene reads as a
+    # valley rather than one continuous wall of oversized blocks.
     for i in range(11):
-        var x := -24.0 + float(i) * 4.8
-        var peak := 3.2 + float((i * 7) % 5) * 0.60
-        var z := -28.0 - float((i * 3) % 4) * 1.5
-        _box(self, Vector3(x, peak * 0.5 - 0.1, z), Vector3(5.4, peak, 5.2), MAT_STONE)
-        _box(self, Vector3(x - 0.5, peak + 0.15, z), Vector3(4.4, 0.45, 4.4), MAT_GRASS_LIGHT if i % 3 == 0 else MAT_GRASS)
-        if i % 2 == 0:
-            _box(self, Vector3(x + 0.6, peak + 0.75, z - 0.2), Vector3(2.2, 1.0, 2.0), MAT_STONE_LIGHT)
+        var x := -25.0 + float(i) * 5.0
+        var peak := 2.6 + float((i * 7) % 5) * 0.48
+        var z := -30.0 - float((i * 3) % 4) * 1.8
+        var lower_height := peak * 0.64
+        var upper_height := peak - lower_height
+        _box(self, Vector3(x, lower_height * 0.5 - 0.1, z), Vector3(4.2, lower_height, 4.2), MAT_STONE)
+        _box(self, Vector3(x + 0.18, lower_height + upper_height * 0.5 - 0.05, z), Vector3(3.1, upper_height, 3.25), MAT_STONE)
+        _box(self, Vector3(x - 0.1, peak + 0.18, z), Vector3(3.55, 0.42, 3.6), MAT_GRASS_LIGHT if i % 3 == 0 else MAT_GRASS)
+        if i % 3 == 0:
+            _box(self, Vector3(x + 0.5, peak + 0.48, z - 0.2), Vector3(1.1, 0.22, 1.2), Color("#899995"))
 
     # Distant keep silhouette, placed above the right side of the village.
     _box(self, Vector3(12.0, 4.0, -14.5), Vector3(4.0, 8.5, 3.2), MAT_STONE_LIGHT)
@@ -132,7 +137,7 @@ func _build_river_and_bridge() -> void:
     var water_material := _material(MAT_WATER, 0.22, 0.12)
     for i in range(11):
         var z := 5.0 - float(i) * 2.5
-        var x := -0.2 - sin(float(i) * 0.58) * 2.4
+        var x := 2.4 - sin(float(i) * 0.58) * 1.8
         var water := _box(self, Vector3(x, 0.04, z), Vector3(8.0, 0.18, 3.8), MAT_WATER, 0.22)
         water.material_override = water_material
 
