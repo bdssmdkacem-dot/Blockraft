@@ -13,6 +13,8 @@ on:
       - ".github/workflows/android-apk.yml"
   pull_request:
     paths:
+      - "project.godot"
+      - "export_presets.cfg"
       - "export_presets.cfg"
       - "project.godot"
       - "scenes/**"
@@ -107,7 +109,7 @@ jobs:
           ANDROID_SDK_ROOT: /usr/lib/android-sdk
         run: |
           mkdir -p build
-          godot --headless --path . --export-debug "Android" build/Blockraft-debug.apk
+          godot --headless --verbose --path . --export-debug "Android" build/Blockraft-debug.apk
 
       - name: Verify APK output
         run: |
