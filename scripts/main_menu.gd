@@ -123,7 +123,7 @@ func _apply_responsive_layout() -> void:
     _place_scaled_control("GameTitle", Vector2(42, 58), Vector2(570, 86), ui_origin, ui_scale)
     _place_scaled_control("Tagline", Vector2(58, 145), Vector2(500, 28), ui_origin, ui_scale)
     _place_scaled_control("MainMenuPanel", Vector2(44, 184), Vector2(258, 252), ui_origin, ui_scale)
-    _place_scaled_control("FeatureStrip", Vector2(18, 480), Vector2(1244, 166), ui_origin, ui_scale)
+    _place_scaled_control("FeatureStrip", Vector2(18, 500), Vector2(1244, 146), ui_origin, ui_scale)
     _place_scaled_control("Footer", Vector2(0, 672), Vector2(1280, 32), ui_origin, ui_scale)
 
 
@@ -288,8 +288,8 @@ func _build_feature_strip() -> void:
     strip.anchor_top = 0.0
     strip.anchor_right = 0.0
     strip.anchor_bottom = 0.0
-    strip.position = Vector2(18, 480)
-    strip.size = Vector2(1244, 166)
+    strip.position = Vector2(18, 500)
+    strip.size = Vector2(1244, 146)
     strip.add_theme_constant_override("separation", 8)
     add_child(strip)
     var features := [
@@ -302,7 +302,7 @@ func _build_feature_strip() -> void:
     ]
     for feature in features:
         var card := Control.new()
-        card.custom_minimum_size = Vector2(0, 160)
+        card.custom_minimum_size = Vector2(0, 140)
         card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         card.size_flags_vertical = Control.SIZE_EXPAND_FILL
         card.clip_contents = true
@@ -315,6 +315,21 @@ func _build_feature_strip() -> void:
         art.texture = load(feature.art) as Texture2D
         art.mouse_filter = Control.MOUSE_FILTER_IGNORE
         card.add_child(art)
+
+        # A restrained inset frame separates the illustrated panels from the
+        # world without turning the bottom row into one opaque, flat slab.
+        var frame := PanelContainer.new()
+        frame.name = "CardFrame"
+        frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        var frame_style := StyleBoxFlat.new()
+        frame_style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+        frame_style.border_color = Color("#d9d7a1")
+        frame_style.set_border_width_all(1)
+        frame_style.set_corner_radius_all(5)
+        frame.add_theme_stylebox_override("panel", frame_style)
+        card.add_child(frame)
+
         var shade := ColorRect.new()
         shade.anchor_top = 0.70
         shade.anchor_right = 1.0
