@@ -2,9 +2,7 @@
 
 ## Mandatory source image — locked
 
-The owner approved the exact existing image `/Roblox/blockraft_visual_north_star.png` in the ChatGPT project file library as the visual north star. Do not ask for another upload or substitute a generated image. The source identity and acceptance requirements are recorded in [source/REFERENCE_IMAGE.md](../source/REFERENCE_IMAGE.md).
-
-The original PNG binary has **not** been committed to this GitHub repository yet: raw-byte transfer from the ChatGPT project library is currently unavailable. Its canonical repository destination is `source/reference/blockcraft_visual_north_star.png`. Do not create a fake placeholder or claim that the PNG is present in GitHub.
+The exact owner-approved visual reference is committed at [`assets/reference/blockraft_visual_north_star.png`](../assets/reference/blockraft_visual_north_star.png). Do not ask the owner to upload it again or substitute generated artwork. Source identity and acceptance requirements are recorded in [source/REFERENCE_IMAGE.md](../source/REFERENCE_IMAGE.md).
 
 ## Visual pillars
 
@@ -17,8 +15,7 @@ The original PNG binary has **not** been committed to this GitHub repository yet
 
 ## Acceptance gates
 
-- Compare asset-family previews against the original approved image in the ChatGPT project source.
-- Commit the exact original PNG at the canonical repository path when binary transfer is available.
+- Compare asset-family previews and the latest rendered menu screenshot against the committed original PNG.
 - Pass silhouette, material, scale and readability review.
 - Pass Godot in-engine review with actual lighting, collision and camera.
 - Pass Android device review for performance and touch readability.
