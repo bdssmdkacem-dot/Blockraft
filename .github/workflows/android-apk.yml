@@ -4,24 +4,30 @@ on:
   push:
     branches: [main]
     paths:
-      - "export_presets.cfg"
       - "project.godot"
-      - "scenes/main.tscn"
-      - "scripts/main.gd"
-      - "scripts/player.gd"
+      - "export_presets.cfg"
+      - "scenes/**"
+      - "scripts/**"
       - "assets/**"
-      - ".github/workflows/android-apk.yml"
+      - "tests/**"
+      - "tools/**"
+      - "replica/**"
+      - "source/**"
+      - "docs/**"
+      - "README.md"
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "project.godot"
       - "export_presets.cfg"
-      - "export_presets.cfg"
-      - "project.godot"
       - "scenes/**"
       - "scripts/**"
       - "assets/**"
+      - "tests/**"
       - "tools/**"
       - "replica/**"
+      - "source/**"
+      - "docs/**"
       - "README.md"
       - ".github/workflows/**"
   workflow_dispatch:
