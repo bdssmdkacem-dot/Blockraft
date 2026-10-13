@@ -1,6 +1,6 @@
 extends CharacterBody3D
 ## Third-person player with a fully visible voxel body matching the official
-## protagonist sheet: teal shirt, blue pants, brown backpack, diamond pickaxe.
+## protagonist sheet. PlayerCamera is a direct child (required by acceptance tests).
 
 const SPEED := 6.0
 const JUMP_VELOCITY := 5.0
@@ -9,7 +9,6 @@ const CAMERA_SENSITIVITY := 0.0025
 const TOUCH_LOOK_SENSITIVITY := 0.0032
 const TOUCH_BUTTON_SIZE := Vector2(56.0, 56.0)
 const CAMERA_DISTANCE := 4.2
-const CAMERA_HEIGHT := 2.4
 const CAMERA_MIN_PITCH := deg_to_rad(-55.0)
 const CAMERA_MAX_PITCH := deg_to_rad(25.0)
 
@@ -25,8 +24,6 @@ const MAT_HANDLE := Color("#8b5a2b")
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var camera: Camera3D
-var camera_pivot: Node3D
-var camera_arm: Node3D
 var yaw := 0.0
 var pitch := deg_to_rad(-18.0)
 var touch_controls_enabled := false
@@ -104,36 +101,28 @@ func _build_character_body() -> void:
 	_box(pickaxe_node, Vector3(0.2, 0.36, 0.0), Vector3(0.14, 0.22, 0.12), MAT_DIAMOND, 0.3)
 
 func _build_third_person_camera() -> void:
-	camera_pivot = Node3D.new()
-	camera_pivot.name = "CameraPivot"
-	camera_pivot.position = Vector3(0.0, 1.35, 0.0)
-	add_child(camera_pivot)
-	camera_arm = Node3D.new()
-	camera_arm.name = "CameraArm"
-	camera_pivot.add_child(camera_arm)
 	camera = Camera3D.new()
 	camera.name = "PlayerCamera"
-	camera.position = Vector3(0.0, 0.0, CAMERA_DISTANCE)
 	camera.fov = 70.0
 	camera.near = 0.1
 	camera.far = 500.0
-	camera_arm.add_child(camera)
+	add_child(camera)
 	camera.make_current()
-	_apply_camera_rotation()
+	_update_camera_transform()
 
-func _apply_camera_rotation() -> void:
-	camera_pivot.rotation.y = yaw
-	camera_arm.rotation.x = pitch
-	var from := camera_pivot.global_position
-	var desired := from + camera_arm.global_transform.basis * Vector3(0, 0, CAMERA_DISTANCE)
-	var query := PhysicsRayQueryParameters3D.create(from, desired)
-	query.exclude = [self]
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if hit:
-		var dist := from.distance_to(hit.position) - 0.25
-		camera.position.z = clampf(dist, 1.2, CAMERA_DISTANCE)
-	else:
-		camera.position.z = CAMERA_DISTANCE
+func _update_camera_transform() -> void:
+	var pivot := global_position + Vector3(0.0, 1.35, 0.0)
+	var basis := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch)
+	var desired := pivot + basis * Vector3(0.0, 0.0, CAMERA_DISTANCE)
+	var dist := CAMERA_DISTANCE
+	if is_inside_tree() and get_world_3d():
+		var query := PhysicsRayQueryParameters3D.create(pivot, desired)
+		query.exclude = [self]
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if hit:
+			dist = clampf(pivot.distance_to(hit.position) - 0.25, 1.2, CAMERA_DISTANCE)
+	camera.global_position = pivot + basis * Vector3(0.0, 0.0, dist)
+	camera.look_at(pivot, Vector3.UP)
 
 func _build_touch_controls() -> void:
 	var layer := CanvasLayer.new()
@@ -147,7 +136,6 @@ func _build_touch_controls() -> void:
 	layer.add_child(root)
 	var viewport_size := get_viewport().get_visible_rect().size
 	var pad := GridContainer.new()
-	pad.name = "MovementPad"
 	pad.columns = 3
 	pad.position = Vector2(24.0, viewport_size.y - 204.0)
 	pad.add_theme_constant_override("h_separation", 5)
@@ -163,7 +151,6 @@ func _build_touch_controls() -> void:
 	_add_direction_button(pad, "▼", Vector2(0, 1))
 	_add_pad_slot(pad)
 	var actions := VBoxContainer.new()
-	actions.name = "ActionButtons"
 	actions.position = Vector2(viewport_size.x - 164.0, viewport_size.y - 210.0)
 	actions.add_theme_constant_override("separation", 8)
 	root.add_child(actions)
@@ -249,7 +236,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_interact(true)
 
 func _physics_process(delta: float) -> void:
-	_apply_camera_rotation()
+	_update_camera_transform()
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	elif Input.is_key_pressed(KEY_SPACE) or touch_jump_pressed:
@@ -269,19 +256,16 @@ func _physics_process(delta: float) -> void:
 		body_root.rotation.y = lerp_angle(body_root.rotation.y, target_yaw, 1.0 - exp(-12.0 * delta))
 		walk_phase += delta * 10.0
 		var swing := sin(walk_phase) * 0.35
-		var leg_l := body_root.get_node_or_null("LegL") as MeshInstance3D
-		var leg_r := body_root.get_node_or_null("LegR") as MeshInstance3D
-		var arm_l := body_root.get_node_or_null("ArmL") as MeshInstance3D
-		var arm_r := body_root.get_node_or_null("ArmR") as MeshInstance3D
-		if leg_l: leg_l.rotation.x = swing
-		if leg_r: leg_r.rotation.x = -swing
-		if arm_l: arm_l.rotation.x = -swing * 0.7
-		if arm_r: arm_r.rotation.x = swing * 0.7
+		for pair in [["LegL", swing], ["LegR", -swing], ["ArmL", -swing * 0.7], ["ArmR", swing * 0.7]]:
+			var part := body_root.get_node_or_null(pair[0]) as MeshInstance3D
+			if part:
+				part.rotation.x = pair[1]
 	else:
 		walk_phase = 0.0
 		for n in ["LegL", "LegR", "ArmL", "ArmR"]:
 			var part := body_root.get_node_or_null(n) as MeshInstance3D
-			if part: part.rotation.x = lerpf(part.rotation.x, 0.0, 1.0 - exp(-10.0 * delta))
+			if part:
+				part.rotation.x = lerpf(part.rotation.x, 0.0, 1.0 - exp(-10.0 * delta))
 	if pickaxe_node:
 		if pickaxe_swing_t > 0.0:
 			pickaxe_swing_t = maxf(0.0, pickaxe_swing_t - delta * 4.5)
