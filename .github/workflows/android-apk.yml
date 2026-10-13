@@ -74,6 +74,20 @@ jobs:
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-33" "build-tools;33.0.2" "platforms;android-35" "build-tools;35.0.0"
           keytool -genkeypair -v -keystore /root/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt
 
+      - name: Verify Android SDK export prerequisites
+        env:
+          ANDROID_HOME: /usr/lib/android-sdk
+          ANDROID_SDK_ROOT: /usr/lib/android-sdk
+        run: |
+          set -eux
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          test -d "$ANDROID_HOME/platforms/android-33"
+          test -x "$ANDROID_HOME/build-tools/33.0.2/apksigner"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f -name apksigner -print
+          java -version
+          godot --headless --path . --editor --quit
+
       - name: Import project and parse scripts
         env:
           HOME: /root
