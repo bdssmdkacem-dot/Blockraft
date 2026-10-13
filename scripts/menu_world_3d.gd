@@ -24,6 +24,7 @@ const MAT_BROWN_PACK := Color("#8b5a2b")
 
 func _ready() -> void:
 	_setup_environment()
+	_build_sky_backdrop()
 	_setup_lighting()
 	_setup_camera()
 	_build_landscape()
@@ -88,6 +89,35 @@ func _setup_environment() -> void:
 	environment.fog_aerial_perspective = 0.35
 	world.environment = environment
 	add_child(world)
+
+
+func _build_sky_backdrop() -> void:
+	# Compatibility-renderer-safe sunset gradient: the procedural sky can collapse
+	# to a flat clear color on some Android/CI drivers, so use a real textured quad.
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color("#244c82"))
+	gradient.add_point(0.42, Color("#6e8eaa"))
+	gradient.add_point(0.76, Color("#e5a66d"))
+	gradient.set_color(gradient.get_point_count() - 1, Color("#f7d6a0"))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill_from = Vector2(0.5, 0.0)
+	texture.fill_to = Vector2(0.5, 1.0)
+	texture.width = 8
+	texture.height = 256
+	var sky_mesh := MeshInstance3D.new()
+	sky_mesh.name = "SunsetGradientBackdrop"
+	var quad := QuadMesh.new()
+	quad.size = Vector2(180.0, 100.0)
+	sky_mesh.mesh = quad
+	sky_mesh.position = Vector3(0.0, 22.0, -62.0)
+	var sky_material := StandardMaterial3D.new()
+	sky_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sky_material.albedo_texture = texture
+	sky_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	sky_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	sky_mesh.material_override = sky_material
+	add_child(sky_mesh)
 
 func _setup_lighting() -> void:
 	var sun := DirectionalLight3D.new()
