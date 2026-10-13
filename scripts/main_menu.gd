@@ -424,7 +424,7 @@ func _on_menu_action(action: String) -> void:
         "help":
             _show_dialog(
                 "HOW TO PLAY",
-                "DESKTOP CONTROLS\nW A S D  ·  Move\nSPACE  ·  Jump\nMOUSE  ·  Look around\nLEFT CLICK  ·  Mine the block under the crosshair\nRIGHT CLICK  ·  Place a block\n\nMobile touch controls are not implemented yet.",
+                "DESKTOP CONTROLS\nW A S D  ·  Move\nSPACE  ·  Jump\nMOUSE  ·  Look around\nLEFT CLICK  ·  Mine the block under the crosshair\nRIGHT CLICK  ·  Place a block\n\nMOBILE CONTROLS\nLEFT PAD  ·  Move\nDRAG RIGHT SIDE  ·  Look around\nJUMP  ·  Jump\nMINE  ·  Break the targeted block\nPLACE  ·  Place a dirt block\n\nAim at a block before mining or placing.",
                 [{"label": "GOT IT", "action": "close", "primary": true}]
             )
         "settings":
