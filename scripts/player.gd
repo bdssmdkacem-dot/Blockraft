@@ -222,6 +222,10 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_B:
+			var world_b = get_parent()
+			if world_b and world_b.get("inventory") and world_b.inventory.has_method("try_upgrade"):
+				world_b.inventory.try_upgrade()
 		if event.keycode >= KEY_1 and event.keycode <= KEY_9:
 			var world = get_parent()
 			if world and world.get("inventory"):
