@@ -6,6 +6,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -23,6 +27,8 @@ jobs:
         run: godot --headless --path . res://scenes/main.tscn --quit-after 5
       - name: Verify main menu structure, interactions, and responsive layout
         run: godot --headless --path . --script res://tools/test_main_menu_acceptance.gd
+      - name: Verify gameplay world interactions and persistence
+        run: godot --headless --path . --script res://tools/test_gameplay_acceptance.gd
       - name: Install virtual display for rendered capture
         run: |
           apt-get update

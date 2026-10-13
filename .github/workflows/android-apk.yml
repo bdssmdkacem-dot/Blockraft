@@ -1,0 +1,130 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "export_presets.cfg"
+      - "project.godot"
+      - "scenes/main.tscn"
+      - "scripts/main.gd"
+      - "scripts/player.gd"
+      - "assets/**"
+      - ".github/workflows/android-apk.yml"
+  pull_request:
+    paths:
+      - "project.godot"
+      - "export_presets.cfg"
+      - "export_presets.cfg"
+      - "project.godot"
+      - "scenes/**"
+      - "scripts/**"
+      - "assets/**"
+      - "tools/**"
+      - "replica/**"
+      - "README.md"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  export-debug-apk:
+    name: Export installable Android debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Android export templates and SDK paths
+        run: |
+          export HOME=/root
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable" "$HOME/.config/godot"
+          if [ -f "$HOME/.local/share/godot/templates/4.4.1.stable/android_debug.apk" ]; then
+            cp -a "$HOME/.local/share/godot/templates/4.4.1.stable/." "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+          else
+            wget -q "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz" -O /tmp/godot-export-templates.tpz
+            mkdir -p /tmp/godot-export-templates
+            unzip -q /tmp/godot-export-templates.tpz -d /tmp/godot-export-templates
+            cp -a /tmp/godot-export-templates/templates/. "$HOME/.local/share/godot/export_templates/4.4.1.stable/"
+          fi
+          SETTINGS="$HOME/.config/godot/editor_settings-4.4.tres"
+          printf '%s\n' '[gd_resource type="EditorSettings" format=3]' '' '[resource]' \
+            'export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"' \
+            'export/android/android_sdk_path = "/usr/lib/android-sdk"' \
+            'export/android/debug_keystore = "/root/debug.keystore"' \
+            'export/android/debug_keystore_user = "androiddebugkey"' \
+            'export/android/debug_keystore_pass = "android"' \
+            'export/android/adb = "/usr/bin/adb"' \
+            'export/android/jarsigner = "/usr/bin/jarsigner"' \
+            'export/android/force_system_user = false' > "$SETTINGS"
+
+      - name: Install Android SDK packages and create debug keystore
+        env:
+          ANDROID_HOME: /usr/lib/android-sdk
+          ANDROID_SDK_ROOT: /usr/lib/android-sdk
+        run: |
+          set -eux
+          SDKMANAGER="$(find /usr/lib/android-sdk/cmdline-tools -type f -name sdkmanager | head -n 1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-33" "build-tools;33.0.2" "platforms;android-35" "build-tools;35.0.0"
+          if keytool -list -keystore /root/debug.keystore -storepass android -alias androiddebugkey >/dev/null 2>&1; then
+            echo "Reusing the valid debug keystore supplied by the build image."
+          else
+            rm -f /root/debug.keystore
+            keytool -genkeypair -v -keystore /root/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt
+          fi
+
+      - name: Verify Android SDK export prerequisites
+        env:
+          ANDROID_HOME: /usr/lib/android-sdk
+          ANDROID_SDK_ROOT: /usr/lib/android-sdk
+        run: |
+          set -eux
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          test -d "$ANDROID_HOME/platforms/android-33"
+          test -x "$ANDROID_HOME/build-tools/33.0.2/apksigner"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f -name apksigner -print
+          java -version
+          godot --headless --path . --editor --quit
+
+      - name: Import project and parse scripts
+        env:
+          HOME: /root
+          ANDROID_HOME: /usr/lib/android-sdk
+          ANDROID_SDK_ROOT: /usr/lib/android-sdk
+        run: godot --headless --path . --editor --quit
+
+      - name: Export Android APK
+        env:
+          HOME: /root
+          ANDROID_HOME: /usr/lib/android-sdk
+          ANDROID_SDK_ROOT: /usr/lib/android-sdk
+        run: |
+          mkdir -p build
+          godot --headless --verbose --path . --export-debug "Android" build/Blockraft-debug.apk
+
+      - name: Verify APK output
+        run: |
+          APK="build/Blockraft-debug.apk"
+          test -s "$APK"
+          unzip -t "$APK"
+          /usr/lib/android-sdk/build-tools/33.0.2/apksigner verify --verbose "$APK"
+          unzip -l "$APK" | grep -q 'AndroidManifest.xml'
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/'
+          unzip -l "$APK" | grep -q 'lib/armeabi-v7a/'
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockraft-android-debug-apk
+          path: build/Blockraft-debug.apk
+          if-no-files-found: error
+          retention-days: 14

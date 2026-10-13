@@ -65,12 +65,12 @@ func _apply_responsive_layout() -> void:
         (viewport_size.y - DESIGN_SIZE.y * ui_scale) * 0.5
     )
 
-    _place_scaled_control("TopBar", Vector2(38, 24), Vector2(1204, 48), ui_origin, ui_scale)
-    _place_scaled_control("GameTitle", Vector2(66, 110), Vector2(550, 96), ui_origin, ui_scale)
-    _place_scaled_control("Tagline", Vector2(73, 199), Vector2(490, 32), ui_origin, ui_scale)
-    _place_scaled_control("MainMenuPanel", Vector2(52, 245), Vector2(350, 278), ui_origin, ui_scale)
-    _place_scaled_control("FeatureStrip", Vector2(22, 538), Vector2(1236, 128), ui_origin, ui_scale)
-    _place_scaled_control("Footer", Vector2(0, 678), Vector2(1280, 26), ui_origin, ui_scale)
+    _place_scaled_control("TopBar", Vector2(42, 20), Vector2(1196, 42), ui_origin, ui_scale)
+    _place_scaled_control("GameTitle", Vector2(42, 58), Vector2(570, 86), ui_origin, ui_scale)
+    _place_scaled_control("Tagline", Vector2(58, 145), Vector2(500, 28), ui_origin, ui_scale)
+    _place_scaled_control("MainMenuPanel", Vector2(44, 184), Vector2(258, 252), ui_origin, ui_scale)
+    _place_scaled_control("FeatureStrip", Vector2(18, 480), Vector2(1244, 166), ui_origin, ui_scale)
+    _place_scaled_control("Footer", Vector2(0, 672), Vector2(1280, 32), ui_origin, ui_scale)
 
 
 func _place_scaled_control(node_name: String, design_position: Vector2, design_size: Vector2, origin: Vector2, ui_scale: float) -> void:
@@ -142,9 +142,9 @@ func _build_interface() -> void:
     var title := Label.new()
     title.name = "GameTitle"
     title.text = "BLOCKRAFT"
-    title.position = Vector2(66, 110)
-    title.size = Vector2(550, 96)
-    title.add_theme_font_size_override("font_size", 68)
+    title.position = Vector2(42, 58)
+    title.size = Vector2(570, 86)
+    title.add_theme_font_size_override("font_size", 72)
     title.add_theme_color_override("font_color", Color("#fff3c2"))
     title.add_theme_color_override("font_shadow_color", Color("#244d38"))
     title.add_theme_constant_override("shadow_offset_x", 4)
@@ -156,8 +156,8 @@ func _build_interface() -> void:
     var tagline := Label.new()
     tagline.name = "Tagline"
     tagline.text = "BUILD YOUR WORLD. FIND YOUR WILD."
-    tagline.position = Vector2(73, 199)
-    tagline.size = Vector2(490, 32)
+    tagline.position = Vector2(58, 145)
+    tagline.size = Vector2(500, 28)
     tagline.add_theme_font_size_override("font_size", 17)
     tagline.add_theme_color_override("font_color", Color("#f4ffec"))
     tagline.add_theme_color_override("font_shadow_color", Color("#214a35"))
@@ -167,22 +167,22 @@ func _build_interface() -> void:
 
     var panel := PanelContainer.new()
     panel.name = "MainMenuPanel"
-    panel.position = Vector2(52, 245)
-    panel.size = Vector2(350, 278)
+    panel.position = Vector2(44, 184)
+    panel.size = Vector2(258, 252)
     var panel_style := StyleBoxFlat.new()
-    panel_style.bg_color = Color(0.035, 0.095, 0.085, 0.94)
-    panel_style.border_color = Color("#c6d9a0")
+    panel_style.bg_color = Color(0.025, 0.045, 0.055, 0.88)
+    panel_style.border_color = Color("#7fe4a0")
     panel_style.set_border_width_all(2)
-    panel_style.set_corner_radius_all(10)
-    panel_style.content_margin_left = 20
-    panel_style.content_margin_right = 20
-    panel_style.content_margin_top = 18
-    panel_style.content_margin_bottom = 18
+    panel_style.set_corner_radius_all(5)
+    panel_style.content_margin_left = 12
+    panel_style.content_margin_right = 12
+    panel_style.content_margin_top = 12
+    panel_style.content_margin_bottom = 12
     panel.add_theme_stylebox_override("panel", panel_style)
     add_child(panel)
 
     menu_column = VBoxContainer.new()
-    menu_column.add_theme_constant_override("separation", 7)
+    menu_column.add_theme_constant_override("separation", 6)
     panel.add_child(menu_column)
     _add_menu_button("▶   PLAY WORLD", "play", true)
     _add_menu_button("▦   WORLDS", "worlds", false)
@@ -198,17 +198,29 @@ func _build_interface() -> void:
     status_label.custom_minimum_size = Vector2(0, 22)
     menu_column.add_child(status_label)
 
+    var footer_band := ColorRect.new()
+    footer_band.name = "FooterBand"
+    footer_band.anchor_left = 0.0
+    footer_band.anchor_top = 1.0
+    footer_band.anchor_right = 1.0
+    footer_band.anchor_bottom = 1.0
+    footer_band.offset_top = -70
+    footer_band.offset_bottom = 0
+    footer_band.color = Color("#07141c")
+    footer_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    add_child(footer_band)
+
     var footer := Label.new()
     footer.name = "Footer"
-    footer.text = "PROCEDURAL WORLDS     •     DYNAMIC BIOMES     •     MINE  /  CRAFT  /  BUILD     •     DAY & NIGHT"
+    footer.text = "◇  PROCEDURAL WORLDS     •     🌲  DYNAMIC BIOMES     •     ⛏  MINE / CRAFT / BUILD     •     ☀  DAY & NIGHT"
     footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
     footer.offset_left = 0
-    footer.offset_top = -42
+    footer.offset_top = -48
     footer.offset_right = 0
-    footer.offset_bottom = -16
+    footer.offset_bottom = -12
     footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    footer.add_theme_font_size_override("font_size", 11)
-    footer.add_theme_color_override("font_color", Color("#f1ffe8"))
+    footer.add_theme_font_size_override("font_size", 12)
+    footer.add_theme_color_override("font_color", Color("#e8f3ff"))
     footer.add_theme_color_override("font_shadow_color", Color("#17452f"))
     footer.add_theme_constant_override("shadow_offset_x", 2)
     footer.add_theme_constant_override("shadow_offset_y", 2)
@@ -222,8 +234,8 @@ func _build_feature_strip() -> void:
     strip.anchor_top = 0.0
     strip.anchor_right = 0.0
     strip.anchor_bottom = 0.0
-    strip.position = Vector2(22, 538)
-    strip.size = Vector2(1236, 128)
+    strip.position = Vector2(18, 480)
+    strip.size = Vector2(1244, 166)
     strip.add_theme_constant_override("separation", 8)
     add_child(strip)
     var features := [
@@ -236,7 +248,7 @@ func _build_feature_strip() -> void:
     ]
     for feature in features:
         var card := Control.new()
-        card.custom_minimum_size = Vector2(0, 120)
+        card.custom_minimum_size = Vector2(0, 160)
         card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         card.size_flags_vertical = Control.SIZE_EXPAND_FILL
         card.clip_contents = true
@@ -250,14 +262,14 @@ func _build_feature_strip() -> void:
         art.mouse_filter = Control.MOUSE_FILTER_IGNORE
         card.add_child(art)
         var shade := ColorRect.new()
-        shade.anchor_top = 0.57
+        shade.anchor_top = 0.70
         shade.anchor_right = 1.0
         shade.anchor_bottom = 1.0
         shade.color = Color(0.025, 0.055, 0.06, 0.84)
         shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
         card.add_child(shade)
         var content := VBoxContainer.new()
-        content.anchor_top = 0.59
+        content.anchor_top = 0.72
         content.anchor_right = 1.0
         content.anchor_bottom = 1.0
         content.offset_left = 4
@@ -272,14 +284,14 @@ func _build_feature_strip() -> void:
         heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
         heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        heading.add_theme_font_size_override("font_size", 11)
+        heading.add_theme_font_size_override("font_size", 12)
         heading.add_theme_color_override("font_color", Color("#fff5d9"))
         content.add_child(heading)
         var detail := Label.new()
         detail.text = feature.body
         detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
         detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        detail.add_theme_font_size_override("font_size", 9)
+        detail.add_theme_font_size_override("font_size", 10)
         detail.add_theme_color_override("font_color", Color("#e0e9db"))
         content.add_child(detail)
         var hit_area := Button.new()
@@ -299,10 +311,10 @@ func _build_feature_strip() -> void:
 func _add_menu_button(caption: String, action: String, primary: bool) -> void:
     var button := Button.new()
     button.text = caption
-    button.custom_minimum_size = Vector2(0, 43 if primary else 39)
+    button.custom_minimum_size = Vector2(0, 42 if primary else 39)
     button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     button.focus_mode = Control.FOCUS_ALL
-    button.add_theme_font_size_override("font_size", 16 if primary else 14)
+    button.add_theme_font_size_override("font_size", 15 if primary else 14)
     var normal := StyleBoxFlat.new()
     normal.bg_color = Color("#d8a94d") if primary else Color("#294e3e")
     normal.border_color = Color("#fff0b2") if primary else Color("#8ab878")

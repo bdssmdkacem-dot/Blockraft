@@ -10,11 +10,19 @@ The original PNG binary is not yet committed in this repository because raw-byte
 
 ## Main menu
 
-The project starts at `scenes/main_menu.tscn`. The menu is drawn in `scripts/main_menu.gd`, with a sunrise voxel landscape, primary actions, and a six-card feature strip for exploration, resources, crafting, survival, building, and planned multiplayer. Play World opens the prototype scene, while Worlds, How to Play, and Settings open informational dialogs. Only the Meadowlands is playable in this prototype. See [docs/MAIN_MENU_ACCEPTANCE.md](docs/MAIN_MENU_ACCEPTANCE.md) for required checks.
+The project starts at `scenes/main_menu.tscn`. `scripts/menu_world_3d.gd` builds the 3D voxel panorama in a dedicated SubViewport; `scripts/main_menu.gd` layers the Blockraft identity, primary actions, six feature cards, and bottom information band over it. The menu layout is being rebuilt against the owner-approved cinematic reference, not treated as a small cosmetic tweak. Play World opens the prototype scene, while Worlds, How to Play, and Settings open informational dialogs. Only the Meadowlands is playable in this prototype. See [docs/MAIN_MENU_ACCEPTANCE.md](docs/MAIN_MENU_ACCEPTANCE.md) for required checks.
 
 ## First 3D assets
 
 The first original OBJ models are in `assets/models/`: voxel oak tree, meadow cottage, crafting bench, grass block, and ore outcrop, with a shared MTL palette. Open [scenes/asset_gallery.tscn](scenes/asset_gallery.tscn) in Godot 4 to inspect the first five models. See [docs/FIRST_3D_ASSET_SET.md](docs/FIRST_3D_ASSET_SET.md). These are early source meshes, not visually accepted production assets; in-engine and mobile reviews remain required.
+
+## Replica-inspired development records
+
+The implementation is tracked through a project-specific recon, feature acceptance matrix, architecture notes, and test plan in [`replica/`](replica/recon.md). These are adapted workflow artifacts; the Claude-specific Replica Skill itself is not installed in the Godot project.
+
+## Android prototype
+
+The Android touch-control and debug APK-export changes are under review in [PR #4](https://github.com/bdssmdkacem-dot/Blockraft/pull/4). The CI export now explicitly installs Android SDK platform/build-tools packages and generates an ephemeral debug keystore before export. The workflow trigger covers workflow, README, scene, script, asset, and test changes. Do not treat an APK as available until the export workflow succeeds and uploads the artifact. The APK is for sideload testing only; it is not a Play Store release.
 
 ## Open in Godot
 
@@ -25,7 +33,7 @@ The first original OBJ models are in `assets/models/`: voxel oak tree, meadow co
 
 ## Honest status
 
-This is an early prototype, not a finished game or Android APK. It has not yet been validated in the Godot runtime. Mobile touch controls and production chunk meshing are still required.
+This is an early prototype, not a finished game or Android APK. Godot CI has passed headless import/launch and menu acceptance checks, and rendered screenshot capture is now available. The screenshot still needs direct comparison with the exact approved source image; Android touch controls/APK export are tracked separately, and production chunk meshing remains required.
 
 ## Acceptance gates
 
