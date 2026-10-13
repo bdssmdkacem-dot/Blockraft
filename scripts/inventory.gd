@@ -1,10 +1,38 @@
 extends Node
-## Hotbar inventory: tools + placeable blocks with stack counts.
+## Hotbar inventory with backpack tiers (Leather → Iron → Diamond).
+## Higher tiers raise max stack size per slot (capacity).
 
 signal selection_changed(index: int)
 signal counts_changed
+signal backpack_changed(tier_id: String)
 
 const SLOT_COUNT := 9
+
+const BACKPACKS := {
+	"leather": {
+		"label": "Leather Backpack",
+		"max_stack": 64,
+		"color": Color("#8b5a2b"),
+		"next": "iron",
+		"cost": {},
+	},
+	"iron": {
+		"label": "Iron Backpack",
+		"max_stack": 128,
+		"color": Color("#9aa3a8"),
+		"next": "diamond",
+		"cost": {"stone": 24, "wood": 12},
+	},
+	"diamond": {
+		"label": "Diamond Backpack",
+		"max_stack": 256,
+		"color": Color("#5ce1e6"),
+		"next": "",
+		"cost": {"stone": 40, "wood": 20, "dirt": 16},
+	},
+}
+
+var backpack_tier: String = "leather"
 
 var slots: Array = [
 	{"id": "tool_pickaxe", "label": "Pickaxe", "color": Color("#5ce1e6"), "count": 1, "is_tool": true},
@@ -18,6 +46,24 @@ var slots: Array = [
 	{"id": "", "label": "", "color": Color(0.2, 0.2, 0.2), "count": 0, "is_tool": false},
 ]
 var selected: int = 0
+
+func get_max_stack() -> int:
+	return int(BACKPACKS[backpack_tier]["max_stack"])
+
+func get_backpack_label() -> String:
+	return str(BACKPACKS[backpack_tier]["label"])
+
+func get_backpack_color() -> Color:
+	return BACKPACKS[backpack_tier]["color"]
+
+func get_next_tier() -> String:
+	return str(BACKPACKS[backpack_tier].get("next", ""))
+
+func get_upgrade_cost() -> Dictionary:
+	var nxt := get_next_tier()
+	if nxt == "":
+		return {}
+	return BACKPACKS[nxt]["cost"]
 
 func select(index: int) -> void:
 	selected = clampi(index, 0, SLOT_COUNT - 1)
@@ -45,25 +91,92 @@ func consume_place() -> bool:
 	counts_changed.emit()
 	return true
 
-func add_block(kind: String, amount: int = 1) -> void:
+func count_of(kind: String) -> int:
+	var total := 0
+	for s in slots:
+		if not s.get("is_tool", false) and str(s.get("id", "")) == kind:
+			total += int(s.get("count", 0))
+	return total
+
+func _remove_amount(kind: String, amount: int) -> bool:
+	if count_of(kind) < amount:
+		return false
+	var left := amount
 	for i in range(SLOT_COUNT):
 		var s: Dictionary = slots[i]
-		if not s.get("is_tool", false) and str(s.get("id", "")) == kind:
-			slots[i]["count"] = int(s.get("count", 0)) + amount
-			counts_changed.emit()
-			return
+		if s.get("is_tool", false) or str(s.get("id", "")) != kind:
+			continue
+		var have := int(s.get("count", 0))
+		var take: int = mini(have, left)
+		slots[i]["count"] = have - take
+		left -= take
+		if int(slots[i]["count"]) <= 0:
+			slots[i] = {"id": "", "label": "", "color": Color(0.2, 0.2, 0.2), "count": 0, "is_tool": false}
+		if left <= 0:
+			break
+	counts_changed.emit()
+	return left <= 0
+
+func can_upgrade() -> bool:
+	var nxt := get_next_tier()
+	if nxt == "":
+		return false
+	var cost: Dictionary = BACKPACKS[nxt]["cost"]
+	for kind in cost.keys():
+		if count_of(str(kind)) < int(cost[kind]):
+			return false
+	return true
+
+func try_upgrade() -> bool:
+	var nxt := get_next_tier()
+	if nxt == "":
+		return false
+	var cost: Dictionary = BACKPACKS[nxt]["cost"]
+	if not can_upgrade():
+		return false
+	for kind in cost.keys():
+		_remove_amount(str(kind), int(cost[kind]))
+	backpack_tier = nxt
+	backpack_changed.emit(backpack_tier)
+	counts_changed.emit()
+	return true
+
+func add_block(kind: String, amount: int = 1) -> void:
+	var max_stack := get_max_stack()
+	var remaining := amount
 	for i in range(SLOT_COUNT):
-		var s2: Dictionary = slots[i]
-		if str(s2.get("id", "")) == "" and not s2.get("is_tool", false):
+		if remaining <= 0:
+			break
+		var s: Dictionary = slots[i]
+		if s.get("is_tool", false) or str(s.get("id", "")) != kind:
+			continue
+		var have := int(s.get("count", 0))
+		var space: int = max_stack - have
+		if space <= 0:
+			continue
+		var add: int = mini(space, remaining)
+		slots[i]["count"] = have + add
+		remaining -= add
+	while remaining > 0:
+		var placed := false
+		for i in range(SLOT_COUNT):
+			var s2: Dictionary = slots[i]
+			if str(s2.get("id", "")) != "" or s2.get("is_tool", false):
+				continue
+			var add2: int = mini(max_stack, remaining)
 			slots[i] = {
 				"id": kind,
 				"label": kind.capitalize(),
 				"color": _color_for(kind),
-				"count": amount,
+				"count": add2,
 				"is_tool": false,
 			}
-			counts_changed.emit()
-			return
+			remaining -= add2
+			placed = true
+			break
+		if not placed:
+			break
+	counts_changed.emit()
 
 func _color_for(kind: String) -> Color:
 	match kind:
