@@ -121,7 +121,7 @@ func _setup_camera() -> void:
 	camera.near = 0.1
 	camera.far = 180.0
 	add_child(camera)
-	camera.look_at(Vector3(0.0, -10.0, -5.0), Vector3.UP)
+	camera.look_at(Vector3(0.0, 3.0, -5.0), Vector3.UP)
 	camera.make_current()
 
 func _build_landscape() -> void:
