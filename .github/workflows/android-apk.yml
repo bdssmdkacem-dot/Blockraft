@@ -113,9 +113,13 @@ jobs:
 
       - name: Verify APK output
         run: |
-          test -s build/Blockraft-debug.apk
-          file build/Blockraft-debug.apk
-          unzip -t build/Blockraft-debug.apk
+          APK="build/Blockraft-debug.apk"
+          test -s "$APK"
+          unzip -t "$APK"
+          /usr/lib/android-sdk/build-tools/33.0.2/apksigner verify --verbose "$APK"
+          unzip -l "$APK" | grep -q 'AndroidManifest.xml'
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/'
+          unzip -l "$APK" | grep -q 'lib/armeabi-v7a/'
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
