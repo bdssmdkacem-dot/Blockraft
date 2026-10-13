@@ -21,6 +21,7 @@ func _ready() -> void:
     _setup_lighting()
     _setup_camera()
     _build_landscape()
+    _build_horizon_layers()
     _build_river_and_bridge()
     _build_village()
     _build_forests()
@@ -309,3 +310,38 @@ func _build_landmark_details() -> void:
         var petal_color: Color = Color(flower["c"])
         _box(self, Vector3(fx, 0.34, fz), Vector3(0.16, 0.16, 0.16), petal_color, 0.55)
         _box(self, Vector3(fx, 0.23, fz), Vector3(0.08, 0.22, 0.08), MAT_LEAF_DARK)
+
+
+func _build_horizon_layers() -> void:
+    # Distinct far/mid mountain layers add atmospheric depth behind the valley.
+    # Their stepped silhouettes are intentionally irregular, not one flat wall.
+    var far_colors := [Color("#526e83"), Color("#5a7585"), Color("#647d88"), Color("#4b687c")]
+    for i in range(15):
+        var x := -36.0 + float(i) * 5.2
+        var h := 4.2 + float((i * 13) % 7) * 0.72
+        var z := -48.0 - float((i * 5) % 4) * 1.6
+        var color: Color = far_colors[i % far_colors.size()]
+        _box(self, Vector3(x, h * 0.42, z), Vector3(5.8, h * 0.84, 5.2), color)
+        _box(self, Vector3(x + 0.55, h * 0.84 + 0.42, z - 0.2), Vector3(3.5, 0.84, 4.1), color.lightened(0.12))
+        if i % 3 == 0:
+            _box(self, Vector3(x + 0.7, h * 0.84 + 0.88, z - 0.32), Vector3(1.35, 0.16, 2.0), Color("#d4d7c8"))
+
+    # Nearer ridgelets and warm rock faces create depth around the waterfall basin.
+    for i in range(10):
+        var x := -25.0 + float(i) * 5.4
+        var h := 2.0 + float((i * 3) % 5) * 0.48
+        var z := -28.0 - float(i % 3) * 1.1
+        _box(self, Vector3(x, h * 0.5, z), Vector3(4.8, h, 3.8), MAT_STONE)
+        _box(self, Vector3(x - 0.2, h + 0.16, z + 0.15), Vector3(3.7, 0.32, 3.1), MAT_GRASS)
+        if i % 2 == 0:
+            _box(self, Vector3(x + 1.05, h + 0.38, z + 0.2), Vector3(0.7, 0.14, 0.8), Color("#b6b5a2"))
+
+    # Tiny distant pines establish scale along the ridgeline without competing
+    # with the foreground trees or obscuring the castle silhouette.
+    for i in range(12):
+        var x := -23.0 + float(i) * 4.1
+        var z := -25.0 - float((i * 7) % 3) * 1.2
+        var scale := 0.42 + float(i % 3) * 0.09
+        _box(self, Vector3(x, 0.72 * scale, z), Vector3(0.18, 1.44, 0.18) * scale, MAT_WOOD)
+        _box(self, Vector3(x, 1.55 * scale, z), Vector3(0.95, 1.0, 0.95) * scale, MAT_LEAF_DARK)
+        _box(self, Vector3(x, 2.08 * scale, z), Vector3(0.68, 0.76, 0.68) * scale, MAT_LEAF)
