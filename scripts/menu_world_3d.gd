@@ -92,30 +92,38 @@ func _setup_environment() -> void:
 
 
 func _build_sky_backdrop() -> void:
-	# Parent the gradient to the camera so it always fills the view on desktop and Android.
-	# A world-space quad can sit above/below the camera frustum after pitch changes.
-	var gradient := Gradient.new()
-	gradient.set_color(0, Color("#244c82"))
-	gradient.add_point(0.42, Color("#6e8eaa"))
-	gradient.add_point(0.76, Color("#e5a66d"))
-	gradient.set_color(gradient.get_point_count() - 1, Color("#f7d6a0"))
-	var texture := GradientTexture2D.new()
-	texture.gradient = gradient
-	texture.fill_from = Vector2(0.5, 0.0)
-	texture.fill_to = Vector2(0.5, 1.0)
-	texture.width = 8
-	texture.height = 256
+	# A camera-facing shader gives a deterministic sunset gradient on the
+	# Compatibility renderer, while normal depth testing keeps the voxel world
+	# in front of the sky instead of painting over it.
 	var sky_mesh := MeshInstance3D.new()
 	sky_mesh.name = "SunsetGradientBackdrop"
 	var quad := QuadMesh.new()
 	quad.size = Vector2(400.0, 240.0)
 	sky_mesh.mesh = quad
 	sky_mesh.position = Vector3(0.0, 0.0, -150.0)
-	var sky_material := StandardMaterial3D.new()
-	sky_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	sky_material.albedo_texture = texture
-	sky_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-	sky_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var sky_shader := Shader.new()
+	sky_shader.code = """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never;
+void fragment() {
+	float t = clamp(UV.y, 0.0, 1.0);
+	vec3 deep_blue = vec3(0.035, 0.105, 0.235);
+	vec3 sky_blue = vec3(0.28, 0.46, 0.61);
+	vec3 sunset = vec3(0.90, 0.48, 0.25);
+	vec3 pale_gold = vec3(0.98, 0.82, 0.58);
+	vec3 color;
+	if (t < 0.42) {
+		color = mix(deep_blue, sky_blue, smoothstep(0.0, 0.42, t));
+	} else if (t < 0.76) {
+		color = mix(sky_blue, sunset, smoothstep(0.42, 0.76, t));
+	} else {
+		color = mix(sunset, pale_gold, smoothstep(0.76, 1.0, t));
+	}
+	ALBEDO = color;
+}
+"""
+	var sky_material := ShaderMaterial.new()
+	sky_material.shader = sky_shader
 	sky_mesh.material_override = sky_material
 	var camera := get_node_or_null("MenuWorldCamera") as Camera3D
 	if camera != null:
