@@ -1,0 +1,12 @@
+id,feature,status,acceptance,verification
+R-001,Deterministic voxel terrain,implemented,"A new world contains grass dirt and stone blocks with stable generation","Gameplay scene launches in Godot CI"
+R-002,First-person movement and collision,implemented,"Player moves on terrain and collides with solid blocks","Headless startup plus real-device/manual test pending"
+R-003,Look camera,implemented,"Desktop mouse and Android touch drag rotate the camera within pitch limits","Godot parse plus desktop/mobile manual test"
+R-004,Mine block,implemented,"Raycast removes the targeted block and persists the changed snapshot","Gameplay regression test pending"
+R-005,Place block,implemented,"Raycast places a block on the adjacent face and rejects overlap/player intersection","Gameplay regression test pending"
+R-006,World save and restore,implemented,"Saved block positions including deletions restore after restart","Persistence regression test pending"
+R-007,Android touch movement and actions,in_progress,"On-screen directional pad and jump/mine/place controls operate on touch devices","PR CI and real Android device test"
+R-008,Android debug APK export,in_progress,"GitHub Actions creates a valid installable APK for ARMv7 and ARM64","APK export workflow and unzip integrity check"
+R-009,Chunk meshing and face culling,planned,"World chunks render exposed faces with fewer scene nodes and collisions","Performance profile on target Android hardware"
+R-010,Approved reference parity,blocked,"Rendered menu is compared against the exact owner-approved PNG","Exact source PNG must be present for direct comparison"
+R-011,Real-device validation,planned,"Install APK, verify startup, touch, mining, building and save/load","Manual Android device checklist"

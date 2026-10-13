@@ -16,6 +16,14 @@ The project starts at `scenes/main_menu.tscn`. `scripts/menu_world_3d.gd` builds
 
 The first original OBJ models are in `assets/models/`: voxel oak tree, meadow cottage, crafting bench, grass block, and ore outcrop, with a shared MTL palette. Open [scenes/asset_gallery.tscn](scenes/asset_gallery.tscn) in Godot 4 to inspect the first five models. See [docs/FIRST_3D_ASSET_SET.md](docs/FIRST_3D_ASSET_SET.md). These are early source meshes, not visually accepted production assets; in-engine and mobile reviews remain required.
 
+## Replica-inspired development records
+
+The implementation is tracked through a project-specific recon, feature acceptance matrix, architecture notes, and test plan in [`replica/`](replica/recon.md). These are adapted workflow artifacts; the Claude-specific Replica Skill itself is not installed in the Godot project.
+
+## Android prototype
+
+The Android touch-control and debug APK-export changes are under review in [PR #4](https://github.com/bdssmdkacem-dot/Blockraft/pull/4). The CI export now explicitly installs Android SDK platform/build-tools packages and generates an ephemeral debug keystore before export. The workflow trigger covers workflow, README, scene, script, asset, and test changes. Do not treat an APK as available until the export workflow succeeds and uploads the artifact. The APK is for sideload testing only; it is not a Play Store release.
+
 ## Open in Godot
 
 1. Install Godot 4.x.
