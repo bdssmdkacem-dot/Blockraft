@@ -69,12 +69,14 @@ func _apply_responsive_layout() -> void:
     # secondary feature gallery/footer that cannot fit without harming play.
     if viewport_size.x < viewport_size.y:
         if top_bar != null:
+            top_bar.scale = Vector2.ONE
             top_bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
             top_bar.offset_left = 16
             top_bar.offset_top = 14
             top_bar.offset_right = -16
             top_bar.offset_bottom = 52
         if title != null:
+            title.scale = Vector2.ONE
             title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
             title.offset_left = 20
             title.offset_top = 62
@@ -83,6 +85,7 @@ func _apply_responsive_layout() -> void:
             title.add_theme_font_size_override("font_size", 42)
             title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
         if tagline != null:
+            tagline.scale = Vector2.ONE
             tagline.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
             tagline.offset_left = 16
             tagline.offset_top = 119
@@ -91,6 +94,7 @@ func _apply_responsive_layout() -> void:
             tagline.add_theme_font_size_override("font_size", 12)
             tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
         if menu_panel != null:
+            menu_panel.scale = Vector2.ONE
             menu_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
             menu_panel.offset_left = 18
             menu_panel.offset_top = 166
