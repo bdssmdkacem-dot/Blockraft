@@ -30,14 +30,17 @@ func _run_checks() -> void:
         _fail("one or more reference prototypes were not created", 4)
         return
 
-    for required in ["Head", "Torso_Teal", "Backpack_Main", "Backpack_Lid", "DiamondPickaxe"]:
+    for required in ["Head", "Torso_Teal", "Backpack_Main", "Backpack_Lid", "Backpack_Buckle", "Backpack_Side_Pocket", "Boot_Sole", "DiamondPickaxe"]:
         if protagonist.find_child(required, true, false) == null:
             _fail("protagonist missing required component: " + required, 5)
             return
-    for required in ["Left_Tower", "Right_Tower", "Gate_Lintel", "Gate_Threshold", "Tower_Crenellation"]:
+    for required in ["Left_Tower", "Right_Tower", "Gate_Lintel", "Gate_Threshold", "Tower_Crenellation", "Arch_Keystone", "Arch_Inner_Pillar", "Gate_Door_Leaf", "Gate_Door_Hinge"]:
         if castle.find_child(required, true, false) == null:
             _fail("castle gatehouse missing required component: " + required, 6)
             return
+    if castle.find_child("Back_Wall", true, false) != null:
+        _fail("gatehouse passage is blocked by the old backing wall", 10)
+        return
     for required in ["Water_Volume", "Water_Surface", "Water_Glint"]:
         if water.find_child(required, true, false) == null:
             _fail("water cube missing required layer: " + required, 7)
