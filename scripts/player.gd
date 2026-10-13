@@ -221,6 +221,20 @@ func _input(event: InputEvent) -> void:
 		pitch = clampf(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode >= KEY_1 and event.keycode <= KEY_9:
+			var world = get_parent()
+			if world and world.get("inventory"):
+				world.inventory.select(event.keycode - KEY_1)
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			var world_up = get_parent()
+			if world_up and world_up.get("inventory"):
+				world_up.inventory.cycle(-1)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			var world_dn = get_parent()
+			if world_dn and world_dn.get("inventory"):
+				world_dn.inventory.cycle(1)
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
 	if event is InputEventMouseButton and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
@@ -291,6 +305,16 @@ func _interact(place: bool) -> void:
 	if place:
 		var normal: Vector3 = hit.get("normal")
 		var target := pos + Vector3i(roundi(normal.x), roundi(normal.y), roundi(normal.z))
-		world.place_block(target, "dirt")
+		if world.has_method("try_place_selected"):
+			world.try_place_selected(target)
+		else:
+			world.place_block(target, "dirt")
 	else:
+		var kind := "dirt"
+		if collider.has_meta("block_kind"):
+			kind = str(collider.get_meta("block_kind"))
+		elif world.get("blocks") and world.blocks.has(pos):
+			kind = str(world.blocks[pos])
 		world.remove_block(pos)
+		if world.has_method("on_block_mined"):
+			world.on_block_mined(kind)
