@@ -194,7 +194,7 @@ func _build_floating_islands() -> void:
 	# Three distinct silhouettes across the upper panorama; keep their scale
 	# modest enough that none is clipped by the 16:9 menu camera.
 	_create_floating_island("FloatingIsland_Left", Vector3(-15.0, 8.4, -19.0), Vector3(5.8, 3.8, 4.0))
-	_create_floating_island("FloatingIsland_Center", Vector3(1.0, 11.0, -25.0), Vector3(7.2, 4.6, 4.8))
+	_create_floating_island("FloatingIsland", Vector3(1.0, 11.0, -25.0), Vector3(7.2, 4.6, 4.8))
 	_create_floating_island("FloatingIsland_Right", Vector3(15.0, 8.8, -18.0), Vector3(6.2, 4.0, 4.2))
 
 func _create_floating_island(island_name: String, origin: Vector3, dimensions: Vector3) -> void:
