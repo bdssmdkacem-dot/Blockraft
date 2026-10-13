@@ -272,7 +272,7 @@ func _refresh_backpack_ui() -> void:
 	for k in cost.keys():
 		parts.append("%d %s" % [int(cost[k]), str(k)])
 	var cost_txt := ", ".join(parts)
-	var can := inventory.can_upgrade()
+	var can: bool = inventory.can_upgrade()
 	upgrade_btn.disabled = not can
 	if can:
 		upgrade_btn.text = "Upgrade to %s (%s)" % [str(inventory.BACKPACKS[nxt]["label"]), cost_txt]
@@ -317,7 +317,7 @@ func get_selected_place_kind() -> String:
 	return inventory.get_place_kind()
 
 func try_place_selected(pos: Vector3i) -> bool:
-	var kind := inventory.get_place_kind()
+	var kind: String = inventory.get_place_kind()
 	if kind == "":
 		return false
 	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80:
