@@ -116,7 +116,6 @@ func _build_sky_backdrop() -> void:
 	sky_material.albedo_texture = texture
 	sky_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
 	sky_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	sky_material.no_depth_test = true
 	sky_mesh.material_override = sky_material
 	var camera := get_node_or_null("MenuWorldCamera") as Camera3D
 	if camera != null:
