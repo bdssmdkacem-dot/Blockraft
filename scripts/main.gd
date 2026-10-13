@@ -12,6 +12,8 @@ var player: CharacterBody3D
 var inventory: Node
 var hotbar_ui: HBoxContainer
 var hotbar_slots: Array = []
+var backpack_label: Label
+var upgrade_btn: Button
 
 func _ready() -> void:
 	world_root = Node3D.new()
@@ -137,10 +139,10 @@ func _setup_ui() -> void:
 	add_child(layer)
 	var label := Label.new()
 	if OS.has_feature("mobile"):
-		label.text = "BLOCKRAFT  |  1-9 / tap slots  •  Mine & Place"
+		label.text = "BLOCKRAFT  |  1-9 / tap slots  •  Mine & Place  •  Upgrade backpack"
 		label.add_theme_font_size_override("font_size", 13)
 	else:
-		label.text = "BLOCKRAFT  |  1-9 select  •  Scroll cycle  •  LMB mine  •  RMB place"
+		label.text = "BLOCKRAFT  |  1-9 select  •  Scroll  •  LMB mine  •  RMB place  •  B upgrade bag"
 		label.add_theme_font_size_override("font_size", 15)
 	label.position = Vector2(16, 14)
 	label.add_theme_color_override("font_color", Color("#f0f8e6"))
@@ -151,6 +153,8 @@ func _setup_ui() -> void:
 	_build_hotbar(layer)
 	inventory.selection_changed.connect(_refresh_hotbar)
 	inventory.counts_changed.connect(_refresh_hotbar)
+	inventory.backpack_changed.connect(_on_backpack_changed)
+	_build_backpack_ui(layer)
 	_refresh_hotbar()
 
 func _build_hotbar(layer: CanvasLayer) -> void:
@@ -212,7 +216,71 @@ func _layout_hotbar() -> void:
 	var vs := get_viewport().get_visible_rect().size
 	hotbar_ui.position = Vector2(vs.x * 0.5 - 260.0, vs.y - 78.0)
 
+func _build_backpack_ui(layer: CanvasLayer) -> void:
+	backpack_label = Label.new()
+	backpack_label.name = "BackpackLabel"
+	backpack_label.position = Vector2(16, 42)
+	backpack_label.add_theme_font_size_override("font_size", 14)
+	backpack_label.add_theme_color_override("font_shadow_color", Color("#1a2e22"))
+	backpack_label.add_theme_constant_override("shadow_offset_x", 1)
+	backpack_label.add_theme_constant_override("shadow_offset_y", 1)
+	layer.add_child(backpack_label)
+	upgrade_btn = Button.new()
+	upgrade_btn.name = "UpgradeBackpackBtn"
+	upgrade_btn.position = Vector2(16, 66)
+	upgrade_btn.custom_minimum_size = Vector2(280, 32)
+	upgrade_btn.add_theme_font_size_override("font_size", 13)
+	upgrade_btn.focus_mode = Control.FOCUS_NONE
+	upgrade_btn.pressed.connect(_on_upgrade_pressed)
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(0.08, 0.14, 0.12, 0.88)
+	normal.border_color = Color("#8b5a2b")
+	normal.set_border_width_all(2)
+	normal.set_corner_radius_all(6)
+	upgrade_btn.add_theme_stylebox_override("normal", normal)
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = Color(0.14, 0.22, 0.18, 0.95)
+	upgrade_btn.add_theme_stylebox_override("hover", hover)
+	upgrade_btn.add_theme_color_override("font_color", Color("#f0f8e6"))
+	layer.add_child(upgrade_btn)
+	_refresh_backpack_ui()
+
+func _on_backpack_changed(_tier: String = "") -> void:
+	_refresh_backpack_ui()
+	_refresh_hotbar()
+
+func _on_upgrade_pressed() -> void:
+	if inventory.try_upgrade():
+		_refresh_backpack_ui()
+		_refresh_hotbar()
+
+func _refresh_backpack_ui() -> void:
+	if backpack_label == null:
+		return
+	var max_stack: int = inventory.get_max_stack()
+	backpack_label.text = "Backpack: %s  |  max stack %d" % [inventory.get_backpack_label(), max_stack]
+	backpack_label.add_theme_color_override("font_color", inventory.get_backpack_color())
+	if upgrade_btn == null:
+		return
+	var nxt: String = inventory.get_next_tier()
+	if nxt == "":
+		upgrade_btn.text = "Backpack maxed (Diamond)"
+		upgrade_btn.disabled = true
+		return
+	var cost: Dictionary = inventory.get_upgrade_cost()
+	var parts: PackedStringArray = []
+	for k in cost.keys():
+		parts.append("%d %s" % [int(cost[k]), str(k)])
+	var cost_txt := ", ".join(parts)
+	var can := inventory.can_upgrade()
+	upgrade_btn.disabled = not can
+	if can:
+		upgrade_btn.text = "Upgrade to %s (%s)" % [str(inventory.BACKPACKS[nxt]["label"]), cost_txt]
+	else:
+		upgrade_btn.text = "Need: %s  [B]" % cost_txt
+
 func _refresh_hotbar(_arg = null) -> void:
+	_refresh_backpack_ui()
 	if hotbar_slots.is_empty():
 		return
 	for i in range(inventory.SLOT_COUNT):
@@ -238,7 +306,7 @@ func _refresh_hotbar(_arg = null) -> void:
 				icon.color = data.get("color", Color.GRAY)
 		if count:
 			if data.get("is_tool", false):
-				count.text = "⛏"
+				count.text = "Pick"
 			elif str(data.get("id", "")) == "":
 				count.text = ""
 			else:
