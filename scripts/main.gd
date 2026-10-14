@@ -35,55 +35,128 @@ func _ready() -> void:
 
 func _setup_materials() -> void:
 	var colors := {
-		"grass": Color(0.28, 0.62, 0.22),
-		"dirt": Color(0.38, 0.24, 0.13),
-		"stone": Color(0.42, 0.45, 0.48),
-		"wood": Color(0.42, 0.25, 0.11)
+		"grass": Color(0.30, 0.58, 0.24),
+		"dirt": Color(0.40, 0.26, 0.14),
+		"stone": Color(0.48, 0.50, 0.52),
+		"wood": Color(0.42, 0.25, 0.11),
+		"sand": Color(0.82, 0.72, 0.48),
+		"water": Color(0.22, 0.48, 0.72),
+		"gravel": Color(0.55, 0.52, 0.48),
+		"rock": Color(0.35, 0.36, 0.38),
 	}
 	for key in colors:
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = colors[key]
-		mat.roughness = 1.0
+		mat.roughness = 0.95 if key != "water" else 0.15
+		if key == "water":
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat.albedo_color.a = 0.72
+			mat.metallic = 0.15
 		block_materials[key] = mat
 
 func _generate_world() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 82417
+	var heights: Dictionary = {}
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var fx := float(x)
 			var fz := float(z)
-			var h := 4.0
-			h += sin(fx * 0.08) * cos(fz * 0.07) * 4.5
-			h += sin(fx * 0.18 + 1.7) * 2.2 + cos(fz * 0.16 + 0.4) * 2.0
-			h += sin(fx * 0.35) * cos(fz * 0.31) * 1.1
 			var dist := sqrt(fx * fx + fz * fz)
-			if dist < 12.0:
-				h = lerpf(h, 3.0, 1.0 - dist / 12.0)
-			var river := absf(sin(fx * 0.12) * 6.0 - fz * 0.15)
-			var is_river := river < 2.2 and dist > 8.0
-			if is_river:
-				h = mini(h, 1.5)
-			var height := int(round(h))
-			height = clampi(height, MIN_Y + 1, 22)
+			var h := 5.0
+			h += sin(fx * 0.06) * cos(fz * 0.055) * 5.5
+			h += sin(fx * 0.14 + 2.1) * 2.8 + cos(fz * 0.13 + 0.9) * 2.5
+			h += sin(fx * 0.28 + fz * 0.11) * 1.4
+			h += cos(fx * 0.05 - fz * 0.07) * 2.0
+			if dist < 14.0:
+				h = lerpf(h, 4.0, clampf(1.0 - dist / 14.0, 0.0, 1.0))
+			var river_path := fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0
+			var river_d := absf(river_path)
+			var tributary := fx - cos(fz * 0.13) * 5.0 + 10.0
+			var trib_d := absf(tributary)
+			var in_main_river := river_d < 2.8 and dist > 6.0
+			var in_trib := trib_d < 1.8 and dist > 10.0 and fz > 0.0
+			var in_river := in_main_river or in_trib
+			if in_river:
+				var carve := 2.8 - mini(river_d if in_main_river else trib_d, 2.8)
+				h = mini(h, 2.2 - carve * 0.35)
+			var lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0)
+			var in_lake := lake < 55.0
+			if in_lake:
+				h = mini(h, 1.8)
+			heights[Vector2i(x, z)] = {
+				"h": clampi(int(round(h)), MIN_Y + 1, 24),
+				"river": in_river or in_lake,
+				"river_d": mini(river_d if in_main_river else (trib_d if in_trib else 99.0), 99.0),
+				"lake": in_lake,
+			}
+	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+			var info: Dictionary = heights[Vector2i(x, z)]
+			var height: int = int(info["h"])
+			var is_river: bool = bool(info["river"])
+			var river_d: float = float(info["river_d"])
+			var max_dh := 0
+			for ox in [-1, 0, 1]:
+				for oz in [-1, 0, 1]:
+					if ox == 0 and oz == 0:
+						continue
+					var nkey := Vector2i(x + ox, z + oz)
+					if heights.has(nkey):
+						max_dh = maxi(max_dh, absi(height - int(heights[nkey]["h"])))
+			var steep := max_dh >= 3
+			var water_level := 2
 			for y in range(MIN_Y, height + 1):
 				var kind := "stone"
-				if is_river and y <= 1:
+				if is_river and y < water_level:
 					kind = "dirt"
 				elif y == height:
-					kind = "grass" if not is_river else "dirt"
-				elif y >= height - 2:
-					kind = "dirt"
+					if is_river:
+						kind = "sand" if river_d < 3.5 or bool(info["lake"]) else "dirt"
+					elif steep:
+						kind = "rock" if height >= 7 else "stone"
+					elif height <= 3 and river_d < 6.0:
+						kind = "sand"
+					else:
+						kind = "grass"
+				elif y >= height - 1:
+					if is_river or (height <= 3 and river_d < 6.0):
+						kind = "sand"
+					elif steep:
+						kind = "stone"
+					else:
+						kind = "dirt"
+				elif y >= height - 3:
+					kind = "dirt" if not steep else "stone"
+				else:
+					kind = "stone"
 				blocks[Vector3i(x, y, z)] = kind
-			if not is_river and height >= 3 and abs(x) > 4 and abs(z) > 4:
-				var tree_chance := 0.018
-				if sin(fx * 0.2) * cos(fz * 0.2) > 0.35:
-					tree_chance = 0.045
+			if is_river:
+				for wy in range(height + 1, water_level + 1):
+					blocks[Vector3i(x, wy, z)] = "water"
+				if height < water_level:
+					blocks[Vector3i(x, water_level, z)] = "water"
+			if not is_river and river_d < 4.2 and height <= water_level + 1 and rng.randf() < 0.35:
+				blocks[Vector3i(x, height, z)] = "gravel"
+			if not is_river and height >= 10 and steep and rng.randf() < 0.12:
+				var stack := rng.randi_range(2, 5)
+				for dy in range(1, stack + 1):
+					blocks[Vector3i(x, height + dy, z)] = "rock" if dy > 1 else "stone"
+			if not is_river and height >= 5 and height <= 12 and rng.randf() < 0.006:
+				for bx in range(-1, 2):
+					for bz in range(-1, 2):
+						if rng.randf() < 0.55:
+							var bp := Vector3i(x + bx, height + 1, z + bz)
+							if not blocks.has(bp):
+								blocks[bp] = "rock" if rng.randf() < 0.5 else "stone"
+			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5:
+				var tree_chance := 0.015
+				if sin(float(x) * 0.17) * cos(float(z) * 0.19) > 0.4:
+					tree_chance = 0.04
+				if river_d < 8.0:
+					tree_chance *= 0.4
 				if rng.randf() < tree_chance:
 					_make_tree(x, height + 1, z, rng)
-			if not is_river and height >= 8 and rng.randf() < 0.008:
-				for dy in range(1, 4):
-					blocks[Vector3i(x, height + dy, z)] = "stone"
 
 func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> void:
 	var trunk := 3 + (rng.randi_range(0, 2) if rng else 1)
@@ -148,7 +221,7 @@ func save_world() -> void:
 		serialized.append({"x": p.x, "y": p.y, "z": p.z, "kind": blocks[p]})
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
-		file.store_string(JSON.stringify({"version": 1, "blocks": serialized}))
+		file.store_string(JSON.stringify({"version": 2, "blocks": serialized}))
 
 func _load_world_snapshot() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
@@ -160,6 +233,9 @@ func _load_world_snapshot() -> void:
 	var parsed = JSON.parse_string(file.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("blocks") or typeof(parsed["blocks"]) != TYPE_ARRAY:
 		push_warning("Saved world format is invalid; using generated terrain.")
+		return
+	if int(parsed.get("version", 1)) < 2:
+		push_warning("Old world save detected; regenerating realistic terrain.")
 		return
 	var restored: Dictionary = {}
 	for entry in parsed["blocks"]:
