@@ -1,5 +1,5 @@
 extends Node
-## Mining / placing / combat feedback: debris + procedural SFX.
+## Mining / placing feedback: debris particles with gravity + procedural SFX.
 
 const BLOCK_COLORS := {
 	"grass": Color(0.30, 0.58, 0.24),
@@ -44,7 +44,7 @@ func _ready() -> void:
 	_place_stream = _make_place_wav()
 	_swing_stream = _make_swing_wav()
 	_hit_stream = _make_hit_wav()
-	for i in range(4):
+	for i in range(6):
 		var p := AudioStreamPlayer3D.new()
 		p.max_distance = 48.0
 		p.unit_size = 10.0
@@ -54,51 +54,77 @@ func _ready() -> void:
 		_players.append(p)
 
 func play_break(world_pos: Vector3, kind: String) -> void:
-	_spawn_particles(world_pos, kind, 14, 3.2)
-	var stream: AudioStreamWAV = _dig_streams.get(kind, _dig_streams["dirt"])
-	_play_at(world_pos, stream, 0.0)
+	_spawn_debris(world_pos + Vector3(0.5, 0.5, 0.5), kind, 14)
+	var stream: AudioStreamWAV = _dig_streams.get(kind, _dig_streams.get("stone"))
+	_play_at(world_pos, stream, randf_range(0.9, 1.12))
 
 func play_place(world_pos: Vector3, kind: String) -> void:
-	_spawn_particles(world_pos, kind, 6, 1.4)
-	_play_at(world_pos, _place_stream, -2.0)
+	_spawn_debris(world_pos + Vector3(0.5, 0.5, 0.5), kind, 6)
+	_play_at(world_pos, _place_stream, randf_range(0.95, 1.1))
 
 func play_swing(world_pos: Vector3) -> void:
-	_play_at(world_pos, _swing_stream, -4.0)
+	_play_at(world_pos, _swing_stream, randf_range(0.92, 1.08))
 
-func play_combat_hit(world_pos: Vector3) -> void:
-	_spawn_particles(world_pos, "stone", 8, 2.0)
-	_play_at(world_pos, _hit_stream, -1.0)
+func play_hit(world_pos: Vector3) -> void:
+	_play_at(world_pos, _hit_stream, randf_range(0.9, 1.1))
 
-func _play_at(world_pos: Vector3, stream: AudioStream, volume_db: float) -> void:
-	if _players.is_empty() or stream == null:
+func _spawn_debris(origin: Vector3, kind: String, amount: int) -> void:
+	var particles := CPUParticles3D.new()
+	particles.emitting = true
+	particles.one_shot = true
+	particles.explosiveness = 0.92
+	particles.amount = amount
+	particles.lifetime = 0.85
+	particles.visibility_aabb = AABB(Vector3(-3, -3, -3), Vector3(6, 6, 6))
+	particles.direction = Vector3(0, 1, 0)
+	particles.spread = 55.0
+	particles.initial_velocity_min = 2.2
+	particles.initial_velocity_max = 5.5
+	particles.gravity = Vector3(0, -14.0, 0)
+	particles.damping_min = 1.5
+	particles.damping_max = 3.5
+	particles.scale_amount_min = 0.08
+	particles.scale_amount_max = 0.18
+	particles.angular_velocity_min = -180.0
+	particles.angular_velocity_max = 180.0
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = BLOCK_COLORS.get(kind, Color(0.5, 0.5, 0.5))
+	mat.roughness = 0.9
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.14, 0.14, 0.14)
+	particles.mesh = mesh
+	particles.material_override = mat
+	add_child(particles)
+	particles.global_position = origin
+	var timer := get_tree().create_timer(1.2)
+	timer.timeout.connect(func():
+		if is_instance_valid(particles):
+			particles.queue_free()
+	)
+
+func _play_at(pos: Vector3, stream: AudioStream, pitch: float) -> void:
+	if stream == null or _players.is_empty():
 		return
 	var p: AudioStreamPlayer3D = _players[_pool_index]
 	_pool_index = (_pool_index + 1) % _players.size()
-	p.stop()
 	p.stream = stream
-	p.volume_db = volume_db
-	p.pitch_scale = randf_range(0.92, 1.08)
-	p.global_position = world_pos + Vector3(0.5, 0.5, 0.5)
+	p.pitch_scale = pitch
+	p.global_position = pos
 	p.play()
 
-func _make_dig_wav(duration: float, noise_amt: float, base_hz: float, volume: float) -> AudioStreamWAV:
-	var n := int(duration * SAMPLE_RATE)
+func _make_dig_wav(dur: float, noise_amt: float, tone_hz: float, volume: float) -> AudioStreamWAV:
+	var n := int(dur * SAMPLE_RATE)
 	var data := PackedByteArray()
 	data.resize(n * 2)
 	var prev := 0.0
 	for i in range(n):
-		var t := float(i) / SAMPLE_RATE
-		var env := exp(-t * 18.0)
-		var body := sin(TAU * base_hz * t) * 0.35 * env
-		body += sin(TAU * base_hz * 1.5 * t) * 0.15 * env
+		var tt := float(i) / SAMPLE_RATE
+		var env := exp(-tt * (8.0 / maxf(dur, 0.05)))
 		var noise := (randf() * 2.0 - 1.0)
-		prev = prev * 0.65 + noise * 0.35
-		var grit := prev * noise_amt * env
-		var tick := 0.0
-		if t < 0.012:
-			tick = sin(TAU * 1800.0 * t) * (1.0 - t / 0.012) * 0.4
-		var sample := clampf((body + grit + tick) * volume, -1.0, 1.0)
-		var s16 := int(sample * 32767.0)
+		prev = prev * 0.6 + noise * 0.4
+		var tone := sin(TAU * tone_hz * tt) * 0.35
+		var sample := clampf((prev * noise_amt + tone) * env * volume, -1.0, 1.0)
+		var s16 := int(sample * 30000.0)
 		data[i * 2] = s16 & 0xFF
 		data[i * 2 + 1] = (s16 >> 8) & 0xFF
 	var wav := AudioStreamWAV.new()
@@ -109,35 +135,17 @@ func _make_dig_wav(duration: float, noise_amt: float, base_hz: float, volume: fl
 	return wav
 
 func _make_place_wav() -> AudioStreamWAV:
-	var n := int(0.07 * SAMPLE_RATE)
-	var data := PackedByteArray()
-	data.resize(n * 2)
-	for i in range(n):
-		var t := float(i) / SAMPLE_RATE
-		var env := exp(-t * 28.0)
-		var sample := sin(TAU * 380.0 * t) * 0.4 * env + sin(TAU * 520.0 * t) * 0.2 * env
-		sample += (randf() * 2.0 - 1.0) * 0.08 * env
-		sample = clampf(sample * 0.7, -1.0, 1.0)
-		var s16 := int(sample * 32767.0)
-		data[i * 2] = s16 & 0xFF
-		data[i * 2 + 1] = (s16 >> 8) & 0xFF
-	var wav := AudioStreamWAV.new()
-	wav.format = AudioStreamWAV.FORMAT_16_BITS
-	wav.mix_rate = SAMPLE_RATE
-	wav.stereo = false
-	wav.data = data
-	return wav
+	return _make_dig_wav(0.08, 0.35, 160.0, 0.55)
 
 func _make_swing_wav() -> AudioStreamWAV:
 	var n := int(0.12 * SAMPLE_RATE)
 	var data := PackedByteArray()
 	data.resize(n * 2)
 	for i in range(n):
-		var t := float(i) / SAMPLE_RATE
-		var env := exp(-t * 22.0) * (1.0 if t > 0.01 else t / 0.01)
-		var whoosh := (randf() * 2.0 - 1.0) * 0.25 * env
-		whoosh += sin(TAU * (400.0 - t * 800.0) * t) * 0.15 * env
-		var s16 := int(clampf(whoosh, -1.0, 1.0) * 28000.0)
+		var tt := float(i) / SAMPLE_RATE
+		var env := exp(-tt * 22.0)
+		var s := sin(TAU * (90.0 + tt * 400.0) * tt) * 0.4 * env
+		var s16 := int(clampf(s, -1.0, 1.0) * 28000.0)
 		data[i * 2] = s16 & 0xFF
 		data[i * 2 + 1] = (s16 >> 8) & 0xFF
 	var wav := AudioStreamWAV.new()
@@ -148,52 +156,4 @@ func _make_swing_wav() -> AudioStreamWAV:
 	return wav
 
 func _make_hit_wav() -> AudioStreamWAV:
-	var n := int(0.1 * SAMPLE_RATE)
-	var data := PackedByteArray()
-	data.resize(n * 2)
-	var prev := 0.0
-	for i in range(n):
-		var t := float(i) / SAMPLE_RATE
-		var env := exp(-t * 25.0)
-		var body := sin(TAU * 180.0 * t) * 0.45 * env + sin(TAU * 90.0 * t) * 0.3 * env
-		var noise := (randf() * 2.0 - 1.0)
-		prev = prev * 0.5 + noise * 0.5
-		var sample := clampf((body + prev * 0.3 * env) * 0.9, -1.0, 1.0)
-		var s16 := int(sample * 32767.0)
-		data[i * 2] = s16 & 0xFF
-		data[i * 2 + 1] = (s16 >> 8) & 0xFF
-	var wav := AudioStreamWAV.new()
-	wav.format = AudioStreamWAV.FORMAT_16_BITS
-	wav.mix_rate = SAMPLE_RATE
-	wav.stereo = false
-	wav.data = data
-	return wav
-
-func _spawn_particles(world_pos: Vector3, kind: String, amount: int, speed: float) -> void:
-	var particles := CPUParticles3D.new()
-	particles.emitting = false
-	particles.one_shot = true
-	particles.explosiveness = 0.95
-	particles.amount = amount
-	particles.lifetime = 0.55
-	particles.direction = Vector3(0, 1, 0)
-	particles.spread = 55.0
-	particles.initial_velocity_min = speed * 0.6
-	particles.initial_velocity_max = speed
-	particles.gravity = Vector3(0, -12.0, 0)
-	particles.scale_amount_min = 0.08
-	particles.scale_amount_max = 0.18
-	particles.mesh = BoxMesh.new()
-	(particles.mesh as BoxMesh).size = Vector3(0.14, 0.14, 0.14)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = BLOCK_COLORS.get(kind, Color(0.5, 0.5, 0.5))
-	mat.roughness = 1.0
-	particles.material_override = mat
-	particles.global_position = world_pos + Vector3(0.5, 0.5, 0.5)
-	var host := get_tree().current_scene
-	if host == null:
-		host = get_parent()
-	host.add_child(particles)
-	particles.emitting = true
-	var timer := get_tree().create_timer(0.7)
-	timer.timeout.connect(particles.queue_free)
+	return _make_dig_wav(0.1, 0.5, 120.0, 0.7)
