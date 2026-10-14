@@ -1,17 +1,23 @@
 extends CharacterBody3D
-## Third-person voxel player with jointed limbs and improved mobile controls.
+## Third-person voxel player — smooth movement, look, and mobile controls.
 
-const SPEED := 7.0
-const JUMP_VELOCITY := 8.2
+const SPEED := 7.2
+const ACCEL := 28.0
+const DECEL := 32.0
+const AIR_ACCEL := 12.0
+const JUMP_VELOCITY := 8.4
 const REACH := 7.0
-const CAMERA_SENSITIVITY := 0.0025
-const TOUCH_LOOK_SENSITIVITY := 0.0048
-const TOUCH_LOOK_SMOOTH := 0.55
-const TOUCH_JOY_RADIUS := 88.0
-const TOUCH_JOY_DEADZONE := 0.12
+const CAMERA_SENSITIVITY := 0.0022
+const TOUCH_LOOK_SENSITIVITY := 0.0036
+const TOUCH_LOOK_SMOOTH := 0.28
+const TOUCH_JOY_RADIUS := 92.0
+const TOUCH_JOY_DEADZONE := 0.08
+const TOUCH_MOVE_SMOOTH := 14.0
 const CAMERA_DISTANCE := 4.2
 const CAMERA_MIN_PITCH := deg_to_rad(-55.0)
 const CAMERA_MAX_PITCH := deg_to_rad(25.0)
+const LOOK_SMOOTH := 18.0
+const CAM_FOLLOW := 14.0
 
 const MAT_SKIN := Color("#f0c4a0")
 const MAT_TEAL := Color("#2bb8a8")
@@ -29,6 +35,11 @@ var yaw := 0.0
 var pitch := deg_to_rad(-18.0)
 var touch_controls_enabled := false
 var touch_move := Vector2.ZERO
+var _touch_move_target := Vector2.ZERO
+var _yaw_target := 0.0
+var _pitch_target := deg_to_rad(-18.0)
+var _cam_pos := Vector3.ZERO
+var _cam_ready := false
 var touch_jump_pressed := false
 var joystick_active := false
 var joystick_origin := Vector2.ZERO
@@ -79,6 +90,8 @@ func _ready() -> void:
 	_build_character_body()
 	_build_third_person_camera()
 	_init_footsteps()
+	_yaw_target = yaw
+	_pitch_target = pitch
 	touch_controls_enabled = OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
 	if touch_controls_enabled:
 		_build_touch_controls()
@@ -180,22 +193,31 @@ func _build_third_person_camera() -> void:
 	camera.far = 500.0
 	add_child(camera)
 	camera.make_current()
-	_update_camera_transform()
+	_update_camera_transform(0.016)
 
-func _update_camera_transform() -> void:
+func _update_camera_transform(delta: float = 0.016) -> void:
 	if camera == null:
 		return
 	var pivot := global_position + Vector3(0.0, 1.35, 0.0)
+	yaw = lerp_angle(yaw, _yaw_target, 1.0 - exp(-LOOK_SMOOTH * delta))
+	pitch = lerpf(pitch, _pitch_target, 1.0 - exp(-LOOK_SMOOTH * delta))
+	pitch = clampf(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 	var basis := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch)
+	var desired := pivot + basis * Vector3(0.0, 0.0, CAMERA_DISTANCE)
 	var dist := CAMERA_DISTANCE
 	if is_inside_tree() and get_world_3d():
-		var desired := pivot + basis * Vector3(0.0, 0.0, CAMERA_DISTANCE)
 		var query := PhysicsRayQueryParameters3D.create(pivot, desired)
 		query.exclude = [self]
 		var hit := get_world_3d().direct_space_state.intersect_ray(query)
 		if hit:
 			dist = clampf(pivot.distance_to(hit.position) - 0.25, 1.2, CAMERA_DISTANCE)
-	camera.global_position = pivot + basis * Vector3(0.0, 0.0, dist)
+	var target_cam := pivot + basis * Vector3(0.0, 0.0, dist)
+	if not _cam_ready:
+		_cam_pos = target_cam
+		_cam_ready = true
+	else:
+		_cam_pos = _cam_pos.lerp(target_cam, 1.0 - exp(-CAM_FOLLOW * delta))
+	camera.global_position = _cam_pos
 	camera.look_at(pivot, Vector3.UP)
 
 func _build_touch_controls() -> void:
@@ -255,8 +277,7 @@ func _layout_touch_controls() -> void:
 	if _action_column == null:
 		return
 	var vs := get_viewport().get_visible_rect().size
-	var margin := 20.0
-	_action_column.position = Vector2(vs.x - 170.0 - margin, vs.y - 250.0 - margin)
+	_action_column.position = Vector2(vs.x - 190.0, vs.y - 270.0)
 
 func _make_touch_button(caption: String, minimum_size: Vector2) -> Button:
 	var button := Button.new()
@@ -311,6 +332,7 @@ func _input(event: InputEvent) -> void:
 				joystick_origin = touch.position
 				if _joy_base_ui:
 					_joy_base_ui.position = joystick_origin - Vector2(TOUCH_JOY_RADIUS, TOUCH_JOY_RADIUS)
+				_touch_move_target = Vector2.ZERO
 				touch_move = Vector2.ZERO
 				_update_joystick_knob()
 			else:
@@ -320,7 +342,7 @@ func _input(event: InputEvent) -> void:
 			if touch.index == joystick_touch_index:
 				joystick_active = false
 				joystick_touch_index = -1
-				touch_move = Vector2.ZERO
+				_touch_move_target = Vector2.ZERO
 				_update_joystick_knob()
 			if touch.index == look_touch_index:
 				look_touch_index = -1
@@ -333,17 +355,17 @@ func _input(event: InputEvent) -> void:
 				delta = delta.normalized() * TOUCH_JOY_RADIUS
 			var raw := Vector2(delta.x / TOUCH_JOY_RADIUS, delta.y / TOUCH_JOY_RADIUS)
 			if raw.length() < TOUCH_JOY_DEADZONE:
-				touch_move = Vector2.ZERO
+				_touch_move_target = Vector2.ZERO
 			else:
 				var len_v := raw.length()
-				touch_move = raw.normalized() * clampf((len_v - TOUCH_JOY_DEADZONE) / (1.0 - TOUCH_JOY_DEADZONE), 0.0, 1.0)
+				_touch_move_target = raw.normalized() * clampf((len_v - TOUCH_JOY_DEADZONE) / (1.0 - TOUCH_JOY_DEADZONE), 0.0, 1.0)
 			_update_joystick_knob()
 		elif drag.index == look_touch_index or (look_touch_index < 0 and drag.position.x >= vs.x * 0.5 and drag.position.x < action_zone_x):
 			_look_accum += drag.relative
 			var look := _look_accum * TOUCH_LOOK_SMOOTH
 			_look_accum *= (1.0 - TOUCH_LOOK_SMOOTH)
-			yaw -= look.x * TOUCH_LOOK_SENSITIVITY
-			pitch = clampf(pitch - look.y * TOUCH_LOOK_SENSITIVITY, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+			_yaw_target -= look.x * TOUCH_LOOK_SENSITIVITY
+			_pitch_target = clampf(_pitch_target - look.y * TOUCH_LOOK_SENSITIVITY, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -369,8 +391,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		yaw -= event.relative.x * CAMERA_SENSITIVITY
-		pitch = clampf(pitch - event.relative.y * CAMERA_SENSITIVITY, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+		_yaw_target -= event.relative.x * CAMERA_SENSITIVITY
+		_pitch_target = clampf(_pitch_target - event.relative.y * CAMERA_SENSITIVITY, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_interact(false)
@@ -481,7 +503,7 @@ func _play_land() -> void:
 func _physics_process(delta: float) -> void:
 	if camera == null:
 		return
-	_update_camera_transform()
+	_update_camera_transform(delta)
 	if _mine_held:
 		_mine_cooldown -= delta
 		if _mine_cooldown <= 0.0:
@@ -489,13 +511,17 @@ func _physics_process(delta: float) -> void:
 			_interact(false)
 	else:
 		_mine_cooldown = 0.0
+	touch_move = touch_move.lerp(_touch_move_target, 1.0 - exp(-TOUCH_MOVE_SMOOTH * delta))
+	if _touch_move_target == Vector2.ZERO and touch_move.length() < 0.02:
+		touch_move = Vector2.ZERO
+	_update_joystick_knob()
 	if is_on_floor():
-		coyote_time = 0.12
+		coyote_time = 0.14
 	else:
 		coyote_time = maxf(0.0, coyote_time - delta)
 		velocity.y -= gravity * delta
 	if Input.is_key_pressed(KEY_SPACE) or touch_jump_pressed:
-		jump_buffer = 0.15
+		jump_buffer = 0.16
 	else:
 		jump_buffer = maxf(0.0, jump_buffer - delta)
 	if jump_buffer > 0.0 and coyote_time > 0.0:
@@ -505,12 +531,21 @@ func _physics_process(delta: float) -> void:
 		touch_jump_pressed = false
 		_jump_stretch = 1.0
 		_play_jump()
-	var input_dir := Vector2(float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)), float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))) + touch_move
+	var input_dir := Vector2(
+		float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
+		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
+	) + touch_move
 	input_dir = input_dir.limit_length(1.0)
 	var basis := Basis(Vector3.UP, yaw)
-	var direction := (basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-	velocity.x = direction.x * SPEED
-	velocity.z = direction.z * SPEED
+	var direction := basis * Vector3(input_dir.x, 0, input_dir.y)
+	if direction.length() > 0.001:
+		direction = direction.normalized()
+	var target_vel := direction * SPEED
+	var rate := ACCEL if is_on_floor() else AIR_ACCEL
+	if direction.length() < 0.05:
+		rate = DECEL if is_on_floor() else AIR_ACCEL * 0.6
+	velocity.x = move_toward(velocity.x, target_vel.x, rate * delta)
+	velocity.z = move_toward(velocity.z, target_vel.z, rate * delta)
 	move_and_slide()
 	if is_on_floor() and not _was_on_floor:
 		_land_squash = 1.0
