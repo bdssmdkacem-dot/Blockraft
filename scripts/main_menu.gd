@@ -20,7 +20,6 @@ func _ready() -> void:
 	_build_menu_buttons()
 	_build_feature_strip()
 	_build_footer_bar()
-	_build_slogan()
 	_apply_responsive_layout()
 	if _ambient_player:
 		_ambient_player.play()
@@ -187,13 +186,7 @@ func _build_menu_buttons() -> void:
 	_add_menu_button("⚙  Settings", "settings", false)
 	_add_menu_button("📖  Help", "help", false)
 	_add_menu_button("⏻  Exit", "exit", false)
-	status_label = Label.new()
-	status_label.name = "StatusLabel"
-	status_label.text = ""
-	status_label.add_theme_font_size_override("font_size", 12)
-	status_label.add_theme_color_override("font_color", Color("#c8e0d0"))
-	status_label.position = Vector2(40, 360)
-	add_child(status_label)
+	status_label = null
 
 func _add_menu_button(caption: String, action: String, primary: bool) -> void:
 	var button := Button.new()
@@ -234,20 +227,6 @@ func _add_menu_button(caption: String, action: String, primary: bool) -> void:
 	)
 	button.mouse_entered.connect(_play_hover)
 	menu_column.add_child(button)
-
-func _build_slogan() -> void:
-	var slogan := Label.new()
-	slogan.name = "Slogan"
-	slogan.text = "Your World\nYour Adventure"
-	slogan.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	slogan.add_theme_font_size_override("font_size", 22)
-	slogan.add_theme_color_override("font_color", Color("#f8f0e0"))
-	slogan.add_theme_color_override("font_shadow_color", Color("#1a1008"))
-	slogan.add_theme_constant_override("shadow_offset_x", 2)
-	slogan.add_theme_constant_override("shadow_offset_y", 2)
-	slogan.position = Vector2(980, 400)
-	slogan.size = Vector2(260, 70)
-	add_child(slogan)
 
 func _build_feature_strip() -> void:
 	var strip := HBoxContainer.new()
@@ -338,7 +317,6 @@ func _apply_responsive_layout() -> void:
 	var panel := get_node_or_null("MainMenuPanel") as Control
 	var strip := get_node_or_null("FeatureStrip") as Control
 	var footer := get_node_or_null("Footer") as Control
-	var slogan := get_node_or_null("Slogan") as Label
 	if title:
 		title.position = Vector2(36 * sx, 28 * sy)
 		title.add_theme_font_size_override("font_size", int(52 * s))
@@ -353,8 +331,6 @@ func _apply_responsive_layout() -> void:
 	if footer:
 		footer.position = Vector2(24 * sx, vs.y - 55 * sy)
 		footer.size = Vector2(vs.x - 48 * sx, 48 * sy)
-	if slogan:
-		slogan.position = Vector2(vs.x - 300 * sx, vs.y - 320 * sy)
 	var backdrop := get_node_or_null("ThreeDMenuBackdrop") as SubViewportContainer
 	if backdrop:
 		var vp := backdrop.get_node_or_null("WorldViewport") as SubViewport
@@ -364,8 +340,6 @@ func _apply_responsive_layout() -> void:
 func _on_menu_action(action: String) -> void:
 	match action:
 		"play":
-			if status_label:
-				status_label.text = "Loading world..."
 			get_tree().change_scene_to_file(GAME_SCENE)
 		"settings":
 			_open_dialog("Settings", "Audio, controls, and graphics options will expand here.\n\n• Master volume\n• Music / SFX balance\n• Touch controls (mobile)", [
