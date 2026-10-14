@@ -1,5 +1,5 @@
 extends Node3D
-## Chunk-streamed voxel world with auto-save.
+## Chunk-streamed voxel world — playable with spawn safety and auto-save.
 
 const WORLD_RADIUS := 48
 const MIN_Y := -6
@@ -7,7 +7,7 @@ const CHUNK_SIZE := 16
 const VIEW_CHUNKS := 2
 const MAX_CHUNK_BUILDS_PER_FRAME := 1
 const SAVE_PATH := "user://world_blocks.json"
-const SAVE_VERSION := 3
+const SAVE_VERSION := 5
 const AUTO_SAVE_INTERVAL := 8.0
 
 var blocks: Dictionary = {}
@@ -53,13 +53,15 @@ func _ready() -> void:
 	_setup_materials()
 	_generate_world()
 	_load_world_snapshot()
+	_ensure_spawn_pad()
 	_update_chunks(true)
+	_snap_player_to_surface()
 	flora_fauna = load("res://scripts/flora_fauna.gd").new()
 	flora_fauna.name = "FloraFauna"
 	add_child(flora_fauna)
 	flora_fauna.setup(self, blocks)
 	_setup_ui()
-	_show_toast("Explore the land — dig deep for hidden ores & chests!", 4.0)
+	_show_toast("Explore • Mine • Build  |  WASD  •  Mouse  •  LMB dig  •  RMB place", 4.5)
 
 func _process(delta: float) -> void:
 	_chunk_timer -= delta
@@ -82,7 +84,7 @@ func _setup_materials() -> void:
 		"gravel": Color(0.55, 0.52, 0.48), "rock": Color(0.35, 0.36, 0.38),
 		"coal": Color(0.12, 0.12, 0.14), "iron": Color(0.72, 0.58, 0.48),
 		"gold": Color(0.92, 0.78, 0.22), "crystal": Color(0.45, 0.85, 0.95),
-		"chest": Color(0.55, 0.32, 0.12),
+		"leaves": Color(0.22, 0.55, 0.25), "chest": Color(0.55, 0.32, 0.12),
 	}
 	for key in colors:
 		var mat := StandardMaterial3D.new()
@@ -102,7 +104,46 @@ func _setup_materials() -> void:
 		elif key == "gold":
 			mat.metallic = 0.7
 			mat.roughness = 0.35
+		elif key == "leaves":
+			mat.roughness = 0.85
 		block_materials[key] = mat
+
+func _ensure_spawn_pad() -> void:
+	for x in range(-4, 5):
+		for z in range(-4, 5):
+			var top := MIN_Y
+			for y in range(MIN_Y, 30):
+				if blocks.has(Vector3i(x, y, z)) and str(blocks[Vector3i(x, y, z)]) != "water":
+					top = maxi(top, y)
+			if top < 3:
+				for y in range(MIN_Y, 4):
+					blocks[Vector3i(x, y, z)] = "dirt" if y < 3 else "grass"
+				top = 3
+			for y in range(top + 1, 12):
+				var p2 := Vector3i(x, y, z)
+				if blocks.has(p2) and abs(x) <= 2 and abs(z) <= 2:
+					if str(blocks[p2]) not in ["wood", "leaves"]:
+						blocks.erase(p2)
+
+func _snap_player_to_surface() -> void:
+	if player == null:
+		return
+	for x in range(-3, 4):
+		for z in range(-3, 4):
+			for y in range(24, MIN_Y, -1):
+				var pos := Vector3i(x, y, z)
+				if not blocks.has(pos):
+					continue
+				if str(blocks[pos]) == "water":
+					continue
+				if blocks.has(Vector3i(x, y + 1, z)):
+					continue
+				if abs(x) + abs(z) <= 2:
+					player.global_position = Vector3(float(x) + 0.5, float(y) + 1.1, float(z) + 0.5)
+					player.velocity = Vector3.ZERO
+					return
+	player.global_position = Vector3(0.5, 5.0, 0.5)
+	player.velocity = Vector3.ZERO
 
 func _generate_world() -> void:
 	var rng := RandomNumberGenerator.new()
@@ -117,7 +158,6 @@ func _generate_world() -> void:
 			h += sin(fx * 0.06) * cos(fz * 0.055) * 5.5
 			h += sin(fx * 0.14 + 2.1) * 2.8 + cos(fz * 0.13 + 0.9) * 2.5
 			h += sin(fx * 0.28 + fz * 0.11) * 1.4
-			h += cos(fx * 0.05 - fz * 0.07) * 2.0
 			if dist < 14.0:
 				h = lerpf(h, 4.0, clampf(1.0 - dist / 14.0, 0.0, 1.0))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
@@ -126,7 +166,7 @@ func _generate_world() -> void:
 			var in_trib := trib_d < 1.8 and dist > 10.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
-				h = mini(h, 2.2 - (2.8 - mini(river_d if in_main else trib_d, 2.8)) * 0.35)
+				h = mini(h, 2.2)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
 				h = mini(h, 1.8)
@@ -175,9 +215,6 @@ func _generate_world() -> void:
 					blocks[Vector3i(x, water_level, z)] = "water"
 			if not is_river and river_d < 4.2 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
-			if not is_river and height >= 10 and steep and rng.randf() < 0.12:
-				for dy in range(1, rng.randi_range(2, 5) + 1):
-					blocks[Vector3i(x, height + dy, z)] = "rock" if dy > 1 else "stone"
 			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5:
 				var tree_chance := 0.04 if sin(float(x) * 0.17) * cos(float(z) * 0.19) > 0.4 else 0.015
 				if river_d < 8.0: tree_chance *= 0.4
@@ -200,23 +237,20 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 				if abs(dx) + abs(dz) + abs(dy) < 5:
 					var p := Vector3i(x + dx, canopy_y + dy, z + dz)
 					if not blocks.has(p):
-						blocks[p] = "grass"
+						blocks[p] = "leaves"
 
 func _chunk_key_from_world(wx: int, wz: int) -> Vector2i:
 	return Vector2i(int(floor(float(wx) / float(CHUNK_SIZE))), int(floor(float(wz) / float(CHUNK_SIZE))))
 
 func _is_chunk_needed(ck: Vector2i) -> bool:
-	if player == null:
-		return false
+	if player == null: return false
 	var pc := _chunk_key_from_world(int(floor(player.global_position.x)), int(floor(player.global_position.z)))
 	return abs(ck.x - pc.x) <= VIEW_CHUNKS and abs(ck.y - pc.y) <= VIEW_CHUNKS
 
 func _update_chunks(force: bool) -> void:
-	if player == null:
-		return
+	if player == null: return
 	var pc := _chunk_key_from_world(int(floor(player.global_position.x)), int(floor(player.global_position.z)))
-	if not force and pc == _last_player_chunk:
-		return
+	if not force and pc == _last_player_chunk: return
 	_last_player_chunk = pc
 	var needed: Dictionary = {}
 	for cx in range(pc.x - VIEW_CHUNKS, pc.x + VIEW_CHUNKS + 1):
@@ -224,42 +258,31 @@ func _update_chunks(force: bool) -> void:
 			needed[Vector2i(cx, cz)] = true
 	var to_remove: Array = []
 	for key in loaded_chunks.keys():
-		if not needed.has(key):
-			to_remove.append(key)
+		if not needed.has(key): to_remove.append(key)
 	for key in to_remove:
 		var node: Node = loaded_chunks[key]
-		if is_instance_valid(node):
-			node.queue_free()
+		if is_instance_valid(node): node.queue_free()
 		loaded_chunks.erase(key)
 	_chunk_queue.clear()
 	var pending: Array = []
 	for key in needed.keys():
-		if not loaded_chunks.has(key):
-			pending.append(key)
+		if not loaded_chunks.has(key): pending.append(key)
 	pending.sort_custom(func(a, b):
-		var da := absi(a.x - pc.x) + absi(a.y - pc.y)
-		var db := absi(b.x - pc.x) + absi(b.y - pc.y)
-		return da < db
+		return (absi(a.x - pc.x) + absi(a.y - pc.y)) < (absi(b.x - pc.x) + absi(b.y - pc.y))
 	)
-	for key in pending:
-		_chunk_queue.append(key)
+	for key in pending: _chunk_queue.append(key)
 	if force and not _chunk_queue.is_empty():
-		var first: Vector2i = _chunk_queue.pop_front()
-		_load_chunk(first)
+		_load_chunk(_chunk_queue.pop_front())
 
 func _is_exposed(pos: Vector3i) -> bool:
-	for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+	for d in [Vector3i(1,0,0), Vector3i(-1,0,0), Vector3i(0,1,0), Vector3i(0,-1,0), Vector3i(0,0,1), Vector3i(0,0,-1)]:
 		var n := pos + d
-		if not blocks.has(n):
-			return true
-		if str(blocks[n]) == "water":
-			return true
+		if not blocks.has(n) or str(blocks[n]) == "water": return true
 	return false
 
 func _load_chunk(ck: Vector2i) -> void:
 	var root := Node3D.new()
 	root.name = "Chunk_%d_%d" % [ck.x, ck.y]
-	root.set_meta("chunk", ck)
 	chunk_root.add_child(root)
 	loaded_chunks[ck] = root
 	var x0 := ck.x * CHUNK_SIZE
@@ -268,8 +291,7 @@ func _load_chunk(ck: Vector2i) -> void:
 		for z in range(z0, z0 + CHUNK_SIZE):
 			for y in range(MIN_Y, 28):
 				var pos := Vector3i(x, y, z)
-				if not blocks.has(pos):
-					continue
+				if not blocks.has(pos): continue
 				var kind := str(blocks[pos])
 				if kind in ["coal", "iron", "gold", "crystal", "chest"] or _is_exposed(pos):
 					_spawn_block_in(root, pos, kind)
@@ -296,47 +318,37 @@ func _spawn_block_in(parent: Node, pos: Vector3i, kind: String) -> void:
 
 func _find_block_node(pos: Vector3i) -> Node:
 	var ck := _chunk_key_from_world(pos.x, pos.z)
-	if not loaded_chunks.has(ck):
-		return null
+	if not loaded_chunks.has(ck): return null
 	for node in loaded_chunks[ck].get_children():
 		if node.has_meta("block_position") and node.get_meta("block_position") == pos:
 			return node
 	return null
 
 func _reveal_neighbors(pos: Vector3i) -> void:
-	for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+	for d in [Vector3i(1,0,0), Vector3i(-1,0,0), Vector3i(0,1,0), Vector3i(0,-1,0), Vector3i(0,0,1), Vector3i(0,0,-1)]:
 		var n := pos + d
-		if not blocks.has(n):
-			continue
-		if _find_block_node(n) != null:
-			continue
-		var kind := str(blocks[n])
+		if not blocks.has(n) or _find_block_node(n) != null: continue
 		var ck := _chunk_key_from_world(n.x, n.z)
 		if loaded_chunks.has(ck):
-			_spawn_block_in(loaded_chunks[ck], n, kind)
+			_spawn_block_in(loaded_chunks[ck], n, str(blocks[n]))
 
 func remove_block(pos: Vector3i) -> void:
-	if not blocks.has(pos):
-		return
+	if not blocks.has(pos): return
 	var kind := str(blocks[pos])
 	if mining_fx and mining_fx.has_method("play_break"):
 		mining_fx.play_break(Vector3(pos), kind)
 	blocks.erase(pos)
 	var node := _find_block_node(pos)
-	if node:
-		node.queue_free()
+	if node: node.queue_free()
 	_reveal_neighbors(pos)
 	mark_world_dirty()
 
 func place_block(pos: Vector3i, kind: String = "dirt") -> void:
-	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80:
-		return
-	if player.global_position.distance_to(Vector3(pos)) < 1.8:
-		return
+	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80: return
+	if player.global_position.distance_to(Vector3(pos)) < 1.8: return
 	blocks[pos] = kind
 	var ck := _chunk_key_from_world(pos.x, pos.z)
-	if loaded_chunks.has(ck):
-		_spawn_block_in(loaded_chunks[ck], pos, kind)
+	if loaded_chunks.has(ck): _spawn_block_in(loaded_chunks[ck], pos, kind)
 	if mining_fx and mining_fx.has_method("play_place"):
 		mining_fx.play_place(Vector3(pos), kind)
 	mark_world_dirty()
@@ -346,19 +358,12 @@ func mark_world_dirty() -> void:
 	_autosave_timer = AUTO_SAVE_INTERVAL
 
 func _tick_autosave(delta: float) -> void:
-	if not _save_dirty:
-		return
+	if not _save_dirty: return
 	_autosave_timer -= delta
-	if _autosave_timer <= 0.0:
-		save_world()
+	if _autosave_timer <= 0.0: save_world()
 
 func _notification(what: int) -> void:
-	if what in [
-		NOTIFICATION_WM_CLOSE_REQUEST,
-		NOTIFICATION_APPLICATION_PAUSED,
-		NOTIFICATION_WM_GO_BACK_REQUEST,
-		NOTIFICATION_EXIT_TREE,
-	]:
+	if what in [NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_GO_BACK_REQUEST, NOTIFICATION_EXIT_TREE]:
 		if _save_dirty or what == NOTIFICATION_WM_CLOSE_REQUEST:
 			save_world(what != NOTIFICATION_EXIT_TREE)
 
@@ -368,28 +373,19 @@ func save_world(show_feedback: bool = false) -> void:
 		serialized.append({"x": p.x, "y": p.y, "z": p.z, "kind": blocks[p]})
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
-		file.store_string(JSON.stringify({
-			"version": SAVE_VERSION,
-			"blocks": serialized,
-			"saved_at": Time.get_datetime_string_from_system(),
-		}))
+		file.store_string(JSON.stringify({"version": SAVE_VERSION, "blocks": serialized, "saved_at": Time.get_datetime_string_from_system()}))
 		_save_dirty = false
 		_autosave_timer = AUTO_SAVE_INTERVAL
-		_last_save_time = Time.get_ticks_msec() / 1000.0
-		if show_feedback and toast_label and is_inside_tree():
-			_show_toast("World saved", 1.2)
+		if show_feedback: _show_toast("World saved", 1.2)
 
 func _load_world_snapshot() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
-		return
+	if not FileAccess.file_exists(SAVE_PATH): return
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if not file:
-		return
+	if not file: return
 	var parsed = JSON.parse_string(file.get_as_text())
-	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("blocks"):
-		return
+	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("blocks"): return
 	if int(parsed.get("version", 1)) < SAVE_VERSION:
-		push_warning("Old save; regenerating world for new content.")
+		push_warning("Old save; regenerating world.")
 		return
 	var restored: Dictionary = {}
 	for entry in parsed["blocks"]:
@@ -402,8 +398,8 @@ func _setup_ui() -> void:
 	layer.name = "GameUI"
 	add_child(layer)
 	var label := Label.new()
-	label.text = "BLOCKRAFT  |  Explore • Mine ores • Find chests"
-	label.add_theme_font_size_override("font_size", 13)
+	label.text = "BLOCKRAFT  |  Explore • Mine • Build"
+	label.add_theme_font_size_override("font_size", 14)
 	label.position = Vector2(16, 14)
 	label.add_theme_color_override("font_color", Color("#f0f8e6"))
 	layer.add_child(label)
@@ -419,6 +415,15 @@ func _setup_ui() -> void:
 	toast_label.position = Vector2(100, 120)
 	toast_label.size = Vector2(600, 40)
 	layer.add_child(toast_label)
+	var cross := Label.new()
+	cross.text = "+"
+	cross.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cross.add_theme_font_size_override("font_size", 22)
+	cross.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
+	cross.set_anchors_preset(Control.PRESET_CENTER)
+	cross.position = Vector2(-12, -12)
+	cross.size = Vector2(24, 24)
+	layer.add_child(cross)
 	_build_hotbar(layer)
 	inventory.selection_changed.connect(_refresh_hotbar)
 	inventory.counts_changed.connect(_refresh_hotbar)
@@ -428,8 +433,7 @@ func _setup_ui() -> void:
 	_refresh_status()
 
 func _show_toast(text: String, duration: float = 2.5) -> void:
-	if toast_label == null:
-		return
+	if toast_label == null: return
 	toast_label.text = text
 	toast_label.modulate.a = 1.0
 	var tw := create_tween()
@@ -437,12 +441,10 @@ func _show_toast(text: String, duration: float = 2.5) -> void:
 	tw.tween_property(toast_label, "modulate:a", 0.0, 0.6)
 
 func _refresh_status() -> void:
-	if status_label == null:
-		return
+	if status_label == null: return
 	var bits: PackedStringArray = []
 	for k in ["coal", "iron", "gold", "crystal", "chest"]:
-		if discovered.get(k, false):
-			bits.append(k.capitalize())
+		if discovered.get(k, false): bits.append(k.capitalize())
 	status_label.text = "Discoveries: dig underground & search clearings" if bits.is_empty() else "Discovered: " + ", ".join(bits)
 
 func _build_hotbar(layer: CanvasLayer) -> void:
@@ -474,7 +476,6 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 		count.add_theme_font_size_override("font_size", 11)
 		v.add_child(count)
 		var key := Label.new()
-		key.name = "Key"
 		key.text = str(i + 1)
 		key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		key.add_theme_font_size_override("font_size", 10)
@@ -492,73 +493,52 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 	get_viewport().size_changed.connect(_layout_hotbar)
 
 func _layout_hotbar() -> void:
-	if hotbar_ui == null:
-		return
+	if hotbar_ui == null: return
 	var vs := get_viewport().get_visible_rect().size
 	hotbar_ui.position = Vector2(vs.x * 0.5 - 260.0, vs.y - 78.0)
-	if toast_label:
-		toast_label.position = Vector2(vs.x * 0.5 - 300.0, 110.0)
+	if toast_label: toast_label.position = Vector2(vs.x * 0.5 - 300.0, 110.0)
 
 func _build_backpack_ui(layer: CanvasLayer) -> void:
 	backpack_label = Label.new()
 	backpack_label.position = Vector2(16, 42)
-	backpack_label.add_theme_font_size_override("font_size", 14)
+	backpack_label.add_theme_font_size_override("font_size", 13)
+	backpack_label.add_theme_color_override("font_color", Color("#d8e8d0"))
 	layer.add_child(backpack_label)
 	upgrade_btn = Button.new()
+	upgrade_btn.text = "Upgrade Bag (B)"
 	upgrade_btn.position = Vector2(16, 66)
-	upgrade_btn.custom_minimum_size = Vector2(280, 32)
-	upgrade_btn.focus_mode = Control.FOCUS_NONE
+	upgrade_btn.custom_minimum_size = Vector2(160, 28)
 	upgrade_btn.pressed.connect(_on_upgrade_pressed)
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color(0.08, 0.14, 0.12, 0.88)
-	normal.border_color = Color("#8b5a2b")
-	normal.set_border_width_all(2)
-	normal.set_corner_radius_all(6)
-	upgrade_btn.add_theme_stylebox_override("normal", normal)
-	upgrade_btn.add_theme_color_override("font_color", Color("#f0f8e6"))
 	layer.add_child(upgrade_btn)
 	_refresh_backpack_ui()
 
-func _on_backpack_changed(_t: String = "") -> void:
+func _on_backpack_changed(_tier: String = "") -> void:
 	_refresh_backpack_ui()
 	_refresh_hotbar()
 
 func _on_upgrade_pressed() -> void:
 	if inventory.try_upgrade():
-		_refresh_backpack_ui()
-		_refresh_hotbar()
+		_show_toast("Backpack upgraded!", 2.0)
 
 func _refresh_backpack_ui() -> void:
-	if backpack_label == null:
-		return
+	if backpack_label == null: return
 	backpack_label.text = "Backpack: %s  |  max stack %d" % [inventory.get_backpack_label(), inventory.get_max_stack()]
-	backpack_label.add_theme_color_override("font_color", inventory.get_backpack_color())
-	if upgrade_btn == null:
-		return
-	var nxt: String = inventory.get_next_tier()
-	if nxt == "":
-		upgrade_btn.text = "Backpack maxed (Diamond)"
-		upgrade_btn.disabled = true
-		return
-	var cost: Dictionary = inventory.get_upgrade_cost()
-	var parts: PackedStringArray = []
-	for k in cost.keys():
-		parts.append("%d %s" % [int(cost[k]), str(k)])
-	var can := inventory.can_upgrade()
-	upgrade_btn.disabled = not can
-	upgrade_btn.text = ("Upgrade to %s (%s)" % [str(inventory.BACKPACKS[nxt]["label"]), ", ".join(parts)]) if can else ("Need: %s  [B]" % ", ".join(parts))
 
-func _refresh_hotbar(_a = null) -> void:
+func _refresh_hotbar(_arg = null) -> void:
 	_refresh_backpack_ui()
-	if hotbar_slots.is_empty():
-		return
+	if hotbar_slots.is_empty(): return
 	for i in range(inventory.SLOT_COUNT):
 		var slot: PanelContainer = hotbar_slots[i]
 		var data: Dictionary = inventory.slots[i]
 		var style := StyleBoxFlat.new()
-		style.border_color = Color("#f1c86c") if i == inventory.selected else Color("#6ab88a")
-		style.set_border_width_all(3 if i == inventory.selected else 2)
-		style.bg_color = Color(0.12, 0.16, 0.12, 0.92) if i == inventory.selected else Color(0.05, 0.08, 0.1, 0.82)
+		if i == inventory.selected:
+			style.border_color = Color("#f1c86c")
+			style.set_border_width_all(3)
+			style.bg_color = Color(0.12, 0.16, 0.12, 0.92)
+		else:
+			style.border_color = Color("#6ab88a")
+			style.set_border_width_all(2)
+			style.bg_color = Color(0.05, 0.08, 0.1, 0.82)
 		style.set_corner_radius_all(8)
 		slot.add_theme_stylebox_override("panel", style)
 		var icon := slot.find_child("Icon", true, false) as ColorRect
@@ -566,31 +546,20 @@ func _refresh_hotbar(_a = null) -> void:
 		if icon:
 			icon.color = Color(0.15, 0.18, 0.18, 0.4) if str(data.get("id", "")) == "" else data.get("color", Color.GRAY)
 		if count:
-			if data.get("is_tool", false):
-				count.text = "Pick"
-			elif str(data.get("id", "")) == "":
-				count.text = ""
-			else:
-				count.text = str(int(data.get("count", 0)))
+			if data.get("is_tool", false): count.text = "Pick"
+			elif str(data.get("id", "")) == "": count.text = ""
+			else: count.text = str(int(data.get("count", 0)))
 	_layout_hotbar()
-
-func get_selected_place_kind() -> String:
-	return inventory.get_place_kind()
 
 func try_place_selected(pos: Vector3i) -> bool:
 	var kind := inventory.get_place_kind()
-	if kind == "" or kind == "chest":
-		return false
-	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80:
-		return false
-	if player.global_position.distance_to(Vector3(pos)) < 1.8:
-		return false
-	if not inventory.consume_place():
-		return false
+	if kind == "" or kind == "chest": return false
+	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80: return false
+	if player.global_position.distance_to(Vector3(pos)) < 1.8: return false
+	if not inventory.consume_place(): return false
 	blocks[pos] = kind
 	var ck := _chunk_key_from_world(pos.x, pos.z)
-	if loaded_chunks.has(ck):
-		_spawn_block_in(loaded_chunks[ck], pos, kind)
+	if loaded_chunks.has(ck): _spawn_block_in(loaded_chunks[ck], pos, kind)
 	if mining_fx and mining_fx.has_method("play_place"):
 		mining_fx.play_place(Vector3(pos), kind)
 	mark_world_dirty()
@@ -617,4 +586,4 @@ func _open_chest_loot() -> void:
 	if not discovered.get("chest", false):
 		discovered["chest"] = true
 		_refresh_status()
-	_show_toast("Chest! +%d %s" % [int(pick[1]), str(pick[0]).capitalize()], 3.0)
+	_show_toast("Chest! +%d %s" % [int(pick[1]), str(pick[0])], 3.0)
