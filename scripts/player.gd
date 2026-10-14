@@ -1,5 +1,5 @@
 extends CharacterBody3D
-## Third-person player with virtual touch joystick and responsive jump.
+## Third-person player with detailed voxel body and virtual joystick.
 
 const SPEED := 7.0
 const JUMP_VELOCITY := 8.2
@@ -10,14 +10,14 @@ const CAMERA_DISTANCE := 4.2
 const CAMERA_MIN_PITCH := deg_to_rad(-55.0)
 const CAMERA_MAX_PITCH := deg_to_rad(25.0)
 
-const MAT_SKIN := Color("#e8b896")
-const MAT_TEAL := Color("#2ec4b6")
-const MAT_BLUE := Color("#3a5f9a")
-const MAT_HAIR := Color("#6b3e1f")
-const MAT_BOOT := Color("#2a2a2a")
-const MAT_PACK := Color("#8b5a2b")
-const MAT_PACK_FLAP := Color("#a07040")
-const MAT_DIAMOND := Color("#5ce1e6")
+const MAT_SKIN := Color("#f0c4a0")
+const MAT_TEAL := Color("#2bb8a8")
+const MAT_BLUE := Color("#2f4f8a")
+const MAT_HAIR := Color("#5a3218")
+const MAT_BOOT := Color("#1e1a18")
+const MAT_PACK := Color("#7a4a22")
+const MAT_PACK_FLAP := Color("#9a6230")
+const MAT_DIAMOND := Color("#6af0f5")
 const MAT_HANDLE := Color("#8b5a2b")
 
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
@@ -27,7 +27,6 @@ var pitch := deg_to_rad(-18.0)
 var touch_controls_enabled := false
 var touch_move := Vector2.ZERO
 var touch_jump_pressed := false
-var joystick_origin := Vector2.ZERO
 var joystick_active := false
 var joystick_touch_index := -1
 var look_touch_index := -1
@@ -43,6 +42,7 @@ var _last_step_sign := 0
 var _step_cooldown := 0.0
 
 func _ready() -> void:
+	add_to_group("player")
 	var collider := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.height = 1.8
@@ -80,33 +80,51 @@ func _build_character_body() -> void:
 	body_root = Node3D.new()
 	body_root.name = "VoxelBody"
 	add_child(body_root)
-	var leg_l := _box(body_root, Vector3(-0.18, 0.42, 0.0), Vector3(0.32, 0.84, 0.3), MAT_BLUE)
+	var leg_l := _box(body_root, Vector3(-0.17, 0.48, 0.0), Vector3(0.30, 0.72, 0.28), MAT_BLUE)
 	leg_l.name = "LegL"
-	var leg_r := _box(body_root, Vector3(0.18, 0.42, 0.0), Vector3(0.32, 0.84, 0.3), MAT_BLUE)
+	var leg_r := _box(body_root, Vector3(0.17, 0.48, 0.0), Vector3(0.30, 0.72, 0.28), MAT_BLUE)
 	leg_r.name = "LegR"
-	_box(body_root, Vector3(-0.18, 0.06, 0.08), Vector3(0.34, 0.14, 0.42), MAT_BOOT)
-	_box(body_root, Vector3(0.18, 0.06, 0.08), Vector3(0.34, 0.14, 0.42), MAT_BOOT)
-	_box(body_root, Vector3(0.0, 1.15, 0.0), Vector3(0.85, 0.88, 0.44), MAT_TEAL)
-	var arm_l := _box(body_root, Vector3(-0.58, 1.12, 0.0), Vector3(0.28, 0.8, 0.28), MAT_SKIN)
+	_box(body_root, Vector3(-0.17, 0.10, 0.06), Vector3(0.32, 0.18, 0.40), MAT_BOOT)
+	_box(body_root, Vector3(0.17, 0.10, 0.06), Vector3(0.32, 0.18, 0.40), MAT_BOOT)
+	_box(body_root, Vector3(-0.17, 0.18, 0.22), Vector3(0.28, 0.08, 0.12), Color("#141210"))
+	_box(body_root, Vector3(0.17, 0.18, 0.22), Vector3(0.28, 0.08, 0.12), Color("#141210"))
+	_box(body_root, Vector3(0.0, 1.12, 0.0), Vector3(0.78, 0.72, 0.42), MAT_TEAL)
+	_box(body_root, Vector3(0.0, 1.12, 0.22), Vector3(0.50, 0.48, 0.06), Color("#249e90"))
+	_box(body_root, Vector3(0.0, 0.78, 0.0), Vector3(0.82, 0.14, 0.44), Color("#1f8a7e"))
+	var arm_l := _box(body_root, Vector3(-0.55, 1.08, 0.0), Vector3(0.26, 0.70, 0.26), MAT_SKIN)
 	arm_l.name = "ArmL"
-	var arm_r := _box(body_root, Vector3(0.58, 1.12, 0.0), Vector3(0.28, 0.8, 0.28), MAT_SKIN)
+	var arm_r := _box(body_root, Vector3(0.55, 1.08, 0.0), Vector3(0.26, 0.70, 0.26), MAT_SKIN)
 	arm_r.name = "ArmR"
-	_box(body_root, Vector3(0.0, 1.2, -0.34), Vector3(0.68, 0.72, 0.3), MAT_PACK)
-	_box(body_root, Vector3(0.0, 1.42, -0.36), Vector3(0.5, 0.18, 0.32), MAT_PACK_FLAP)
-	_box(body_root, Vector3(0.0, 1.82, 0.0), Vector3(0.6, 0.6, 0.58), MAT_SKIN)
-	_box(body_root, Vector3(0.0, 2.1, -0.04), Vector3(0.64, 0.24, 0.6), MAT_HAIR)
-	_box(body_root, Vector3(0.0, 1.92, -0.24), Vector3(0.62, 0.38, 0.18), MAT_HAIR)
-	_box(body_root, Vector3(-0.14, 1.85, 0.28), Vector3(0.1, 0.1, 0.06), Color("#1a1a1a"))
-	_box(body_root, Vector3(0.14, 1.85, 0.28), Vector3(0.1, 0.1, 0.06), Color("#1a1a1a"))
+	_box(body_root, Vector3(-0.55, 0.72, 0.0), Vector3(0.28, 0.14, 0.28), Color("#e0b090"))
+	_box(body_root, Vector3(0.55, 0.72, 0.0), Vector3(0.28, 0.14, 0.28), Color("#e0b090"))
+	_box(body_root, Vector3(-0.55, 1.35, 0.0), Vector3(0.30, 0.12, 0.30), MAT_TEAL)
+	_box(body_root, Vector3(0.55, 1.35, 0.0), Vector3(0.30, 0.12, 0.30), MAT_TEAL)
+	_box(body_root, Vector3(0.0, 1.18, -0.36), Vector3(0.62, 0.68, 0.28), MAT_PACK)
+	_box(body_root, Vector3(0.0, 1.48, -0.38), Vector3(0.48, 0.14, 0.30), MAT_PACK_FLAP)
+	_box(body_root, Vector3(0.0, 1.05, -0.36), Vector3(0.50, 0.10, 0.26), Color("#5c3818"))
+	_box(body_root, Vector3(-0.28, 1.25, -0.22), Vector3(0.08, 0.35, 0.08), Color("#4a3010"))
+	_box(body_root, Vector3(0.28, 1.25, -0.22), Vector3(0.08, 0.35, 0.08), Color("#4a3010"))
+	_box(body_root, Vector3(0.0, 1.78, 0.0), Vector3(0.56, 0.56, 0.54), MAT_SKIN)
+	_box(body_root, Vector3(0.0, 2.08, -0.02), Vector3(0.60, 0.20, 0.58), MAT_HAIR)
+	_box(body_root, Vector3(0.0, 1.92, -0.26), Vector3(0.58, 0.36, 0.16), MAT_HAIR)
+	_box(body_root, Vector3(-0.28, 1.95, 0.05), Vector3(0.14, 0.28, 0.40), MAT_HAIR)
+	_box(body_root, Vector3(0.28, 1.95, 0.05), Vector3(0.14, 0.28, 0.40), MAT_HAIR)
+	_box(body_root, Vector3(-0.12, 1.80, 0.28), Vector3(0.10, 0.10, 0.06), Color("#1a1410"))
+	_box(body_root, Vector3(0.12, 1.80, 0.28), Vector3(0.10, 0.10, 0.06), Color("#1a1410"))
+	_box(body_root, Vector3(-0.12, 1.82, 0.30), Vector3(0.04, 0.04, 0.04), Color("#ffffff"))
+	_box(body_root, Vector3(0.12, 1.82, 0.30), Vector3(0.04, 0.04, 0.04), Color("#ffffff"))
+	_box(body_root, Vector3(0.0, 1.68, 0.28), Vector3(0.14, 0.06, 0.05), Color("#d4887a"))
 	pickaxe_node = Node3D.new()
 	pickaxe_node.name = "DiamondPickaxe"
-	pickaxe_node.position = Vector3(0.72, 0.95, 0.25)
-	pickaxe_node.rotation_degrees = Vector3(20.0, 0.0, -35.0)
+	pickaxe_node.position = Vector3(0.70, 0.95, 0.22)
+	pickaxe_node.rotation_degrees = Vector3(18.0, 0.0, -32.0)
 	body_root.add_child(pickaxe_node)
-	_box(pickaxe_node, Vector3(0.0, 0.0, 0.0), Vector3(0.08, 0.85, 0.08), MAT_HANDLE)
-	_box(pickaxe_node, Vector3(0.0, 0.48, 0.0), Vector3(0.48, 0.16, 0.14), MAT_DIAMOND, 0.3)
-	_box(pickaxe_node, Vector3(-0.2, 0.36, 0.0), Vector3(0.14, 0.22, 0.12), MAT_DIAMOND, 0.3)
-	_box(pickaxe_node, Vector3(0.2, 0.36, 0.0), Vector3(0.14, 0.22, 0.12), MAT_DIAMOND, 0.3)
+	_box(pickaxe_node, Vector3(0.0, 0.0, 0.0), Vector3(0.07, 0.90, 0.07), MAT_HANDLE)
+	_box(pickaxe_node, Vector3(0.0, -0.35, 0.0), Vector3(0.09, 0.12, 0.09), Color("#6b4420"))
+	_box(pickaxe_node, Vector3(0.0, 0.52, 0.0), Vector3(0.52, 0.14, 0.13), MAT_DIAMOND, 0.25)
+	_box(pickaxe_node, Vector3(-0.24, 0.38, 0.0), Vector3(0.14, 0.24, 0.12), MAT_DIAMOND, 0.25)
+	_box(pickaxe_node, Vector3(0.24, 0.38, 0.0), Vector3(0.14, 0.24, 0.12), MAT_DIAMOND, 0.25)
+	_box(pickaxe_node, Vector3(0.0, 0.58, 0.0), Vector3(0.18, 0.10, 0.16), Color("#a8ffff"), 0.2)
 
 func _build_third_person_camera() -> void:
 	camera = Camera3D.new()
@@ -135,12 +153,10 @@ func _update_camera_transform() -> void:
 func _init_footsteps() -> void:
 	footstep_stream = _make_footstep_wav()
 	footstep_player = AudioStreamPlayer3D.new()
-	footstep_player.name = "FootstepPlayer"
 	footstep_player.stream = footstep_stream
 	footstep_player.max_distance = 28.0
 	footstep_player.unit_size = 6.0
 	footstep_player.volume_db = -4.0
-	footstep_player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
 	add_child(footstep_player)
 
 func _make_footstep_wav() -> AudioStreamWAV:
@@ -176,42 +192,37 @@ func _play_footstep() -> void:
 
 func _build_touch_controls() -> void:
 	var layer := CanvasLayer.new()
-	layer.name = "TouchControlsLayer"
 	layer.layer = 10
 	add_child(layer)
 	var root := Control.new()
-	root.name = "TouchControls"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
-	var viewport_size := get_viewport().get_visible_rect().size
+	var vs := get_viewport().get_visible_rect().size
 	var joy_base := Panel.new()
 	joy_base.name = "JoystickBase"
 	joy_base.size = Vector2(140, 140)
-	joy_base.position = Vector2(28, viewport_size.y - 200)
-	var base_style := StyleBoxFlat.new()
-	base_style.bg_color = Color(0.05, 0.1, 0.1, 0.35)
-	base_style.border_color = Color(0.7, 0.9, 0.75, 0.55)
-	base_style.set_border_width_all(2)
-	base_style.set_corner_radius_all(70)
-	joy_base.add_theme_stylebox_override("panel", base_style)
+	joy_base.position = Vector2(28, vs.y - 200)
+	var bs := StyleBoxFlat.new()
+	bs.bg_color = Color(0.05, 0.1, 0.1, 0.35)
+	bs.border_color = Color(0.7, 0.9, 0.75, 0.55)
+	bs.set_border_width_all(2)
+	bs.set_corner_radius_all(70)
+	joy_base.add_theme_stylebox_override("panel", bs)
 	joy_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(joy_base)
-	var joy_knob := Panel.new()
-	joy_knob.name = "JoystickKnob"
-	joy_knob.size = Vector2(56, 56)
-	joy_knob.position = Vector2(42, 42)
-	var knob_style := StyleBoxFlat.new()
-	knob_style.bg_color = Color(0.2, 0.55, 0.4, 0.75)
-	knob_style.border_color = Color(0.85, 1.0, 0.85, 0.9)
-	knob_style.set_border_width_all(2)
-	knob_style.set_corner_radius_all(28)
-	joy_knob.add_theme_stylebox_override("panel", knob_style)
-	joy_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	joy_base.add_child(joy_knob)
+	var knob := Panel.new()
+	knob.name = "JoystickKnob"
+	knob.size = Vector2(56, 56)
+	knob.position = Vector2(42, 42)
+	var ks := StyleBoxFlat.new()
+	ks.bg_color = Color(0.2, 0.55, 0.4, 0.75)
+	ks.set_corner_radius_all(28)
+	knob.add_theme_stylebox_override("panel", ks)
+	knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	joy_base.add_child(knob)
 	var actions := VBoxContainer.new()
-	actions.position = Vector2(viewport_size.x - 164.0, viewport_size.y - 210.0)
-	actions.add_theme_constant_override("separation", 10)
+	actions.position = Vector2(vs.x - 164.0, vs.y - 210.0)
 	root.add_child(actions)
 	var jump := _make_touch_button("JUMP", Vector2(132, 56))
 	jump.button_down.connect(_set_touch_jump.bind(true))
@@ -229,7 +240,6 @@ func _make_touch_button(caption: String, minimum_size: Vector2) -> Button:
 	button.text = caption
 	button.custom_minimum_size = minimum_size
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 16)
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = Color(0.025, 0.07, 0.075, 0.72)
 	normal.border_color = Color(0.75, 0.9, 0.75, 0.82)
@@ -238,7 +248,6 @@ func _make_touch_button(caption: String, minimum_size: Vector2) -> Button:
 	var pressed := normal.duplicate() as StyleBoxFlat
 	pressed.bg_color = Color(0.76, 0.58, 0.25, 0.92)
 	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", pressed)
 	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_color_override("font_color", Color("#f0f8e6"))
 	return button
@@ -251,21 +260,18 @@ func _set_touch_jump(pressed: bool) -> void:
 func _update_joystick_knob() -> void:
 	var layer := get_node_or_null("TouchControlsLayer/TouchControls/JoystickBase") as Control
 	if layer == null:
+		var candidates := get_tree().get_nodes_in_group("ui")
 		return
 	var knob := layer.get_node_or_null("JoystickKnob") as Control
 	if knob == null:
 		return
-	var center := Vector2(42, 42)
-	if not joystick_active:
-		knob.position = center
-		return
-	knob.position = center + touch_move * 42.0
+	knob.position = Vector2(42, 42) if not joystick_active else Vector2(42, 42) + touch_move * 42.0
 
 func _input(event: InputEvent) -> void:
 	if not touch_controls_enabled:
 		return
 	var vs := get_viewport().get_visible_rect().size
-	var joy_center := Vector2(28 + 70, vs.y - 200 + 70)
+	var joy_center := Vector2(98, vs.y - 130)
 	var joy_radius := 64.0
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
@@ -277,7 +283,6 @@ func _input(event: InputEvent) -> void:
 				if delta.length() > joy_radius:
 					delta = delta.normalized() * joy_radius
 				touch_move = Vector2(delta.x / joy_radius, delta.y / joy_radius)
-				_update_joystick_knob()
 			else:
 				look_touch_index = touch.index
 		else:
@@ -285,7 +290,6 @@ func _input(event: InputEvent) -> void:
 				joystick_active = false
 				joystick_touch_index = -1
 				touch_move = Vector2.ZERO
-				_update_joystick_knob()
 			if touch.index == look_touch_index:
 				look_touch_index = -1
 	elif event is InputEventScreenDrag:
@@ -295,39 +299,36 @@ func _input(event: InputEvent) -> void:
 			if delta.length() > joy_radius:
 				delta = delta.normalized() * joy_radius
 			touch_move = Vector2(delta.x / joy_radius, delta.y / joy_radius)
-			_update_joystick_knob()
 		elif drag.index == look_touch_index or (look_touch_index < 0 and drag.position.x >= vs.x * 0.42):
 			yaw -= drag.relative.x * TOUCH_LOOK_SENSITIVITY
-			pitch -= drag.relative.y * TOUCH_LOOK_SENSITIVITY
-			pitch = clampf(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+			pitch = clampf(pitch - drag.relative.y * TOUCH_LOOK_SENSITIVITY, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_B:
-			var world_b = get_parent()
-			if world_b and world_b.get("inventory") and world_b.inventory.has_method("try_upgrade"):
-				world_b.inventory.try_upgrade()
+			var wb = get_parent()
+			if wb and wb.get("inventory") and wb.inventory.has_method("try_upgrade"):
+				wb.inventory.try_upgrade()
 		if event.keycode >= KEY_1 and event.keycode <= KEY_9:
-			var world = get_parent()
-			if world and world.get("inventory"):
-				world.inventory.select(event.keycode - KEY_1)
+			var w = get_parent()
+			if w and w.get("inventory"):
+				w.inventory.select(event.keycode - KEY_1)
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			var world_up = get_parent()
-			if world_up and world_up.get("inventory"):
-				world_up.inventory.cycle(-1)
+			var wu = get_parent()
+			if wu and wu.get("inventory"):
+				wu.inventory.cycle(-1)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			var world_dn = get_parent()
-			if world_dn and world_dn.get("inventory"):
-				world_dn.inventory.cycle(1)
+			var wd = get_parent()
+			if wd and wd.get("inventory"):
+				wd.inventory.cycle(1)
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
 	if event is InputEventMouseButton and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		yaw -= event.relative.x * CAMERA_SENSITIVITY
-		pitch -= event.relative.y * CAMERA_SENSITIVITY
-		pitch = clampf(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+		pitch = clampf(pitch - event.relative.y * CAMERA_SENSITIVITY, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_interact(false)
@@ -350,10 +351,7 @@ func _physics_process(delta: float) -> void:
 		jump_buffer = 0.0
 		coyote_time = 0.0
 		touch_jump_pressed = false
-	var input_dir := Vector2(
-		float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
-		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
-	) + touch_move
+	var input_dir := Vector2(float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)), float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))) + touch_move
 	input_dir = input_dir.limit_length(1.0)
 	var basis := Basis(Vector3.UP, yaw)
 	var direction := (basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
@@ -361,9 +359,8 @@ func _physics_process(delta: float) -> void:
 	velocity.z = direction.z * SPEED
 	move_and_slide()
 	_step_cooldown = maxf(0.0, _step_cooldown - delta)
-	if direction.length() > 0.05 and is_on_floor():
-		var target_yaw := atan2(-direction.x, -direction.z)
-		body_root.rotation.y = lerp_angle(body_root.rotation.y, target_yaw, 1.0 - exp(-12.0 * delta))
+	if direction.length() > 0.05 and is_on_floor() and body_root:
+		body_root.rotation.y = lerp_angle(body_root.rotation.y, atan2(-direction.x, -direction.z), 1.0 - exp(-12.0 * delta))
 		walk_phase += delta * 10.0
 		var swing := sin(walk_phase) * 0.35
 		var step_sign := 1 if sin(walk_phase) >= 0.0 else -1
@@ -375,10 +372,9 @@ func _physics_process(delta: float) -> void:
 			var part := body_root.get_node_or_null(pair[0]) as MeshInstance3D
 			if part:
 				part.rotation.x = pair[1]
-	elif direction.length() > 0.05:
-		var target_yaw2 := atan2(-direction.x, -direction.z)
-		body_root.rotation.y = lerp_angle(body_root.rotation.y, target_yaw2, 1.0 - exp(-12.0 * delta))
-	else:
+	elif direction.length() > 0.05 and body_root:
+		body_root.rotation.y = lerp_angle(body_root.rotation.y, atan2(-direction.x, -direction.z), 1.0 - exp(-12.0 * delta))
+	elif body_root:
 		walk_phase = 0.0
 		_last_step_sign = 0
 		for n in ["LegL", "LegR", "ArmL", "ArmR"]:
@@ -389,9 +385,9 @@ func _physics_process(delta: float) -> void:
 		if pickaxe_swing_t > 0.0:
 			pickaxe_swing_t = maxf(0.0, pickaxe_swing_t - delta * 4.5)
 			var t := 1.0 - pickaxe_swing_t
-			pickaxe_node.rotation_degrees = Vector3(20.0 + sin(t * PI) * 50.0, 0.0, -35.0 - sin(t * PI) * 20.0)
+			pickaxe_node.rotation_degrees = Vector3(18.0 + sin(t * PI) * 50.0, 0.0, -32.0 - sin(t * PI) * 20.0)
 		else:
-			pickaxe_node.rotation_degrees = Vector3(20.0, 0.0, -35.0)
+			pickaxe_node.rotation_degrees = Vector3(18.0, 0.0, -32.0)
 
 func _interact(place: bool) -> void:
 	pickaxe_swing_t = 1.0
