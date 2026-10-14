@@ -4,10 +4,10 @@ extends Node3D
 const WORLD_RADIUS := 48
 const MIN_Y := -6
 const CHUNK_SIZE := 16
-const VIEW_CHUNKS := 2
-const MAX_CHUNK_BUILDS_PER_FRAME := 1
+const VIEW_CHUNKS := 3
+const MAX_CHUNK_BUILDS_PER_FRAME := 6
 const SAVE_PATH := "user://world_blocks.json"
-const SAVE_VERSION := 5
+const SAVE_VERSION := 6
 const AUTO_SAVE_INTERVAL := 8.0
 
 var blocks: Dictionary = {}
@@ -53,8 +53,18 @@ func _ready() -> void:
 	_setup_materials()
 	_generate_world()
 	_load_world_snapshot()
+	if blocks.size() < 500:
+		push_warning("World too small (%d blocks); regenerating." % blocks.size())
+		_generate_world()
 	_ensure_spawn_pad()
+	_snap_player_to_surface()
+	if player:
+		player.velocity = Vector3.ZERO
 	_update_chunks(true)
+	while not _chunk_queue.is_empty():
+		var ck: Vector2i = _chunk_queue.pop_front()
+		if not loaded_chunks.has(ck):
+			_load_chunk(ck)
 	_snap_player_to_surface()
 	flora_fauna = load("res://scripts/flora_fauna.gd").new()
 	flora_fauna.name = "FloraFauna"
@@ -128,9 +138,11 @@ func _ensure_spawn_pad() -> void:
 func _snap_player_to_surface() -> void:
 	if player == null:
 		return
-	for x in range(-3, 4):
-		for z in range(-3, 4):
-			for y in range(24, MIN_Y, -1):
+	var best_pos := Vector3(0.5, 8.0, 0.5)
+	var found := false
+	for x in range(-6, 7):
+		for z in range(-6, 7):
+			for y in range(30, MIN_Y - 1, -1):
 				var pos := Vector3i(x, y, z)
 				if not blocks.has(pos):
 					continue
@@ -138,14 +150,16 @@ func _snap_player_to_surface() -> void:
 					continue
 				if blocks.has(Vector3i(x, y + 1, z)):
 					continue
-				if abs(x) + abs(z) <= 2:
-					player.global_position = Vector3(float(x) + 0.5, float(y) + 1.1, float(z) + 0.5)
-					player.velocity = Vector3.ZERO
-					return
-	player.global_position = Vector3(0.5, 5.0, 0.5)
+				var cand := Vector3(float(x) + 0.5, float(y) + 1.15, float(z) + 0.5)
+				if not found or Vector2(cand.x, cand.z).length() < Vector2(best_pos.x, best_pos.z).length():
+					best_pos = cand
+					found = true
+				break
+	player.global_position = best_pos
 	player.velocity = Vector3.ZERO
 
 func _generate_world() -> void:
+	blocks.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 82417
 	var heights: Dictionary = {}
@@ -271,8 +285,11 @@ func _update_chunks(force: bool) -> void:
 		return (absi(a.x - pc.x) + absi(a.y - pc.y)) < (absi(b.x - pc.x) + absi(b.y - pc.y))
 	)
 	for key in pending: _chunk_queue.append(key)
-	if force and not _chunk_queue.is_empty():
-		_load_chunk(_chunk_queue.pop_front())
+	if force:
+		while not _chunk_queue.is_empty():
+			var ck2: Vector2i = _chunk_queue.pop_front()
+			if not loaded_chunks.has(ck2):
+				_load_chunk(ck2)
 
 func _is_exposed(pos: Vector3i) -> bool:
 	for d in [Vector3i(1,0,0), Vector3i(-1,0,0), Vector3i(0,1,0), Vector3i(0,-1,0), Vector3i(0,0,1), Vector3i(0,0,-1)]:
@@ -391,6 +408,9 @@ func _load_world_snapshot() -> void:
 	for entry in parsed["blocks"]:
 		if typeof(entry) == TYPE_DICTIONARY and entry.has("x") and entry.has("kind"):
 			restored[Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))] = str(entry["kind"])
+	if restored.size() < 500:
+		push_warning("Save has too few blocks (%d); keeping generated world." % restored.size())
+		return
 	blocks = restored
 
 func _setup_ui() -> void:
