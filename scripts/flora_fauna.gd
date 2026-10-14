@@ -1,11 +1,14 @@
 extends Node
-## Spawns decorative plants and wandering animals after the voxel world is built.
+## Spawns decorative plants and wandering animals (perf-tuned).
 
 const AnimalScript = preload("res://scripts/animal.gd")
 
 var _world: Node3D
 var _blocks: Dictionary
 var _rng := RandomNumberGenerator.new()
+var _wind_t := 0.0
+var _flora_root: Node3D
+var _wind_step := 0
 
 func setup(world: Node3D, blocks: Dictionary, seed_value: int = 82417) -> void:
 	_world = world
@@ -14,15 +17,26 @@ func setup(world: Node3D, blocks: Dictionary, seed_value: int = 82417) -> void:
 	_spawn_plants()
 	_spawn_animals()
 
+func _process(delta: float) -> void:
+	_wind_t += delta
+	_wind_step += 1
+	if _flora_root == null or (_wind_step % 2) != 0:
+		return
+	var i := 0
+	for child in _flora_root.get_children():
+		if child is Node3D:
+			var phase := float(i) * 0.37
+			child.rotation.z = sin(_wind_t * 1.4 + phase) * 0.06
+			child.rotation.x = cos(_wind_t * 1.1 + phase) * 0.04
+			i += 1
+
 func _surface_y(x: int, z: int) -> int:
-	var top := -999
 	for y in range(30, -5, -1):
 		if _blocks.has(Vector3i(x, y, z)):
 			var k := str(_blocks[Vector3i(x, y, z)])
 			if k != "water" and k != "wood":
-				top = y
-				break
-	return top
+				return y
+	return -999
 
 func _is_water(x: int, z: int) -> bool:
 	for y in range(0, 6):
@@ -30,7 +44,7 @@ func _is_water(x: int, z: int) -> bool:
 			return true
 	return false
 
-func _box_at(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.95) -> void:
+func _box_at(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> void:
 	var mi := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
@@ -38,7 +52,7 @@ func _box_at(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughnes
 	mi.position = pos
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
-	mat.roughness = roughness
+	mat.roughness = 0.95
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
@@ -46,11 +60,11 @@ func _box_at(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughnes
 func _spawn_plants() -> void:
 	var root := Node3D.new()
 	root.name = "Flora"
+	_flora_root = root
 	_world.add_child(root)
 	var count := 0
-	var target := 280
 	var attempts := 0
-	while count < target and attempts < 4000:
+	while count < 120 and attempts < 3000:
 		attempts += 1
 		var x := _rng.randi_range(-40, 40)
 		var z := _rng.randi_range(-40, 40)
@@ -84,40 +98,30 @@ func _make_flower(p: Node3D) -> void:
 	if _rng.randf() < 0.33:
 		petal = Color("#7ec8f0")
 	_box_at(p, Vector3(0, 0.38, 0), Vector3(0.22, 0.12, 0.22), petal)
-	_box_at(p, Vector3(0, 0.42, 0), Vector3(0.1, 0.08, 0.1), Color("#f8f0a0"))
 
 func _make_tall_grass(p: Node3D) -> void:
-	for i in range(3):
+	for i in range(2):
 		var ox := _rng.randf_range(-0.15, 0.15)
-		var oz := _rng.randf_range(-0.15, 0.15)
-		var h := _rng.randf_range(0.35, 0.65)
-		_box_at(p, Vector3(ox, h * 0.5, oz), Vector3(0.05, h, 0.05), Color("#3a8a35"))
+		var h := _rng.randf_range(0.35, 0.55)
+		_box_at(p, Vector3(ox, h * 0.5, ox * 0.4), Vector3(0.05, h, 0.05), Color("#3a8a35"))
 
 func _make_bush(p: Node3D) -> void:
-	_box_at(p, Vector3(0, 0.25, 0), Vector3(0.55, 0.45, 0.55), Color("#2f6b28"))
-	_box_at(p, Vector3(0.15, 0.4, -0.1), Vector3(0.35, 0.3, 0.35), Color("#3a8030"))
-	if _rng.randf() < 0.4:
-		_box_at(p, Vector3(-0.1, 0.35, 0.12), Vector3(0.12, 0.12, 0.12), Color("#c04040"))
+	_box_at(p, Vector3(0, 0.25, 0), Vector3(0.5, 0.4, 0.5), Color("#2f6b28"))
 
 func _make_reed(p: Node3D) -> void:
-	for i in range(4):
+	for i in range(3):
 		var ox := _rng.randf_range(-0.2, 0.2)
-		var oz := _rng.randf_range(-0.2, 0.2)
-		var h := _rng.randf_range(0.7, 1.2)
-		_box_at(p, Vector3(ox, h * 0.5, oz), Vector3(0.04, h, 0.04), Color("#4a7a38"))
-		_box_at(p, Vector3(ox, h + 0.05, oz), Vector3(0.1, 0.12, 0.06), Color("#6a9a40"))
+		var h := _rng.randf_range(0.7, 1.1)
+		_box_at(p, Vector3(ox, h * 0.5, ox * 0.3), Vector3(0.04, h, 0.04), Color("#4a7a38"))
 
 func _make_dry_tuft(p: Node3D) -> void:
-	for i in range(2):
-		var ox := _rng.randf_range(-0.1, 0.1)
-		var h := _rng.randf_range(0.2, 0.4)
-		_box_at(p, Vector3(ox, h * 0.5, ox * 0.5), Vector3(0.05, h, 0.05), Color("#a09050"))
+	_box_at(p, Vector3(0, 0.15, 0), Vector3(0.05, 0.3, 0.05), Color("#a09050"))
 
 func _spawn_animals() -> void:
 	var spawned := 0
 	var attempts := 0
 	var kinds := [AnimalScript.Kind.PIG, AnimalScript.Kind.CHICKEN, AnimalScript.Kind.COW, AnimalScript.Kind.SHEEP]
-	while spawned < 22 and attempts < 600:
+	while spawned < 14 and attempts < 400:
 		attempts += 1
 		var x := _rng.randi_range(-35, 35)
 		var z := _rng.randi_range(-35, 35)
@@ -129,9 +133,8 @@ func _spawn_animals() -> void:
 		if sy < 1 or sy > 14:
 			continue
 		var kind_surface := str(_blocks.get(Vector3i(x, sy, z), ""))
-		if kind_surface in ["stone", "rock", "sand"]:
-			if _rng.randf() < 0.7:
-				continue
+		if kind_surface in ["stone", "rock", "sand"] and _rng.randf() < 0.7:
+			continue
 		var animal: CharacterBody3D = AnimalScript.new()
 		animal.name = "Animal_%d" % spawned
 		_world.add_child(animal)
