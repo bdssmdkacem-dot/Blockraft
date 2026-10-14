@@ -1,5 +1,5 @@
 extends Node
-## Mining / placing feedback: colored debris particles + short procedural SFX.
+## Mining / placing feedback: colored debris + dig SFX per block type.
 
 const BLOCK_COLORS := {
 	"grass": Color(0.28, 0.62, 0.22),
@@ -8,29 +8,98 @@ const BLOCK_COLORS := {
 	"wood": Color(0.42, 0.25, 0.11),
 }
 
-var _audio: AudioStreamPlayer3D
-var _playback: AudioStreamGeneratorPlayback
-var _gen: AudioStreamGenerator
-var _sample_rate := 22050.0
+const SAMPLE_RATE := 22050
+
+var _players: Array = []
+var _dig_streams: Dictionary = {}
+var _place_stream: AudioStreamWAV
+var _pool_index := 0
 
 func _ready() -> void:
-	_gen = AudioStreamGenerator.new()
-	_gen.mix_rate = _sample_rate
-	_gen.buffer_length = 0.15
-	_audio = AudioStreamPlayer3D.new()
-	_audio.stream = _gen
-	_audio.max_distance = 40.0
-	_audio.unit_size = 8.0
-	_audio.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
-	add_child(_audio)
+	_dig_streams["stone"] = _make_dig_wav(0.14, 0.55, 90.0, 0.85)
+	_dig_streams["dirt"] = _make_dig_wav(0.11, 0.45, 140.0, 0.7)
+	_dig_streams["grass"] = _make_dig_wav(0.09, 0.4, 180.0, 0.55)
+	_dig_streams["wood"] = _make_dig_wav(0.12, 0.5, 220.0, 0.65)
+	_place_stream = _make_place_wav()
+	for i in range(4):
+		var p := AudioStreamPlayer3D.new()
+		p.max_distance = 48.0
+		p.unit_size = 10.0
+		p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		p.volume_db = 2.0
+		p.bus = "Master"
+		add_child(p)
+		_players.append(p)
 
 func play_break(world_pos: Vector3, kind: String) -> void:
 	_spawn_particles(world_pos, kind, 14, 3.2)
-	_play_tone(world_pos, 180.0 if kind == "stone" else 260.0, 0.09, 0.35)
+	var stream: AudioStreamWAV = _dig_streams.get(kind, _dig_streams["dirt"])
+	_play_at(world_pos, stream, 0.0)
 
 func play_place(world_pos: Vector3, kind: String) -> void:
 	_spawn_particles(world_pos, kind, 6, 1.4)
-	_play_tone(world_pos, 420.0, 0.05, 0.22)
+	_play_at(world_pos, _place_stream, -2.0)
+
+func _play_at(world_pos: Vector3, stream: AudioStream, volume_db: float) -> void:
+	if _players.is_empty() or stream == null:
+		return
+	var p: AudioStreamPlayer3D = _players[_pool_index]
+	_pool_index = (_pool_index + 1) % _players.size()
+	p.stop()
+	p.stream = stream
+	p.volume_db = volume_db
+	p.pitch_scale = randf_range(0.92, 1.08)
+	p.global_position = world_pos + Vector3(0.5, 0.5, 0.5)
+	p.play()
+
+func _make_dig_wav(duration: float, noise_amt: float, base_hz: float, volume: float) -> AudioStreamWAV:
+	var n := int(duration * SAMPLE_RATE)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var prev := 0.0
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var env := exp(-t * 18.0)
+		var body := sin(TAU * base_hz * t) * 0.35 * env
+		body += sin(TAU * base_hz * 1.5 * t) * 0.15 * env
+		var noise := (randf() * 2.0 - 1.0)
+		prev = prev * 0.65 + noise * 0.35
+		var grit := prev * noise_amt * env
+		var tick := 0.0
+		if t < 0.012:
+			tick = sin(TAU * 1800.0 * t) * (1.0 - t / 0.012) * 0.4
+		var sample := clampf((body + grit + tick) * volume, -1.0, 1.0)
+		var s16 := int(sample * 32767.0)
+		data[i * 2] = s16 & 0xFF
+		data[i * 2 + 1] = (s16 >> 8) & 0xFF
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = SAMPLE_RATE
+	wav.stereo = false
+	wav.data = data
+	return wav
+
+func _make_place_wav() -> AudioStreamWAV:
+	var duration := 0.07
+	var n := int(duration * SAMPLE_RATE)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	for i in range(n):
+		var t := float(i) / SAMPLE_RATE
+		var env := exp(-t * 28.0)
+		var sample := sin(TAU * 380.0 * t) * 0.4 * env
+		sample += sin(TAU * 520.0 * t) * 0.2 * env
+		sample += (randf() * 2.0 - 1.0) * 0.08 * env
+		sample = clampf(sample * 0.7, -1.0, 1.0)
+		var s16 := int(sample * 32767.0)
+		data[i * 2] = s16 & 0xFF
+		data[i * 2 + 1] = (s16 >> 8) & 0xFF
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = SAMPLE_RATE
+	wav.stereo = false
+	wav.data = data
+	return wav
 
 func _spawn_particles(world_pos: Vector3, kind: String, amount: int, speed: float) -> void:
 	var particles := CPUParticles3D.new()
@@ -60,22 +129,3 @@ func _spawn_particles(world_pos: Vector3, kind: String, amount: int, speed: floa
 	particles.emitting = true
 	var timer := get_tree().create_timer(0.7)
 	timer.timeout.connect(particles.queue_free)
-
-func _play_tone(world_pos: Vector3, freq: float, duration: float, volume: float) -> void:
-	_audio.global_position = world_pos + Vector3(0.5, 0.5, 0.5)
-	if not _audio.playing:
-		_audio.play()
-	_playback = _audio.get_stream_playback() as AudioStreamGeneratorPlayback
-	if _playback == null:
-		return
-	var frames := int(duration * _sample_rate)
-	for i in range(frames):
-		if _playback.get_frames_available() <= 0:
-			break
-		var t := float(i) / _sample_rate
-		var env := 1.0 - (t / duration)
-		env = clampf(env, 0.0, 1.0)
-		var noise := (randf() * 2.0 - 1.0) * 0.35
-		var tone := sin(TAU * freq * t) * 0.45 + sin(TAU * freq * 1.7 * t) * 0.15
-		var sample := (tone + noise) * env * volume
-		_playback.push_frame(Vector2(sample, sample))
