@@ -1,6 +1,6 @@
 extends Node3D
 
-const WORLD_RADIUS := 18
+const WORLD_RADIUS := 42
 const MIN_Y := -3
 const SAVE_PATH := "user://world_blocks.json"
 
@@ -51,25 +51,50 @@ func _generate_world() -> void:
 	rng.seed = 82417
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
-			var height := int(round(2.0 + sin(float(x) * 0.23) * 1.5 + cos(float(z) * 0.19) * 1.3))
+			var fx := float(x)
+			var fz := float(z)
+			var h := 4.0
+			h += sin(fx * 0.08) * cos(fz * 0.07) * 4.5
+			h += sin(fx * 0.18 + 1.7) * 2.2 + cos(fz * 0.16 + 0.4) * 2.0
+			h += sin(fx * 0.35) * cos(fz * 0.31) * 1.1
+			var dist := sqrt(fx * fx + fz * fz)
+			if dist < 12.0:
+				h = lerpf(h, 3.0, 1.0 - dist / 12.0)
+			var river := absf(sin(fx * 0.12) * 6.0 - fz * 0.15)
+			var is_river := river < 2.2 and dist > 8.0
+			if is_river:
+				h = mini(h, 1.5)
+			var height := int(round(h))
+			height = clampi(height, MIN_Y + 1, 22)
 			for y in range(MIN_Y, height + 1):
 				var kind := "stone"
-				if y == height:
-					kind = "grass"
+				if is_river and y <= 1:
+					kind = "dirt"
+				elif y == height:
+					kind = "grass" if not is_river else "dirt"
 				elif y >= height - 2:
 					kind = "dirt"
 				blocks[Vector3i(x, y, z)] = kind
-			if rng.randf() < 0.025 and abs(x) > 3 and abs(z) > 3:
-				_make_tree(x, height + 1, z)
+			if not is_river and height >= 3 and abs(x) > 4 and abs(z) > 4:
+				var tree_chance := 0.018
+				if sin(fx * 0.2) * cos(fz * 0.2) > 0.35:
+					tree_chance = 0.045
+				if rng.randf() < tree_chance:
+					_make_tree(x, height + 1, z, rng)
+			if not is_river and height >= 8 and rng.randf() < 0.008:
+				for dy in range(1, 4):
+					blocks[Vector3i(x, height + dy, z)] = "stone"
 
-func _make_tree(x: int, y: int, z: int) -> void:
-	for dy in range(4):
+func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> void:
+	var trunk := 3 + (rng.randi_range(0, 2) if rng else 1)
+	for dy in range(trunk):
 		blocks[Vector3i(x, y + dy, z)] = "wood"
+	var canopy_y := y + trunk - 1
 	for dx in range(-2, 3):
 		for dz in range(-2, 3):
-			for dy in range(2, 5):
-				if abs(dx) + abs(dz) + abs(dy - 3) < 5:
-					var p := Vector3i(x + dx, y + dy, z + dz)
+			for dy in range(0, 3):
+				if abs(dx) + abs(dz) + abs(dy) < 5:
+					var p := Vector3i(x + dx, canopy_y + dy, z + dz)
 					if not blocks.has(p):
 						blocks[p] = "grass"
 
@@ -148,7 +173,7 @@ func _setup_ui() -> void:
 	add_child(layer)
 	var label := Label.new()
 	if OS.has_feature("mobile"):
-		label.text = "BLOCKRAFT  |  1-9 / tap slots  •  Mine & Place  •  Upgrade backpack"
+		label.text = "BLOCKRAFT  |  Joystick move  •  Drag look  •  Mine & Place"
 		label.add_theme_font_size_override("font_size", 13)
 	else:
 		label.text = "BLOCKRAFT  |  1-9 select  •  Scroll  •  LMB mine  •  RMB place  •  B upgrade bag"
