@@ -1,13 +1,11 @@
 extends CharacterBody3D
-## Third-person player with a fully visible voxel body matching the official
-## protagonist sheet. PlayerCamera is a direct child (required by acceptance tests).
+## Third-person player with virtual touch joystick and responsive jump.
 
-const SPEED := 6.0
-const JUMP_VELOCITY := 5.0
+const SPEED := 7.0
+const JUMP_VELOCITY := 8.2
 const REACH := 7.0
 const CAMERA_SENSITIVITY := 0.0025
-const TOUCH_LOOK_SENSITIVITY := 0.0032
-const TOUCH_BUTTON_SIZE := Vector2(56.0, 56.0)
+const TOUCH_LOOK_SENSITIVITY := 0.0038
 const CAMERA_DISTANCE := 4.2
 const CAMERA_MIN_PITCH := deg_to_rad(-55.0)
 const CAMERA_MAX_PITCH := deg_to_rad(25.0)
@@ -28,8 +26,13 @@ var yaw := 0.0
 var pitch := deg_to_rad(-18.0)
 var touch_controls_enabled := false
 var touch_move := Vector2.ZERO
-var touch_directions: Dictionary = {}
 var touch_jump_pressed := false
+var joystick_origin := Vector2.ZERO
+var joystick_active := false
+var joystick_touch_index := -1
+var look_touch_index := -1
+var coyote_time := 0.0
+var jump_buffer := 0.0
 var body_root: Node3D
 var pickaxe_node: Node3D
 var pickaxe_swing_t := 0.0
@@ -118,9 +121,9 @@ func _build_third_person_camera() -> void:
 func _update_camera_transform() -> void:
 	var pivot := global_position + Vector3(0.0, 1.35, 0.0)
 	var basis := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch)
-	var desired := pivot + basis * Vector3(0.0, 0.0, CAMERA_DISTANCE)
 	var dist := CAMERA_DISTANCE
 	if is_inside_tree() and get_world_3d():
+		var desired := pivot + basis * Vector3(0.0, 0.0, CAMERA_DISTANCE)
 		var query := PhysicsRayQueryParameters3D.create(pivot, desired)
 		query.exclude = [self]
 		var hit := get_world_3d().direct_space_state.intersect_ray(query)
@@ -142,8 +145,7 @@ func _init_footsteps() -> void:
 
 func _make_footstep_wav() -> AudioStreamWAV:
 	var sample_rate := 22050
-	var duration := 0.08
-	var n := int(duration * sample_rate)
+	var n := int(0.08 * sample_rate)
 	var data := PackedByteArray()
 	data.resize(n * 2)
 	var prev := 0.0
@@ -152,10 +154,8 @@ func _make_footstep_wav() -> AudioStreamWAV:
 		var env := exp(-t * 32.0)
 		var noise := (randf() * 2.0 - 1.0)
 		prev = prev * 0.55 + noise * 0.45
-		var thump := sin(TAU * 70.0 * t) * 0.5 * env
-		thump += sin(TAU * 110.0 * t) * 0.25 * env
-		var grit := prev * 0.35 * env
-		var sample := clampf((thump + grit) * 0.75, -1.0, 1.0)
+		var thump := sin(TAU * 70.0 * t) * 0.5 * env + sin(TAU * 110.0 * t) * 0.25 * env
+		var sample := clampf((thump + prev * 0.35 * env) * 0.75, -1.0, 1.0)
 		var s16 := int(sample * 32767.0)
 		data[i * 2] = s16 & 0xFF
 		data[i * 2 + 1] = (s16 >> 8) & 0xFF
@@ -167,7 +167,7 @@ func _make_footstep_wav() -> AudioStreamWAV:
 	return wav
 
 func _play_footstep() -> void:
-	if footstep_player == null or footstep_stream == null:
+	if footstep_player == null:
 		return
 	if footstep_player.playing:
 		footstep_player.stop()
@@ -185,26 +185,35 @@ func _build_touch_controls() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 	var viewport_size := get_viewport().get_visible_rect().size
-	var pad := GridContainer.new()
-	pad.columns = 3
-	pad.position = Vector2(24.0, viewport_size.y - 204.0)
-	pad.add_theme_constant_override("h_separation", 5)
-	pad.add_theme_constant_override("v_separation", 5)
-	root.add_child(pad)
-	_add_pad_slot(pad)
-	_add_direction_button(pad, "▲", Vector2(0, -1))
-	_add_pad_slot(pad)
-	_add_direction_button(pad, "◀", Vector2(-1, 0))
-	_add_pad_slot(pad)
-	_add_direction_button(pad, "▶", Vector2(1, 0))
-	_add_pad_slot(pad)
-	_add_direction_button(pad, "▼", Vector2(0, 1))
-	_add_pad_slot(pad)
+	var joy_base := Panel.new()
+	joy_base.name = "JoystickBase"
+	joy_base.size = Vector2(140, 140)
+	joy_base.position = Vector2(28, viewport_size.y - 200)
+	var base_style := StyleBoxFlat.new()
+	base_style.bg_color = Color(0.05, 0.1, 0.1, 0.35)
+	base_style.border_color = Color(0.7, 0.9, 0.75, 0.55)
+	base_style.set_border_width_all(2)
+	base_style.set_corner_radius_all(70)
+	joy_base.add_theme_stylebox_override("panel", base_style)
+	joy_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(joy_base)
+	var joy_knob := Panel.new()
+	joy_knob.name = "JoystickKnob"
+	joy_knob.size = Vector2(56, 56)
+	joy_knob.position = Vector2(42, 42)
+	var knob_style := StyleBoxFlat.new()
+	knob_style.bg_color = Color(0.2, 0.55, 0.4, 0.75)
+	knob_style.border_color = Color(0.85, 1.0, 0.85, 0.9)
+	knob_style.set_border_width_all(2)
+	knob_style.set_corner_radius_all(28)
+	joy_knob.add_theme_stylebox_override("panel", knob_style)
+	joy_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	joy_base.add_child(joy_knob)
 	var actions := VBoxContainer.new()
 	actions.position = Vector2(viewport_size.x - 164.0, viewport_size.y - 210.0)
-	actions.add_theme_constant_override("separation", 8)
+	actions.add_theme_constant_override("separation", 10)
 	root.add_child(actions)
-	var jump := _make_touch_button("JUMP", Vector2(132, 48))
+	var jump := _make_touch_button("JUMP", Vector2(132, 56))
 	jump.button_down.connect(_set_touch_jump.bind(true))
 	jump.button_up.connect(_set_touch_jump.bind(false))
 	actions.add_child(jump)
@@ -214,18 +223,6 @@ func _build_touch_controls() -> void:
 	var place := _make_touch_button("PLACE", Vector2(132, 48))
 	place.pressed.connect(_interact.bind(true))
 	actions.add_child(place)
-
-func _add_pad_slot(parent: GridContainer) -> void:
-	var slot := Control.new()
-	slot.custom_minimum_size = TOUCH_BUTTON_SIZE
-	parent.add_child(slot)
-
-func _add_direction_button(parent: GridContainer, caption: String, direction: Vector2) -> void:
-	var button := _make_touch_button(caption, TOUCH_BUTTON_SIZE)
-	button.add_theme_font_size_override("font_size", 25)
-	button.button_down.connect(_set_touch_direction.bind(direction, true))
-	button.button_up.connect(_set_touch_direction.bind(direction, false))
-	parent.add_child(button)
 
 func _make_touch_button(caption: String, minimum_size: Vector2) -> Button:
 	var button := Button.new()
@@ -246,29 +243,63 @@ func _make_touch_button(caption: String, minimum_size: Vector2) -> Button:
 	button.add_theme_color_override("font_color", Color("#f0f8e6"))
 	return button
 
-func _set_touch_direction(direction: Vector2, pressed: bool) -> void:
-	if pressed:
-		touch_directions[direction] = true
-	else:
-		touch_directions.erase(direction)
-	touch_move = Vector2.ZERO
-	for d in touch_directions:
-		touch_move += d
-	touch_move = touch_move.limit_length(1.0)
-
 func _set_touch_jump(pressed: bool) -> void:
 	touch_jump_pressed = pressed
+	if pressed:
+		jump_buffer = 0.15
+
+func _update_joystick_knob() -> void:
+	var layer := get_node_or_null("TouchControlsLayer/TouchControls/JoystickBase") as Control
+	if layer == null:
+		return
+	var knob := layer.get_node_or_null("JoystickKnob") as Control
+	if knob == null:
+		return
+	var center := Vector2(42, 42)
+	if not joystick_active:
+		knob.position = center
+		return
+	knob.position = center + touch_move * 42.0
 
 func _input(event: InputEvent) -> void:
 	if not touch_controls_enabled:
 		return
-	if event is InputEventScreenDrag:
+	var vs := get_viewport().get_visible_rect().size
+	var joy_center := Vector2(28 + 70, vs.y - 200 + 70)
+	var joy_radius := 64.0
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			if touch.position.x < vs.x * 0.42:
+				joystick_active = true
+				joystick_touch_index = touch.index
+				var delta := touch.position - joy_center
+				if delta.length() > joy_radius:
+					delta = delta.normalized() * joy_radius
+				touch_move = Vector2(delta.x / joy_radius, delta.y / joy_radius)
+				_update_joystick_knob()
+			else:
+				look_touch_index = touch.index
+		else:
+			if touch.index == joystick_touch_index:
+				joystick_active = false
+				joystick_touch_index = -1
+				touch_move = Vector2.ZERO
+				_update_joystick_knob()
+			if touch.index == look_touch_index:
+				look_touch_index = -1
+	elif event is InputEventScreenDrag:
 		var drag := event as InputEventScreenDrag
-		if drag.position.x < get_viewport().get_visible_rect().size.x * 0.45:
-			return
-		yaw -= drag.relative.x * TOUCH_LOOK_SENSITIVITY
-		pitch -= drag.relative.y * TOUCH_LOOK_SENSITIVITY
-		pitch = clampf(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+		if drag.index == joystick_touch_index and joystick_active:
+			var delta := drag.position - joy_center
+			if delta.length() > joy_radius:
+				delta = delta.normalized() * joy_radius
+			touch_move = Vector2(delta.x / joy_radius, delta.y / joy_radius)
+			_update_joystick_knob()
+		elif drag.index == look_touch_index or (look_touch_index < 0 and drag.position.x >= vs.x * 0.42):
+			yaw -= drag.relative.x * TOUCH_LOOK_SENSITIVITY
+			pitch -= drag.relative.y * TOUCH_LOOK_SENSITIVITY
+			pitch = clampf(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -305,10 +336,20 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	_update_camera_transform()
-	if not is_on_floor():
+	if is_on_floor():
+		coyote_time = 0.12
+	else:
+		coyote_time = maxf(0.0, coyote_time - delta)
 		velocity.y -= gravity * delta
-	elif Input.is_key_pressed(KEY_SPACE) or touch_jump_pressed:
+	if Input.is_key_pressed(KEY_SPACE) or touch_jump_pressed:
+		jump_buffer = 0.15
+	else:
+		jump_buffer = maxf(0.0, jump_buffer - delta)
+	if jump_buffer > 0.0 and coyote_time > 0.0:
 		velocity.y = JUMP_VELOCITY
+		jump_buffer = 0.0
+		coyote_time = 0.0
+		touch_jump_pressed = false
 	var input_dir := Vector2(
 		float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
 		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
