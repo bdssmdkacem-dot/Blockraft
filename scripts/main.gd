@@ -14,6 +14,7 @@ var hotbar_ui: HBoxContainer
 var hotbar_slots: Array = []
 var backpack_label: Label
 var upgrade_btn: Button
+var mining_fx: Node
 
 func _ready() -> void:
 	world_root = Node3D.new()
@@ -23,6 +24,9 @@ func _ready() -> void:
 	inventory = load("res://scripts/inventory.gd").new()
 	inventory.name = "Inventory"
 	add_child(inventory)
+	mining_fx = load("res://scripts/mining_fx.gd").new()
+	mining_fx.name = "MiningFX"
+	add_child(mining_fx)
 	_setup_materials()
 	_generate_world()
 	_load_world_snapshot()
@@ -92,6 +96,9 @@ func _spawn_block(pos: Vector3i, kind: String) -> void:
 func remove_block(pos: Vector3i) -> void:
 	if not blocks.has(pos):
 		return
+	var kind := str(blocks[pos])
+	if mining_fx and mining_fx.has_method("play_break"):
+		mining_fx.play_break(Vector3(pos), kind)
 	blocks.erase(pos)
 	for node in world_root.get_children():
 		if node.has_meta("block_position") and node.get_meta("block_position") == pos:
@@ -106,6 +113,8 @@ func place_block(pos: Vector3i, kind: String = "dirt") -> void:
 		return
 	blocks[pos] = kind
 	_spawn_block(pos, kind)
+	if mining_fx and mining_fx.has_method("play_place"):
+		mining_fx.play_place(Vector3(pos), kind)
 	save_world()
 
 func save_world() -> void:
@@ -272,7 +281,7 @@ func _refresh_backpack_ui() -> void:
 	for k in cost.keys():
 		parts.append("%d %s" % [int(cost[k]), str(k)])
 	var cost_txt := ", ".join(parts)
-	var can: bool = inventory.can_upgrade()
+	var can := inventory.can_upgrade()
 	upgrade_btn.disabled = not can
 	if can:
 		upgrade_btn.text = "Upgrade to %s (%s)" % [str(inventory.BACKPACKS[nxt]["label"]), cost_txt]
@@ -317,7 +326,7 @@ func get_selected_place_kind() -> String:
 	return inventory.get_place_kind()
 
 func try_place_selected(pos: Vector3i) -> bool:
-	var kind: String = inventory.get_place_kind()
+	var kind := inventory.get_place_kind()
 	if kind == "":
 		return false
 	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80:
@@ -328,6 +337,8 @@ func try_place_selected(pos: Vector3i) -> bool:
 		return false
 	blocks[pos] = kind
 	_spawn_block(pos, kind)
+	if mining_fx and mining_fx.has_method("play_place"):
+		mining_fx.play_place(Vector3(pos), kind)
 	save_world()
 	return true
 
