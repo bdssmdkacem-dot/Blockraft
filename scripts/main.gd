@@ -15,6 +15,7 @@ var hotbar_slots: Array = []
 var backpack_label: Label
 var upgrade_btn: Button
 var mining_fx: Node
+var flora_fauna: Node
 
 func _ready() -> void:
 	world_root = Node3D.new()
@@ -31,6 +32,10 @@ func _ready() -> void:
 	_generate_world()
 	_load_world_snapshot()
 	_build_world()
+	flora_fauna = load("res://scripts/flora_fauna.gd").new()
+	flora_fauna.name = "FloraFauna"
+	add_child(flora_fauna)
+	flora_fauna.setup(self, blocks)
 	_setup_ui()
 
 func _setup_materials() -> void:
