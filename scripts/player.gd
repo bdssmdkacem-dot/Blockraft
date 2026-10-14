@@ -1,11 +1,17 @@
 extends CharacterBody3D
-## Third-person voxel player — smooth movement, look, and mobile controls.
+## Third-person voxel player — tuned movement physics for voxel terrain.
 
-const SPEED := 7.2
-const ACCEL := 28.0
-const DECEL := 32.0
-const AIR_ACCEL := 12.0
-const JUMP_VELOCITY := 8.4
+const SPEED := 7.4
+const ACCEL := 32.0
+const DECEL := 40.0
+const AIR_ACCEL := 14.0
+const AIR_DRAG := 0.35
+const JUMP_VELOCITY := 8.6
+const JUMP_CUT_MULT := 0.45
+const FALL_GRAVITY_MULT := 1.35
+const MAX_FALL_SPEED := 28.0
+const SLOPE_BOOST := 1.08
+const LAND_HARD_SPEED := 12.0
 const REACH := 7.0
 const CAMERA_SENSITIVITY := 0.0022
 const TOUCH_LOOK_SENSITIVITY := 0.0036
@@ -54,6 +60,8 @@ var _mine_held := false
 var _mine_cooldown := 0.0
 var coyote_time := 0.0
 var jump_buffer := 0.0
+var _jump_held := false
+var _fall_speed_peak := 0.0
 var body_root: Node3D
 var pickaxe_node: Node3D
 var pickaxe_swing_t := 0.0
@@ -76,8 +84,15 @@ var land_player: AudioStreamPlayer3D
 
 func _ready() -> void:
 	add_to_group("player")
-	floor_snap_length = 0.4
-	floor_max_angle = deg_to_rad(50.0)
+	floor_snap_length = 0.55
+	floor_max_angle = deg_to_rad(55.0)
+	floor_constant_speed = true
+	floor_block_on_wall = true
+	floor_stop_on_slope = false
+	safe_margin = 0.08
+	max_slides = 6
+	up_direction = Vector3.UP
+	motion_mode = MOTION_MODE_GROUNDED
 	collision_layer = 2
 	collision_mask = 1
 	var collider := CollisionShape3D.new()
@@ -515,12 +530,24 @@ func _physics_process(delta: float) -> void:
 	if _touch_move_target == Vector2.ZERO and touch_move.length() < 0.02:
 		touch_move = Vector2.ZERO
 	_update_joystick_knob()
+	var want_jump := Input.is_key_pressed(KEY_SPACE) or touch_jump_pressed
 	if is_on_floor():
-		coyote_time = 0.14
+		coyote_time = 0.15
+		_fall_speed_peak = 0.0
+		if velocity.y < 0.0:
+			velocity.y = 0.0
 	else:
 		coyote_time = maxf(0.0, coyote_time - delta)
-		velocity.y -= gravity * delta
-	if Input.is_key_pressed(KEY_SPACE) or touch_jump_pressed:
+		var g := gravity
+		if velocity.y < 0.0:
+			g *= FALL_GRAVITY_MULT
+			_fall_speed_peak = maxf(_fall_speed_peak, -velocity.y)
+		elif not want_jump and _jump_held:
+			velocity.y *= JUMP_CUT_MULT
+			_jump_held = false
+		velocity.y -= g * delta
+		velocity.y = maxf(velocity.y, -MAX_FALL_SPEED)
+	if want_jump:
 		jump_buffer = 0.16
 	else:
 		jump_buffer = maxf(0.0, jump_buffer - delta)
@@ -529,6 +556,7 @@ func _physics_process(delta: float) -> void:
 		jump_buffer = 0.0
 		coyote_time = 0.0
 		touch_jump_pressed = false
+		_jump_held = true
 		_jump_stretch = 1.0
 		_play_jump()
 	var input_dir := Vector2(
@@ -537,19 +565,41 @@ func _physics_process(delta: float) -> void:
 	) + touch_move
 	input_dir = input_dir.limit_length(1.0)
 	var basis := Basis(Vector3.UP, yaw)
-	var direction := basis * Vector3(input_dir.x, 0, input_dir.y)
+	var direction := basis * Vector3(input_dir.x, 0.0, input_dir.y)
 	if direction.length() > 0.001:
 		direction = direction.normalized()
-	var target_vel := direction * SPEED
-	var rate := ACCEL if is_on_floor() else AIR_ACCEL
-	if direction.length() < 0.05:
-		rate = DECEL if is_on_floor() else AIR_ACCEL * 0.6
+	var wish := direction
+	if is_on_floor() and get_floor_normal().y > 0.4 and direction.length() > 0.01:
+		var n := get_floor_normal()
+		var projected := direction - n * direction.dot(n)
+		if projected.length() > 0.01:
+			wish = projected.normalized()
+		else:
+			wish = Vector3.ZERO
+	var speed := SPEED
+	if is_on_floor() and get_floor_angle() > deg_to_rad(8.0) and wish.dot(Vector3(get_floor_normal().x, 0, get_floor_normal().z)) < -0.1:
+		speed *= SLOPE_BOOST
+	var target_vel := wish * speed
+	var rate: float
+	if is_on_floor():
+		rate = ACCEL if wish.length() > 0.05 else DECEL
+	else:
+		rate = AIR_ACCEL if wish.length() > 0.05 else AIR_ACCEL * 0.5
+		velocity.x = move_toward(velocity.x, 0.0, AIR_DRAG * absf(velocity.x) * delta)
+		velocity.z = move_toward(velocity.z, 0.0, AIR_DRAG * absf(velocity.z) * delta)
 	velocity.x = move_toward(velocity.x, target_vel.x, rate * delta)
 	velocity.z = move_toward(velocity.z, target_vel.z, rate * delta)
 	move_and_slide()
+	if is_on_wall() and not is_on_floor():
+		var wn := get_wall_normal()
+		var push := velocity.dot(wn)
+		if push < 0.0:
+			velocity -= wn * push
 	if is_on_floor() and not _was_on_floor:
-		_land_squash = 1.0
+		var impact := clampf(_fall_speed_peak / LAND_HARD_SPEED, 0.35, 1.0)
+		_land_squash = impact
 		_play_land()
+		_fall_speed_peak = 0.0
 	_was_on_floor = is_on_floor()
 	_step_cooldown = maxf(0.0, _step_cooldown - delta)
 	_land_squash = maxf(0.0, _land_squash - delta * 5.0)
