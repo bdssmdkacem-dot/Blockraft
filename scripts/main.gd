@@ -1,5 +1,5 @@
 extends Node3D
-## Chunk-streamed voxel world optimized for mobile performance.
+## Chunk-streamed voxel world with auto-save.
 
 const WORLD_RADIUS := 48
 const MIN_Y := -6
@@ -8,6 +8,7 @@ const VIEW_CHUNKS := 2
 const MAX_CHUNK_BUILDS_PER_FRAME := 1
 const SAVE_PATH := "user://world_blocks.json"
 const SAVE_VERSION := 3
+const AUTO_SAVE_INTERVAL := 8.0
 
 var blocks: Dictionary = {}
 var block_mesh := BoxMesh.new()
@@ -29,6 +30,9 @@ var _chunk_timer := 0.0
 var _last_player_chunk := Vector2i(9999, 9999)
 var discovered: Dictionary = {}
 var _chunk_queue: Array = []
+var _save_dirty := false
+var _autosave_timer := 0.0
+var _last_save_time := 0.0
 
 func _ready() -> void:
 	world_root = Node3D.new()
@@ -68,6 +72,7 @@ func _process(delta: float) -> void:
 		if not loaded_chunks.has(ck) and _is_chunk_needed(ck):
 			_load_chunk(ck)
 			built += 1
+	_tick_autosave(delta)
 
 func _setup_materials() -> void:
 	var colors := {
@@ -321,7 +326,7 @@ func remove_block(pos: Vector3i) -> void:
 	if node:
 		node.queue_free()
 	_reveal_neighbors(pos)
-	save_world()
+	mark_world_dirty()
 
 func place_block(pos: Vector3i, kind: String = "dirt") -> void:
 	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80:
@@ -334,15 +339,45 @@ func place_block(pos: Vector3i, kind: String = "dirt") -> void:
 		_spawn_block_in(loaded_chunks[ck], pos, kind)
 	if mining_fx and mining_fx.has_method("play_place"):
 		mining_fx.play_place(Vector3(pos), kind)
-	save_world()
+	mark_world_dirty()
 
-func save_world() -> void:
+func mark_world_dirty() -> void:
+	_save_dirty = true
+	_autosave_timer = AUTO_SAVE_INTERVAL
+
+func _tick_autosave(delta: float) -> void:
+	if not _save_dirty:
+		return
+	_autosave_timer -= delta
+	if _autosave_timer <= 0.0:
+		save_world()
+
+func _notification(what: int) -> void:
+	if what in [
+		NOTIFICATION_WM_CLOSE_REQUEST,
+		NOTIFICATION_APPLICATION_PAUSED,
+		NOTIFICATION_WM_GO_BACK_REQUEST,
+		NOTIFICATION_EXIT_TREE,
+	]:
+		if _save_dirty or what == NOTIFICATION_WM_CLOSE_REQUEST:
+			save_world(what != NOTIFICATION_EXIT_TREE)
+
+func save_world(show_feedback: bool = false) -> void:
 	var serialized: Array = []
 	for p in blocks:
 		serialized.append({"x": p.x, "y": p.y, "z": p.z, "kind": blocks[p]})
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
-		file.store_string(JSON.stringify({"version": SAVE_VERSION, "blocks": serialized}))
+		file.store_string(JSON.stringify({
+			"version": SAVE_VERSION,
+			"blocks": serialized,
+			"saved_at": Time.get_datetime_string_from_system(),
+		}))
+		_save_dirty = false
+		_autosave_timer = AUTO_SAVE_INTERVAL
+		_last_save_time = Time.get_ticks_msec() / 1000.0
+		if show_feedback and toast_label and is_inside_tree():
+			_show_toast("World saved", 1.2)
 
 func _load_world_snapshot() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
@@ -558,7 +593,7 @@ func try_place_selected(pos: Vector3i) -> bool:
 		_spawn_block_in(loaded_chunks[ck], pos, kind)
 	if mining_fx and mining_fx.has_method("play_place"):
 		mining_fx.play_place(Vector3(pos), kind)
-	save_world()
+	mark_world_dirty()
 	return true
 
 func on_block_mined(kind: String) -> void:
