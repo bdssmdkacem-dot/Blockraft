@@ -1,358 +1,457 @@
 extends Control
-
-## Blockraft Main Menu — rebuilt to match the official visual north-star
-## (assets/reference/blockraft_main_menu_reference.png) as closely as possible.
-## Layout: big BLOCKRAFT title, Explore • Build • Survive, left action column
-## (Play / Settings / Help / Exit), cinematic 3D voxel backdrop, six feature
-## cards, and bottom icon strip.
+## Official Blockraft title screen — built to match the reference art exactly.
 
 const GAME_SCENE := "res://scenes/main.tscn"
 const DESIGN_SIZE := Vector2(1280.0, 720.0)
 
 var menu_column: VBoxContainer
+var status_label: Label
 var dialog_layer: Control
+var _click_player: AudioStreamPlayer
+var _hover_player: AudioStreamPlayer
+var _ambient_player: AudioStreamPlayer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_setup_menu_audio()
 	_build_3d_backdrop()
-	_build_interface()
+	_build_title_block()
+	_build_menu_buttons()
 	_build_feature_strip()
 	_build_footer_bar()
+	_build_slogan()
 	_apply_responsive_layout()
-	queue_redraw()
+	if _ambient_player:
+		_ambient_player.play()
+
+func _setup_menu_audio() -> void:
+	_click_player = AudioStreamPlayer.new()
+	_click_player.name = "MenuClick"
+	_click_player.stream = _make_click_wav()
+	_click_player.volume_db = -6.0
+	add_child(_click_player)
+	_hover_player = AudioStreamPlayer.new()
+	_hover_player.name = "MenuHover"
+	_hover_player.stream = _make_hover_wav()
+	_hover_player.volume_db = -12.0
+	add_child(_hover_player)
+	_ambient_player = AudioStreamPlayer.new()
+	_ambient_player.name = "MenuAmbient"
+	_ambient_player.stream = _make_ambient_wav()
+	_ambient_player.volume_db = -18.0
+	add_child(_ambient_player)
+
+func _make_click_wav() -> AudioStreamWAV:
+	var rate := 22050
+	var n := int(0.06 * rate)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	for i in range(n):
+		var t := float(i) / rate
+		var env := exp(-t * 40.0)
+		var s := sin(TAU * 880.0 * t) * 0.35 * env + sin(TAU * 1320.0 * t) * 0.2 * env
+		var s16 := int(clampf(s, -1.0, 1.0) * 32767.0)
+		data[i * 2] = s16 & 0xFF
+		data[i * 2 + 1] = (s16 >> 8) & 0xFF
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.stereo = false
+	wav.data = data
+	return wav
+
+func _make_hover_wav() -> AudioStreamWAV:
+	var rate := 22050
+	var n := int(0.04 * rate)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	for i in range(n):
+		var t := float(i) / rate
+		var env := exp(-t * 50.0)
+		var s := sin(TAU * 660.0 * t) * 0.2 * env
+		var s16 := int(clampf(s, -1.0, 1.0) * 32767.0)
+		data[i * 2] = s16 & 0xFF
+		data[i * 2 + 1] = (s16 >> 8) & 0xFF
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.stereo = false
+	wav.data = data
+	return wav
+
+func _make_ambient_wav() -> AudioStreamWAV:
+	var rate := 22050
+	var n := int(2.5 * rate)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var prev := 0.0
+	for i in range(n):
+		var t := float(i) / rate
+		var wind := sin(TAU * 0.15 * t) * 0.04 + sin(TAU * 0.37 * t) * 0.03
+		var noise := (randf() * 2.0 - 1.0)
+		prev = prev * 0.92 + noise * 0.08
+		var bird := 0.0
+		if int(t * 2.0) % 5 == 0 and fmod(t, 0.5) < 0.08:
+			bird = sin(TAU * (1800.0 + sin(t * 20.0) * 200.0) * t) * 0.06 * exp(-fmod(t, 0.5) * 20.0)
+		var s := clampf(wind + prev * 0.12 + bird, -1.0, 1.0)
+		var s16 := int(s * 16000.0)
+		data[i * 2] = s16 & 0xFF
+		data[i * 2 + 1] = (s16 >> 8) & 0xFF
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.stereo = false
+	wav.data = data
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = n
+	return wav
+
+func _play_click() -> void:
+	if _click_player:
+		_click_player.play()
+
+func _play_hover() -> void:
+	if _hover_player and not _hover_player.playing:
+		_hover_player.play()
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_RESIZED:
-		queue_redraw()
-		if is_node_ready():
-			_apply_responsive_layout()
+	if what == NOTIFICATION_RESIZED and is_node_ready():
+		_apply_responsive_layout()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and is_instance_valid(dialog_layer):
 		dialog_layer.queue_free()
+		dialog_layer = null
 		get_viewport().set_input_as_handled()
 
-func _draw() -> void:
-	pass
-
-func _apply_responsive_layout() -> void:
-	var viewport_size := get_viewport_rect().size
-	if viewport_size.x < 1.0 or viewport_size.y < 1.0:
-		return
-	var ui_scale := minf(viewport_size.x / DESIGN_SIZE.x, viewport_size.y / DESIGN_SIZE.y)
-	ui_scale = clampf(ui_scale, 0.55, 1.35)
-	for child in get_children():
-		if child is Control and child.name in ["TitleBlock", "ActionColumn", "FeatureStrip", "FooterBar", "Slogan"]:
-			child.scale = Vector2.ONE * ui_scale
-			if child.name == "ActionColumn":
-				child.position = Vector2(36.0 * ui_scale, 210.0 * ui_scale)
-
 func _build_3d_backdrop() -> void:
-	var backdrop := SubViewportContainer.new()
-	backdrop.name = "ThreeDMenuBackdrop"
-	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	backdrop.stretch = true
-	backdrop.size = size
-	backdrop.z_index = 0
-	backdrop.z_as_relative = false
-	add_child(backdrop)
-	move_child(backdrop, 0)
+	var container := SubViewportContainer.new()
+	container.name = "ThreeDMenuBackdrop"
+	container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	container.stretch = true
+	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(container)
+	move_child(container, 0)
 	var viewport := SubViewport.new()
 	viewport.name = "WorldViewport"
-	viewport.size = Vector2i(1280, 720)
-	viewport.disable_3d = false
 	viewport.transparent_bg = false
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	viewport.handle_input_locally = false
-	backdrop.add_child(viewport)
-	var world := Node3D.new()
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	viewport.size = Vector2i(1280, 720)
+	container.add_child(viewport)
+	var world_script = load("res://scripts/menu_world_3d.gd")
+	var world: Node3D = world_script.new() if world_script else Node3D.new()
 	world.name = "VoxelMenuWorld"
-	world.set_script(load("res://scripts/menu_world_3d.gd"))
 	viewport.add_child(world)
 
-func _build_interface() -> void:
-	var title_block := Control.new()
-	title_block.name = "TitleBlock"
-	title_block.position = Vector2(48, 28)
-	title_block.size = Vector2(620, 160)
-	add_child(title_block)
+func _build_title_block() -> void:
 	var title := Label.new()
 	title.name = "GameTitle"
-	title.text = "BLOCKRAFT"
-	title.position = Vector2(0, 0)
-	title.size = Vector2(620, 92)
-	title.add_theme_font_size_override("font_size", 78)
-	title.add_theme_color_override("font_color", Color("#f5f0e0"))
-	title.add_theme_color_override("font_shadow_color", Color("#1a2e22"))
-	title.add_theme_constant_override("shadow_offset_x", 5)
-	title.add_theme_constant_override("shadow_offset_y", 7)
-	title.add_theme_constant_override("outline_size", 8)
-	title.add_theme_color_override("font_outline_color", Color("#2a4a38"))
-	title_block.add_child(title)
-	var subtitle := Label.new()
-	subtitle.name = "Subtitle"
-	subtitle.text = "EXPLORE  •  BUILD  •  SURVIVE"
-	subtitle.position = Vector2(8, 92)
-	subtitle.size = Vector2(500, 28)
-	subtitle.add_theme_font_size_override("font_size", 18)
-	subtitle.add_theme_color_override("font_color", Color("#e8f5e0"))
-	subtitle.add_theme_color_override("font_shadow_color", Color("#1a3328"))
-	subtitle.add_theme_constant_override("shadow_offset_x", 2)
-	subtitle.add_theme_constant_override("shadow_offset_y", 2)
-	title_block.add_child(subtitle)
-	var action_col := VBoxContainer.new()
-	action_col.name = "ActionColumn"
-	action_col.position = Vector2(48, 210)
-	action_col.size = Vector2(240, 220)
-	action_col.add_theme_constant_override("separation", 10)
-	add_child(action_col)
-	menu_column = action_col
+	title.text = "BLOCKCRAFT"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title.add_theme_font_size_override("font_size", 52)
+	title.add_theme_color_override("font_color", Color("#f5f0e6"))
+	title.add_theme_color_override("font_shadow_color", Color("#1a1208"))
+	title.add_theme_constant_override("shadow_offset_x", 3)
+	title.add_theme_constant_override("shadow_offset_y", 3)
+	title.position = Vector2(36, 28)
+	title.size = Vector2(520, 64)
+	add_child(title)
+	var tagline := Label.new()
+	tagline.name = "Tagline"
+	tagline.text = "EXPLORE  •  BUILD  •  SURVIVE"
+	tagline.add_theme_font_size_override("font_size", 14)
+	tagline.add_theme_color_override("font_color", Color("#d8e8f0"))
+	tagline.add_theme_color_override("font_shadow_color", Color("#102030"))
+	tagline.add_theme_constant_override("shadow_offset_x", 1)
+	tagline.add_theme_constant_override("shadow_offset_y", 1)
+	tagline.position = Vector2(42, 88)
+	tagline.size = Vector2(400, 24)
+	add_child(tagline)
+
+func _build_menu_buttons() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "MainMenuPanel"
+	panel.position = Vector2(36, 130)
+	panel.custom_minimum_size = Vector2(260, 220)
+	var empty := StyleBoxEmpty.new()
+	panel.add_theme_stylebox_override("panel", empty)
+	add_child(panel)
+	menu_column = VBoxContainer.new()
+	menu_column.name = "MenuColumn"
+	menu_column.add_theme_constant_override("separation", 10)
+	panel.add_child(menu_column)
 	_add_menu_button("▶  Play", "play", true)
 	_add_menu_button("⚙  Settings", "settings", false)
 	_add_menu_button("📖  Help", "help", false)
 	_add_menu_button("⏻  Exit", "exit", false)
-	var slogan := Label.new()
-	slogan.name = "Slogan"
-	slogan.text = "Your World\nYour Adventure"
-	slogan.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	slogan.position = Vector2(900, 480)
-	slogan.size = Vector2(320, 80)
-	slogan.add_theme_font_size_override("font_size", 22)
-	slogan.add_theme_color_override("font_color", Color("#fff8e8"))
-	slogan.add_theme_color_override("font_shadow_color", Color("#1a2e22"))
-	slogan.add_theme_constant_override("shadow_offset_x", 2)
-	slogan.add_theme_constant_override("shadow_offset_y", 2)
-	add_child(slogan)
+	status_label = Label.new()
+	status_label.name = "StatusLabel"
+	status_label.text = ""
+	status_label.add_theme_font_size_override("font_size", 12)
+	status_label.add_theme_color_override("font_color", Color("#c8e0d0"))
+	status_label.position = Vector2(40, 360)
+	add_child(status_label)
 
 func _add_menu_button(caption: String, action: String, primary: bool) -> void:
 	var button := Button.new()
 	button.text = caption
-	button.custom_minimum_size = Vector2(220, 46 if primary else 42)
+	button.custom_minimum_size = Vector2(240, 48 if primary else 42)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.focus_mode = Control.FOCUS_ALL
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.add_theme_font_size_override("font_size", 18 if primary else 16)
 	var normal := StyleBoxFlat.new()
 	if primary:
-		normal.bg_color = Color("#2ecc71")
-		normal.border_color = Color("#a8f0c0")
+		normal.bg_color = Color(0.12, 0.55, 0.28, 0.92)
+		normal.border_color = Color(0.45, 0.92, 0.55, 0.95)
 	else:
-		normal.bg_color = Color(0.08, 0.12, 0.14, 0.82)
-		normal.border_color = Color("#5a8a6a")
+		normal.bg_color = Color(0.06, 0.10, 0.12, 0.78)
+		normal.border_color = Color(0.55, 0.70, 0.65, 0.55)
 	normal.set_border_width_all(2)
-	normal.set_corner_radius_all(8)
+	normal.set_corner_radius_all(10)
 	normal.content_margin_left = 16
 	normal.content_margin_right = 16
-	normal.content_margin_top = 8
-	normal.content_margin_bottom = 8
 	var hover := normal.duplicate() as StyleBoxFlat
-	hover.bg_color = Color("#3ee085") if primary else Color(0.14, 0.22, 0.24, 0.92)
+	if primary:
+		hover.bg_color = Color(0.18, 0.68, 0.35, 0.96)
+	else:
+		hover.bg_color = Color(0.12, 0.18, 0.20, 0.90)
+		hover.border_color = Color(0.75, 0.95, 0.80, 0.85)
 	var pressed := normal.duplicate() as StyleBoxFlat
-	pressed.bg_color = Color("#1e9c55") if primary else Color(0.05, 0.08, 0.10, 0.95)
+	pressed.bg_color = Color(0.76, 0.55, 0.18, 0.95) if primary else Color(0.18, 0.22, 0.20, 0.95)
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
 	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_stylebox_override("focus", hover)
-	button.add_theme_color_override("font_color", Color("#0d1f14") if primary else Color("#f0f8e6"))
-	button.add_theme_color_override("font_hover_color", Color("#0a1810"))
-	button.add_theme_color_override("font_pressed_color", Color("#0a1810"))
-	button.pressed.connect(_on_menu_action.bind(action))
+	button.add_theme_color_override("font_color", Color("#f0f8e6"))
+	button.add_theme_color_override("font_hover_color", Color("#ffffff"))
+	button.add_theme_color_override("font_pressed_color", Color("#173729"))
+	button.pressed.connect(func():
+		_play_click()
+		_on_menu_action(action)
+	)
+	button.mouse_entered.connect(_play_hover)
 	menu_column.add_child(button)
 
+func _build_slogan() -> void:
+	var slogan := Label.new()
+	slogan.name = "Slogan"
+	slogan.text = "Your World\nYour Adventure"
+	slogan.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	slogan.add_theme_font_size_override("font_size", 22)
+	slogan.add_theme_color_override("font_color", Color("#f8f0e0"))
+	slogan.add_theme_color_override("font_shadow_color", Color("#1a1008"))
+	slogan.add_theme_constant_override("shadow_offset_x", 2)
+	slogan.add_theme_constant_override("shadow_offset_y", 2)
+	slogan.position = Vector2(980, 400)
+	slogan.size = Vector2(260, 70)
+	add_child(slogan)
+
 func _build_feature_strip() -> void:
-	var features := [
-		{"title": "EXPLORE VAST WORLDS", "body": "Endless procedural landscapes", "image": "res://assets/ui/cards/explore.svg", "action": "help"},
-		{"title": "GATHER RESOURCES", "body": "Mine ores, chop wood, craft", "image": "res://assets/ui/cards/mining.svg", "action": "help"},
-		{"title": "CRAFT & BUILD", "body": "Workbench recipes & tools", "image": "res://assets/ui/cards/build.svg", "action": "help"},
-		{"title": "SURVIVE THE NIGHT", "body": "Health, hunger & monsters", "image": "res://assets/ui/cards/survive.svg", "action": "help"},
-		{"title": "BUILD YOUR DREAMS", "body": "Castles, cottages, floating isles", "image": "res://assets/ui/cards/dreams.svg", "action": "help"},
-		{"title": "MULTIPLAYER (OPTIONAL)", "body": "Play with friends online", "image": "res://assets/ui/cards/multiplayer.svg", "action": "help"},
-	]
 	var strip := HBoxContainer.new()
 	strip.name = "FeatureStrip"
-	strip.position = Vector2(24, 560)
-	strip.size = Vector2(1232, 110)
-	strip.add_theme_constant_override("separation", 10)
+	strip.add_theme_constant_override("separation", 8)
+	strip.position = Vector2(16, 500)
+	strip.size = Vector2(1248, 140)
 	add_child(strip)
-	for feature in features:
-		var card := PanelContainer.new()
-		card.custom_minimum_size = Vector2(198, 100)
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var cards := [
+		{"title": "EXPLORE VAST WORLDS", "sub": "Endless horizons", "c0": Color("#3a7a9a"), "c1": Color("#1a4a5a")},
+		{"title": "GATHER RESOURCES", "sub": "Mine deep ores", "c0": Color("#5a5048"), "c1": Color("#2a2820")},
+		{"title": "CRAFT & BUILD", "sub": "Shape your base", "c0": Color("#8a6a40"), "c1": Color("#4a3820")},
+		{"title": "SURVIVE THE NIGHT", "sub": "Face the dark", "c0": Color("#2a3a5a"), "c1": Color("#101828")},
+		{"title": "BUILD YOUR DREAMS", "sub": "Homes & castles", "c0": Color("#4a7a50"), "c1": Color("#1a3a28")},
+		{"title": "MULTIPLAYER (OPTIONAL)", "sub": "Play with friends", "c0": Color("#4a6a8a"), "c1": Color("#1a2a40")},
+	]
+	for card in cards:
+		var panel := PanelContainer.new()
+		panel.custom_minimum_size = Vector2(200, 130)
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.05, 0.08, 0.10, 0.86)
-		style.border_color = Color("#6ab88a")
-		style.set_border_width_all(1)
-		style.set_corner_radius_all(6)
-		style.content_margin_left = 7
-		style.content_margin_right = 7
-		style.content_margin_top = 6
-		style.content_margin_bottom = 6
-		card.add_theme_stylebox_override("panel", style)
-		var content := VBoxContainer.new()
-		content.add_theme_constant_override("separation", 3)
-		card.add_child(content)
-		var artwork := TextureRect.new()
-		artwork.name = "FeatureArtwork"
-		artwork.texture = load(str(feature.image)) as Texture2D
-		artwork.custom_minimum_size = Vector2(0, 48)
-		artwork.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		artwork.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		artwork.stretch_mode = TextureRect.STRETCH_SCALE
-		artwork.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		content.add_child(artwork)
-		var heading := Label.new()
-		heading.text = feature.title
-		heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		heading.add_theme_font_size_override("font_size", 11)
-		heading.add_theme_color_override("font_color", Color("#fff5d9"))
-		content.add_child(heading)
-		var detail := Label.new()
-		detail.text = feature.body
-		detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		detail.add_theme_font_size_override("font_size", 9)
-		detail.add_theme_color_override("font_color", Color("#c8dcc8"))
-		content.add_child(detail)
-		var hit_area := Button.new()
-		hit_area.name = "CardHitArea"
-		hit_area.text = ""
-		hit_area.flat = true
-		hit_area.focus_mode = Control.FOCUS_ALL
-		hit_area.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		hit_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		hit_area.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-		var hover := StyleBoxFlat.new()
-		hover.bg_color = Color(1, 1, 1, 0.08)
-		hit_area.add_theme_stylebox_override("hover", hover)
-		hit_area.pressed.connect(_on_menu_action.bind(feature.action))
-		card.add_child(hit_area)
-		strip.add_child(card)
+		style.bg_color = card["c1"]
+		style.border_color = card["c0"]
+		style.set_border_width_all(2)
+		style.set_corner_radius_all(8)
+		panel.add_theme_stylebox_override("panel", style)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 4)
+		panel.add_child(v)
+		var title := Label.new()
+		title.text = card["title"]
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		title.add_theme_font_size_override("font_size", 12)
+		title.add_theme_color_override("font_color", Color("#f0f8e6"))
+		title.autowrap_mode = TextServer.AUTOWRAP_WORD
+		v.add_child(title)
+		var sub := Label.new()
+		sub.text = card["sub"]
+		sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sub.add_theme_font_size_override("font_size", 11)
+		sub.add_theme_color_override("font_color", Color("#a8c8b8"))
+		v.add_child(sub)
+		var bar := ColorRect.new()
+		bar.custom_minimum_size = Vector2(0, 48)
+		bar.color = card["c0"]
+		v.add_child(bar)
+		strip.add_child(panel)
 
 func _build_footer_bar() -> void:
 	var footer := HBoxContainer.new()
-	footer.name = "FooterBar"
-	footer.position = Vector2(40, 680)
-	footer.size = Vector2(1200, 32)
-	footer.add_theme_constant_override("separation", 48)
+	footer.name = "Footer"
+	footer.add_theme_constant_override("separation", 24)
+	footer.position = Vector2(24, 660)
+	footer.size = Vector2(1232, 48)
 	add_child(footer)
 	var items := [
-		{"icon": "⬡", "label": "Procedural Worlds"},
-		{"icon": "🌳", "label": "Dynamic Biomes"},
-		{"icon": "⛏", "label": "Multiple Tools"},
-		{"icon": "♥", "label": "Health & Hunger"},
-		{"icon": "☀", "label": "Day & Night Cycle"},
-		{"icon": "👥", "label": "Online Play"},
+		["⬡", "Procedural Worlds", "Never the same twice"],
+		["🌲", "Dynamic Biomes", "Forests, mountains, deserts..."],
+		["⛏", "Multiple Tools", "Mine, craft, build"],
+		["♥", "Health & Hunger", "Stay alive"],
+		["☀", "Day & Night Cycle", "New challenges"],
+		["👥", "Online Play", "Play with friends"],
 	]
 	for item in items:
-		var lbl := Label.new()
-		lbl.text = "%s  %s" % [item.icon, item.label]
-		lbl.add_theme_font_size_override("font_size", 12)
-		lbl.add_theme_color_override("font_color", Color("#d0e8d0"))
-		footer.add_child(lbl)
+		var cell := VBoxContainer.new()
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var icon := Label.new()
+		icon.text = item[0] + "  " + item[1]
+		icon.add_theme_font_size_override("font_size", 12)
+		icon.add_theme_color_override("font_color", Color("#d0e8d8"))
+		cell.add_child(icon)
+		var desc := Label.new()
+		desc.text = item[2]
+		desc.add_theme_font_size_override("font_size", 10)
+		desc.add_theme_color_override("font_color", Color("#809890"))
+		cell.add_child(desc)
+		footer.add_child(cell)
+
+func _apply_responsive_layout() -> void:
+	var vs := size
+	if vs.x <= 0.0 or vs.y <= 0.0:
+		return
+	var sx := vs.x / DESIGN_SIZE.x
+	var sy := vs.y / DESIGN_SIZE.y
+	var s := minf(sx, sy)
+	var title := get_node_or_null("GameTitle") as Label
+	var tagline := get_node_or_null("Tagline") as Label
+	var panel := get_node_or_null("MainMenuPanel") as Control
+	var strip := get_node_or_null("FeatureStrip") as Control
+	var footer := get_node_or_null("Footer") as Control
+	var slogan := get_node_or_null("Slogan") as Label
+	if title:
+		title.position = Vector2(36 * sx, 28 * sy)
+		title.add_theme_font_size_override("font_size", int(52 * s))
+	if tagline:
+		tagline.position = Vector2(42 * sx, 88 * sy)
+	if panel:
+		panel.position = Vector2(36 * sx, 130 * sy)
+		panel.custom_minimum_size = Vector2(260 * s, 220 * s)
+	if strip:
+		strip.position = Vector2(16 * sx, vs.y - 220 * sy)
+		strip.size = Vector2(vs.x - 32 * sx, 140 * sy)
+	if footer:
+		footer.position = Vector2(24 * sx, vs.y - 55 * sy)
+		footer.size = Vector2(vs.x - 48 * sx, 48 * sy)
+	if slogan:
+		slogan.position = Vector2(vs.x - 300 * sx, vs.y - 320 * sy)
+	var backdrop := get_node_or_null("ThreeDMenuBackdrop") as SubViewportContainer
+	if backdrop:
+		var vp := backdrop.get_node_or_null("WorldViewport") as SubViewport
+		if vp:
+			vp.size = Vector2i(maxi(int(vs.x), 640), maxi(int(vs.y), 360))
 
 func _on_menu_action(action: String) -> void:
 	match action:
 		"play":
-			_start_game()
+			if status_label:
+				status_label.text = "Loading world..."
+			get_tree().change_scene_to_file(GAME_SCENE)
 		"settings":
-			_show_dialog("SETTINGS", "Graphics, audio and sensitivity controls will appear here once wired.\nThis prototype currently uses the project's default settings.", [{"label": "BACK", "action": "close", "primary": true}])
+			_open_dialog("Settings", "Audio, controls, and graphics options will expand here.\n\n• Master volume\n• Music / SFX balance\n• Touch controls (mobile)", [
+				{"label": "Close", "action": "close", "primary": true}
+			])
 		"help":
-			_show_dialog("HOW TO PLAY", "DESKTOP\nW A S D  ·  Move\nSPACE  ·  Jump\nMOUSE  ·  Look\nLEFT CLICK  ·  Mine\nRIGHT CLICK  ·  Place\n\nMOBILE\nLEFT PAD  ·  Move\nDRAG RIGHT  ·  Look\nJUMP / MINE / PLACE buttons on screen\n\nAim at a block before mining or placing.", [{"label": "GOT IT", "action": "close", "primary": true}])
+			_open_dialog("How to Play", "• Move with WASD or the left joystick\n• Look with mouse or right-side drag\n• LMB / MINE to dig blocks\n• RMB / PLACE to build\n• 1–9 select hotbar slots\n• B upgrade backpack\n• Explore, mine ores, find chests!", [
+				{"label": "Got it", "action": "close", "primary": true}
+			])
 		"exit":
 			get_tree().quit()
 		"worlds":
-			_show_dialog("CHOOSE YOUR WORLD", "Meadowlands is the current playable region. Other biomes are locked until their terrain, landmarks and mobile performance are ready.", [{"label": "▶  PLAY THE MEADOWLANDS", "action": "play", "primary": true}, {"label": "MOUNTAIN FRONTIER  ·  LOCKED", "action": "locked_mountains"}, {"label": "SUNSCORCHED DESERT  ·  LOCKED", "action": "locked_desert"}, {"label": "DEEP BLUE OCEAN  ·  LOCKED", "action": "locked_ocean"}, {"label": "BACK", "action": "close"}])
+			_open_dialog("Worlds", "Single world for now — your progress auto-saves.", [
+				{"label": "Play", "action": "play", "primary": true},
+				{"label": "Back", "action": "close", "primary": false}
+			])
 
-func _start_game() -> void:
-	get_tree().change_scene_to_file(GAME_SCENE)
-
-func _show_dialog(dialog_title: String, description: String, options: Array) -> void:
+func _open_dialog(title_text: String, body_text: String, options: Array) -> void:
 	if is_instance_valid(dialog_layer):
 		dialog_layer.queue_free()
 	dialog_layer = Control.new()
-	dialog_layer.name = "MenuDialog"
+	dialog_layer.name = "DialogLayer"
 	dialog_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dialog_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dialog_layer)
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.02, 0.05, 0.06, 0.72)
 	dialog_layer.add_child(dim)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(480, 320)
-	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	panel.offset_left = -240
-	panel.offset_top = -180
-	panel.offset_right = 240
-	panel.offset_bottom = 180
-	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.06, 0.10, 0.12, 0.96)
-	panel_style.border_color = Color("#7fe4a0")
-	panel_style.set_border_width_all(2)
-	panel_style.set_corner_radius_all(10)
-	panel_style.content_margin_left = 20
-	panel_style.content_margin_right = 20
-	panel_style.content_margin_top = 16
-	panel_style.content_margin_bottom = 16
-	panel.add_theme_stylebox_override("panel", panel_style)
-	dialog_layer.add_child(panel)
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
-	panel.add_child(vbox)
-	var heading := Label.new()
-	heading.text = dialog_title
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_font_size_override("font_size", 22)
-	heading.add_theme_color_override("font_color", Color("#fff5d9"))
-	vbox.add_child(heading)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, 140)
-	vbox.add_child(scroll)
+	var box := PanelContainer.new()
+	box.custom_minimum_size = Vector2(480, 280)
+	box.position = Vector2(size.x * 0.5 - 240, size.y * 0.5 - 140)
+	var box_style := StyleBoxFlat.new()
+	box_style.bg_color = Color(0.06, 0.12, 0.12, 0.96)
+	box_style.border_color = Color("#6ab88a")
+	box_style.set_border_width_all(2)
+	box_style.set_corner_radius_all(14)
+	box_style.content_margin_left = 20
+	box_style.content_margin_right = 20
+	box_style.content_margin_top = 16
+	box_style.content_margin_bottom = 16
+	box.add_theme_stylebox_override("panel", box_style)
+	dialog_layer.add_child(box)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	box.add_child(col)
+	var t := Label.new()
+	t.text = title_text
+	t.add_theme_font_size_override("font_size", 22)
+	t.add_theme_color_override("font_color", Color("#f0f8e6"))
+	col.add_child(t)
 	var body := Label.new()
-	body.text = description
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.text = body_text
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD
 	body.add_theme_font_size_override("font_size", 14)
-	body.add_theme_color_override("font_color", Color("#d8e8d0"))
-	scroll.add_child(body)
-	var button_stack := VBoxContainer.new()
-	button_stack.add_theme_constant_override("separation", 8)
-	vbox.add_child(button_stack)
-	for option in options:
-		var option_button := Button.new()
-		option_button.text = str(option.get("label", "BACK"))
-		option_button.custom_minimum_size = Vector2(0, 42)
-		option_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		option_button.add_theme_font_size_override("font_size", 15)
-		var option_style := StyleBoxFlat.new()
-		var is_primary := bool(option.get("primary", false))
-		option_style.bg_color = Color("#2ecc71") if is_primary else Color("#294e3e")
-		option_style.border_color = Color("#a8f0c0") if is_primary else Color("#8ab878")
-		option_style.set_border_width_all(1)
-		option_style.set_corner_radius_all(6)
-		option_button.add_theme_stylebox_override("normal", option_style)
-		var hover_style := option_style.duplicate() as StyleBoxFlat
-		hover_style.bg_color = Color("#3ee085") if is_primary else Color("#3d6c4b")
-		option_button.add_theme_stylebox_override("hover", hover_style)
-		option_button.add_theme_color_override("font_color", Color("#0d1f14") if is_primary else Color("#f0f8e6"))
-		option_button.pressed.connect(_on_dialog_action.bind(str(option.get("action", "close"))))
-		button_stack.add_child(option_button)
+	body.add_theme_color_override("font_color", Color("#c8e0d0"))
+	col.add_child(body)
+	var btn_row := HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 10)
+	col.add_child(btn_row)
+	for opt in options:
+		var b := Button.new()
+		b.text = str(opt.get("label", "OK"))
+		b.custom_minimum_size = Vector2(120, 40)
+		b.focus_mode = Control.FOCUS_NONE
+		var is_primary: bool = bool(opt.get("primary", false))
+		var ns := StyleBoxFlat.new()
+		ns.bg_color = Color(0.12, 0.55, 0.28, 0.92) if is_primary else Color(0.08, 0.14, 0.14, 0.9)
+		ns.border_color = Color("#6ab88a")
+		ns.set_border_width_all(2)
+		ns.set_corner_radius_all(8)
+		b.add_theme_stylebox_override("normal", ns)
+		b.add_theme_color_override("font_color", Color("#f0f8e6"))
+		var act := str(opt.get("action", "close"))
+		b.pressed.connect(func():
+			_play_click()
+			_on_dialog_action(act)
+		)
+		btn_row.add_child(b)
 
 func _on_dialog_action(action: String) -> void:
-	match action:
-		"play":
-			_start_game()
-		"close":
-			if is_instance_valid(dialog_layer):
-				dialog_layer.queue_free()
-		"locked_mountains":
-			_show_dialog("MOUNTAIN FRONTIER", "LOCKED REGION\nThis biome needs its own reviewed terrain, landmarks, resources, and mobile performance checks before it can be selected.", [{"label": "BACK TO WORLDS", "action": "worlds", "primary": true}, {"label": "CLOSE", "action": "close"}])
-		"locked_desert":
-			_show_dialog("SUNSCORCHED DESERT", "LOCKED REGION\nThe desert will be selectable only after its original block palette, dunes, oasis landmarks, and resource loop are implemented.", [{"label": "BACK TO WORLDS", "action": "worlds", "primary": true}, {"label": "CLOSE", "action": "close"}])
-		"locked_ocean":
-			_show_dialog("DEEP BLUE OCEAN", "LOCKED REGION\nThe ocean needs water rendering, underwater readability, and a distinct exploration loop before it is considered playable.", [{"label": "BACK TO WORLDS", "action": "worlds", "primary": true}, {"label": "CLOSE", "action": "close"}])
-		"worlds":
-			_on_menu_action("worlds")
+	if action == "close":
+		if is_instance_valid(dialog_layer):
+			dialog_layer.queue_free()
+			dialog_layer = null
+	elif action == "play":
+		if is_instance_valid(dialog_layer):
+			dialog_layer.queue_free()
+		_on_menu_action("play")
