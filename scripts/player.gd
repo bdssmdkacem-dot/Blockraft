@@ -34,6 +34,10 @@ var body_root: Node3D
 var pickaxe_node: Node3D
 var pickaxe_swing_t := 0.0
 var walk_phase := 0.0
+var footstep_player: AudioStreamPlayer3D
+var footstep_stream: AudioStreamWAV
+var _last_step_sign := 0
+var _step_cooldown := 0.0
 
 func _ready() -> void:
 	var collider := CollisionShape3D.new()
@@ -45,6 +49,7 @@ func _ready() -> void:
 	add_child(collider)
 	_build_character_body()
 	_build_third_person_camera()
+	_init_footsteps()
 	touch_controls_enabled = OS.has_feature("mobile")
 	if touch_controls_enabled:
 		_build_touch_controls()
@@ -123,6 +128,51 @@ func _update_camera_transform() -> void:
 			dist = clampf(pivot.distance_to(hit.position) - 0.25, 1.2, CAMERA_DISTANCE)
 	camera.global_position = pivot + basis * Vector3(0.0, 0.0, dist)
 	camera.look_at(pivot, Vector3.UP)
+
+func _init_footsteps() -> void:
+	footstep_stream = _make_footstep_wav()
+	footstep_player = AudioStreamPlayer3D.new()
+	footstep_player.name = "FootstepPlayer"
+	footstep_player.stream = footstep_stream
+	footstep_player.max_distance = 28.0
+	footstep_player.unit_size = 6.0
+	footstep_player.volume_db = -4.0
+	footstep_player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+	add_child(footstep_player)
+
+func _make_footstep_wav() -> AudioStreamWAV:
+	var sample_rate := 22050
+	var duration := 0.08
+	var n := int(duration * sample_rate)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var prev := 0.0
+	for i in range(n):
+		var t := float(i) / sample_rate
+		var env := exp(-t * 32.0)
+		var noise := (randf() * 2.0 - 1.0)
+		prev = prev * 0.55 + noise * 0.45
+		var thump := sin(TAU * 70.0 * t) * 0.5 * env
+		thump += sin(TAU * 110.0 * t) * 0.25 * env
+		var grit := prev * 0.35 * env
+		var sample := clampf((thump + grit) * 0.75, -1.0, 1.0)
+		var s16 := int(sample * 32767.0)
+		data[i * 2] = s16 & 0xFF
+		data[i * 2 + 1] = (s16 >> 8) & 0xFF
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = sample_rate
+	wav.stereo = false
+	wav.data = data
+	return wav
+
+func _play_footstep() -> void:
+	if footstep_player == null or footstep_stream == null:
+		return
+	if footstep_player.playing:
+		footstep_player.stop()
+	footstep_player.pitch_scale = randf_range(0.88, 1.12)
+	footstep_player.play()
 
 func _build_touch_controls() -> void:
 	var layer := CanvasLayer.new()
@@ -269,17 +319,27 @@ func _physics_process(delta: float) -> void:
 	velocity.x = direction.x * SPEED
 	velocity.z = direction.z * SPEED
 	move_and_slide()
-	if direction.length() > 0.05:
+	_step_cooldown = maxf(0.0, _step_cooldown - delta)
+	if direction.length() > 0.05 and is_on_floor():
 		var target_yaw := atan2(-direction.x, -direction.z)
 		body_root.rotation.y = lerp_angle(body_root.rotation.y, target_yaw, 1.0 - exp(-12.0 * delta))
 		walk_phase += delta * 10.0
 		var swing := sin(walk_phase) * 0.35
+		var step_sign := 1 if sin(walk_phase) >= 0.0 else -1
+		if step_sign != _last_step_sign and _step_cooldown <= 0.0:
+			_last_step_sign = step_sign
+			_step_cooldown = 0.12
+			_play_footstep()
 		for pair in [["LegL", swing], ["LegR", -swing], ["ArmL", -swing * 0.7], ["ArmR", swing * 0.7]]:
 			var part := body_root.get_node_or_null(pair[0]) as MeshInstance3D
 			if part:
 				part.rotation.x = pair[1]
+	elif direction.length() > 0.05:
+		var target_yaw2 := atan2(-direction.x, -direction.z)
+		body_root.rotation.y = lerp_angle(body_root.rotation.y, target_yaw2, 1.0 - exp(-12.0 * delta))
 	else:
 		walk_phase = 0.0
+		_last_step_sign = 0
 		for n in ["LegL", "LegR", "ArmL", "ArmR"]:
 			var part := body_root.get_node_or_null(n) as MeshInstance3D
 			if part:
