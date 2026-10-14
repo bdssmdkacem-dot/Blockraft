@@ -1,36 +1,60 @@
 extends CharacterBody3D
-## Simple voxel animal: wander, idle, slight flee from player.
+## Voxel animal that wanders on solid ground inside the map.
 
 enum Kind { PIG, CHICKEN, COW, SHEEP }
 
 const KIND_DATA := {
-	Kind.PIG: {"scale": 0.85, "speed": 2.8, "color_body": Color("#e8a0b0"), "color_spot": Color("#c87888")},
-	Kind.CHICKEN: {"scale": 0.55, "speed": 3.4, "color_body": Color("#f0f0e8"), "color_spot": Color("#e05040")},
-	Kind.COW: {"scale": 1.1, "speed": 2.2, "color_body": Color("#f5f5f0"), "color_spot": Color("#2a2a2a")},
-	Kind.SHEEP: {"scale": 0.9, "speed": 2.5, "color_body": Color("#f2f2f2"), "color_spot": Color("#d8d8d0")},
+	Kind.PIG: {"scale": 0.85, "speed": 3.2, "color_body": Color("#e8a0b0"), "color_spot": Color("#c87888")},
+	Kind.CHICKEN: {"scale": 0.55, "speed": 4.0, "color_body": Color("#f0f0e8"), "color_spot": Color("#e05040")},
+	Kind.COW: {"scale": 1.1, "speed": 2.6, "color_body": Color("#f5f5f0"), "color_spot": Color("#2a2a2a")},
+	Kind.SHEEP: {"scale": 0.9, "speed": 3.0, "color_body": Color("#f2f2f2"), "color_spot": Color("#d8d8d0")},
 }
 
+const MAP_LIMIT := 38.0
+
 var kind: int = Kind.PIG
-var move_speed := 2.5
+var move_speed := 3.0
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-var _dir := Vector3.ZERO
+var _dir := Vector3.FORWARD
 var _timer := 0.0
 var _body_root: Node3D
 var _bob := 0.0
+var _ready_physics := false
 
 func setup(animal_kind: int, spawn_pos: Vector3) -> void:
 	kind = animal_kind
 	var data: Dictionary = KIND_DATA[kind]
 	move_speed = float(data["speed"])
-	global_position = spawn_pos
+	floor_snap_length = 0.35
+	floor_max_angle = deg_to_rad(55.0)
+	collision_layer = 2
+	collision_mask = 1
 	_build_mesh(data)
 	var col := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
-	shape.radius = 0.28 * float(data["scale"])
-	shape.height = 0.7 * float(data["scale"])
+	var s: float = float(data["scale"])
+	shape.radius = 0.25 * s
+	shape.height = maxf(0.55 * s, shape.radius * 2.1)
 	col.shape = shape
 	col.position.y = shape.height * 0.5
 	add_child(col)
+	global_position = spawn_pos
+	var a := randf() * TAU
+	_dir = Vector3(cos(a), 0.0, sin(a)).normalized()
+	_timer = randf_range(1.5, 3.0)
+	call_deferred("_enable_physics")
+
+func _enable_physics() -> void:
+	_ready_physics = true
+	if is_inside_tree() and get_world_3d():
+		var from := global_position + Vector3(0, 2.0, 0)
+		var to := global_position + Vector3(0, -8.0, 0)
+		var q := PhysicsRayQueryParameters3D.create(from, to)
+		q.exclude = [self]
+		q.collision_mask = 1
+		var hit := get_world_3d().direct_space_state.intersect_ray(q)
+		if hit:
+			global_position = hit.position + Vector3(0, 0.05, 0)
 
 func _build_mesh(data: Dictionary) -> void:
 	_body_root = Node3D.new()
@@ -75,32 +99,65 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> void:
 	mi.material_override = mat
 	parent.add_child(mi)
 
+func _pick_new_direction() -> void:
+	var a := randf() * TAU
+	_dir = Vector3(cos(a), 0.0, sin(a)).normalized()
+	_timer = randf_range(1.4, 3.2)
+
 func _physics_process(delta: float) -> void:
+	if not _ready_physics:
+		return
 	if not is_on_floor():
 		velocity.y -= gravity * delta
+	else:
+		velocity.y = 0.0
 	_timer -= delta
 	if _timer <= 0.0:
-		_timer = randf_range(1.2, 3.5)
-		if randf() < 0.35:
+		if randf() < 0.25:
 			_dir = Vector3.ZERO
+			_timer = randf_range(0.6, 1.4)
 		else:
-			var a := randf() * TAU
-			_dir = Vector3(cos(a), 0, sin(a))
+			_pick_new_direction()
 	var player := get_tree().get_first_node_in_group("player")
-	if player and global_position.distance_to(player.global_position) < 5.0:
-		var away := global_position - player.global_position
-		away.y = 0
-		if away.length() > 0.1:
-			_dir = away.normalized()
-			_timer = 0.8
-	velocity.x = _dir.x * move_speed
-	velocity.z = _dir.z * move_speed
+	if player:
+		var to_player: Vector3 = global_position - player.global_position
+		to_player.y = 0.0
+		if to_player.length() < 6.0 and to_player.length() > 0.05:
+			_dir = to_player.normalized()
+			_timer = maxf(_timer, 0.6)
+	if absf(global_position.x) > MAP_LIMIT or absf(global_position.z) > MAP_LIMIT:
+		_dir = Vector3(-global_position.x, 0.0, -global_position.z).normalized()
+		_timer = 1.5
+	if _dir.length() > 0.1 and is_inside_tree() and get_world_3d():
+		var space := get_world_3d().direct_space_state
+		var ahead := global_position + Vector3(0, 0.4, 0) + _dir * 1.1
+		var wall_q := PhysicsRayQueryParameters3D.create(global_position + Vector3(0, 0.4, 0), ahead)
+		wall_q.exclude = [self]
+		wall_q.collision_mask = 1
+		if space.intersect_ray(wall_q):
+			_pick_new_direction()
+		else:
+			var ground_q := PhysicsRayQueryParameters3D.create(ahead + Vector3(0, 1.5, 0), ahead + Vector3(0, -2.5, 0))
+			ground_q.exclude = [self]
+			ground_q.collision_mask = 1
+			if not space.intersect_ray(ground_q):
+				_pick_new_direction()
+	if _dir.length() > 0.1:
+		velocity.x = _dir.x * move_speed
+		velocity.z = _dir.z * move_speed
+	else:
+		velocity.x = 0.0
+		velocity.z = 0.0
 	move_and_slide()
+	if is_on_wall():
+		_pick_new_direction()
+	global_position.x = clampf(global_position.x, -MAP_LIMIT - 1.0, MAP_LIMIT + 1.0)
+	global_position.z = clampf(global_position.z, -MAP_LIMIT - 1.0, MAP_LIMIT + 1.0)
 	if _dir.length() > 0.1:
 		var target_yaw := atan2(-_dir.x, -_dir.z)
-		rotation.y = lerp_angle(rotation.y, target_yaw, 1.0 - exp(-8.0 * delta))
-		_bob += delta * 10.0
+		rotation.y = lerp_angle(rotation.y, target_yaw, 1.0 - exp(-10.0 * delta))
+		_bob += delta * 12.0
 		if _body_root:
-			_body_root.position.y = absf(sin(_bob)) * 0.04
+			_body_root.position.y = absf(sin(_bob)) * 0.06
 	elif _body_root:
 		_body_root.position.y = lerpf(_body_root.position.y, 0.0, 1.0 - exp(-6.0 * delta))

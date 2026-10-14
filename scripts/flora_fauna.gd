@@ -114,13 +114,10 @@ func _make_dry_tuft(p: Node3D) -> void:
 		_box_at(p, Vector3(ox, h * 0.5, ox * 0.5), Vector3(0.05, h, 0.05), Color("#a09050"))
 
 func _spawn_animals() -> void:
-	var root := Node3D.new()
-	root.name = "Fauna"
-	_world.add_child(root)
-	var kinds := [AnimalScript.Kind.PIG, AnimalScript.Kind.CHICKEN, AnimalScript.Kind.COW, AnimalScript.Kind.SHEEP]
 	var spawned := 0
 	var attempts := 0
-	while spawned < 18 and attempts < 500:
+	var kinds := [AnimalScript.Kind.PIG, AnimalScript.Kind.CHICKEN, AnimalScript.Kind.COW, AnimalScript.Kind.SHEEP]
+	while spawned < 22 and attempts < 600:
 		attempts += 1
 		var x := _rng.randi_range(-35, 35)
 		var z := _rng.randi_range(-35, 35)
@@ -137,9 +134,9 @@ func _spawn_animals() -> void:
 				continue
 		var animal: CharacterBody3D = AnimalScript.new()
 		animal.name = "Animal_%d" % spawned
-		root.add_child(animal)
+		_world.add_child(animal)
 		var k: int = kinds[_rng.randi_range(0, kinds.size() - 1)]
 		if kind_surface == "grass" and _rng.randf() < 0.3:
 			k = AnimalScript.Kind.CHICKEN
-		animal.setup(k, Vector3(float(x) + 0.5, float(sy) + 1.2, float(z) + 0.5))
+		animal.setup(k, Vector3(float(x) + 0.5, float(sy) + 1.05, float(z) + 0.5))
 		spawned += 1
