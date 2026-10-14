@@ -1,7 +1,5 @@
 extends Node3D
-## Blockraft menu 3D panorama — improved to match the official title-screen
-## reference (golden-hour valley, river, waterfalls, village, gatehouse castle,
-## floating islands, and a voxel protagonist with diamond pickaxe).
+## Blockraft menu 3D panorama — golden-hour valley matching the official title art.
 
 const MAT_GRASS := Color("#438b49")
 const MAT_GRASS_LIGHT := Color("#70b956")
@@ -26,7 +24,6 @@ func _ready() -> void:
 	_setup_environment()
 	_setup_lighting()
 	_setup_camera()
-	_build_sky_backdrop()
 	_build_landscape()
 	_build_horizon_layers()
 	_build_river_and_bridge()
@@ -68,235 +65,189 @@ func _setup_environment() -> void:
 	environment.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color("#183b70")
-	sky_material.sky_horizon_color = Color("#f7b36b")
-	sky_material.ground_bottom_color = Color("#253d43")
-	sky_material.ground_horizon_color = Color("#e7a06b")
-	sky_material.sun_angle_max = 18.0
-	sky_material.energy_multiplier = 1.15
+	sky_material.sky_top_color = Color("#2a5a9a")
+	sky_material.sky_horizon_color = Color("#ffb060")
+	sky_material.ground_bottom_color = Color("#1a2b2a")
+	sky_material.ground_horizon_color = Color("#e0a868")
+	sky_material.sun_angle_max = 22.0
 	sky.sky_material = sky_material
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color("#a8c8d8")
-	environment.ambient_light_energy = 0.48
+	environment.ambient_light_energy = 0.35
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_exposure = 1.0
+	environment.tonemap_exposure = 0.95
 	environment.glow_enabled = true
 	environment.glow_intensity = 0.18
 	environment.fog_enabled = true
 	environment.fog_light_color = Color("#c8a878")
-	environment.fog_density = 0.0012
+	environment.fog_density = 0.0007
 	environment.fog_aerial_perspective = 0.35
 	world.environment = environment
 	add_child(world)
-
-
-func _build_sky_backdrop() -> void:
-	# A camera-facing shader gives a deterministic sunset gradient on the
-	# Compatibility renderer, while normal depth testing keeps the voxel world
-	# in front of the sky instead of painting over it.
-	var sky_mesh := MeshInstance3D.new()
-	sky_mesh.name = "SunsetGradientBackdrop"
-	var quad := QuadMesh.new()
-	quad.size = Vector2(400.0, 240.0)
-	sky_mesh.mesh = quad
-	sky_mesh.position = Vector3(0.0, 0.0, -150.0)
-	var sky_shader := Shader.new()
-	sky_shader.code = """
-shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_never;
-void fragment() {
-	float t = clamp(UV.y, 0.0, 1.0);
-	vec3 deep_blue = vec3(0.035, 0.105, 0.235);
-	vec3 sky_blue = vec3(0.28, 0.46, 0.61);
-	vec3 sunset = vec3(0.90, 0.48, 0.25);
-	vec3 pale_gold = vec3(0.98, 0.82, 0.58);
-	vec3 color;
-	if (t < 0.42) {
-		color = mix(deep_blue, sky_blue, smoothstep(0.0, 0.42, t));
-	} else if (t < 0.76) {
-		color = mix(sky_blue, sunset, smoothstep(0.42, 0.76, t));
-	} else {
-		color = mix(sunset, pale_gold, smoothstep(0.76, 1.0, t));
-	}
-	ALBEDO = color;
-}
-"""
-	var sky_material := ShaderMaterial.new()
-	sky_material.shader = sky_shader
-	sky_mesh.material_override = sky_material
-	var camera := get_node_or_null("MenuWorldCamera") as Camera3D
-	if camera != null:
-		camera.add_child(sky_mesh)
 
 func _setup_lighting() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.name = "GoldenHourSun"
 	sun.rotation_degrees = Vector3(-32.0, -42.0, 0.0)
-	sun.light_color = Color("#ffd089")
-	sun.light_energy = 1.15
+	sun.light_color = Color("#ffe0a0")
+	sun.light_energy = 1.35
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 100.0
 	add_child(sun)
 	var fill := DirectionalLight3D.new()
-	fill.name = "CoolSkyFill"
-	fill.rotation_degrees = Vector3(-15.0, 150.0, 0.0)
-	fill.light_color = Color("#9ed4f0")
-	fill.light_energy = 0.22
+	fill.rotation_degrees = Vector3(-20.0, 120.0, 0.0)
+	fill.light_color = Color("#88b8d8")
+	fill.light_energy = 0.25
 	fill.shadow_enabled = false
 	add_child(fill)
-	var rim := DirectionalLight3D.new()
-	rim.name = "SunsetRim"
-	rim.rotation_degrees = Vector3(-8.0, 80.0, 0.0)
-	rim.light_color = Color("#ffb060")
-	rim.light_energy = 0.18
-	rim.shadow_enabled = false
-	add_child(rim)
 
 func _setup_camera() -> void:
 	var camera := Camera3D.new()
 	camera.name = "MenuWorldCamera"
-	camera.position = Vector3(0.0, 10.5, 31.0)
-	camera.fov = 60.0
+	camera.position = Vector3(-6.5, 4.2, 11.5)
+	camera.rotation_degrees = Vector3(-12.0, -28.0, 0.0)
+	camera.fov = 55.0
 	camera.near = 0.1
-	camera.far = 180.0
+	camera.far = 200.0
+	camera.current = true
 	add_child(camera)
-	camera.look_at(Vector3(0.0, -3.0, -5.0), Vector3.UP)
-	camera.make_current()
 
 func _build_landscape() -> void:
-	_box(self, Vector3(0.0, -1.2, -4.0), Vector3(48.0, 2.0, 38.0), MAT_DIRT)
-	_box(self, Vector3(0.0, -0.15, -5.0), Vector3(48.0, 0.34, 34.0), MAT_GRASS)
+	var ground := Node3D.new()
+	ground.name = "Landscape"
+	add_child(ground)
+	_box(ground, Vector3(0, -0.5, 0), Vector3(80, 1, 80), MAT_GRASS)
 	for i in range(12):
-		var x := -28.0 + float(i) * 5.0
-		var peak := 1.9 + float((i * 7) % 5) * 0.42
-		var z := -36.0 - float((i * 3) % 4) * 1.8
-		var lower_height := peak * 0.58
-		var upper_height := peak - lower_height
-		var width := 3.4 if i % 3 == 1 else 3.9
-		_box(self, Vector3(x, lower_height * 0.5 - 0.1, z), Vector3(width, lower_height, 3.8), MAT_STONE)
-		_box(self, Vector3(x + 0.2, lower_height + upper_height * 0.5 - 0.05, z), Vector3(width * 0.7, upper_height, 2.9), MAT_STONE)
-		_box(self, Vector3(x - 0.1, peak + 0.16, z), Vector3(width * 0.82, 0.34, 3.1), MAT_GRASS_LIGHT if i % 3 == 0 else MAT_GRASS)
+		var ox := (i % 4) * 8.0 - 12.0
+		var oz := (i / 4) * 10.0 - 8.0
+		_box(ground, Vector3(ox, 0.2, oz), Vector3(6.0 + (i % 3), 0.4, 5.0), MAT_GRASS_LIGHT if i % 2 == 0 else MAT_GRASS)
+	_box(ground, Vector3(-10, 1.2, 4), Vector3(8, 2.5, 6), MAT_GRASS)
+	_box(ground, Vector3(-8, 2.0, 3), Vector3(4, 1.2, 3), MAT_GRASS_LIGHT)
 
 func _build_horizon_layers() -> void:
-	# Break the former continuous wall of oversized rectangular mountains into
-	# layered, irregular silhouettes. Keep them distant so the village and castle
-	# remain the focal points instead of being hidden behind a grey block wall.
-	for i in range(23):
-		var x := -42.0 + float(i) * 3.8
-		var h := 3.8 + float((i * 13) % 7) * 0.72
-		var z := -54.0 - float((i * 5) % 4) * 2.1
-		var width := 3.0 + float(i % 3) * 0.42
-		var depth := 3.4 + float((i + 1) % 3) * 0.55
-		var shade := Color("#4a6578") if i % 3 == 0 else (Color("#526c7b") if i % 3 == 1 else Color("#5c7180"))
-		_box(self, Vector3(x, h * 0.36, z), Vector3(width, h * 0.72, depth), shade)
-		# Small offset upper mass creates a broken peak line rather than a flat top.
-		var crown_h := h * (0.20 if i % 4 == 0 else 0.13)
-		_box(self, Vector3(x + width * 0.12, h * 0.72 + crown_h * 0.5, z - 0.15), Vector3(width * 0.56, crown_h, depth * 0.72), shade.lightened(0.08))
+	var far := Node3D.new()
+	far.name = "Horizon"
+	add_child(far)
+	_box(far, Vector3(25, 6, -40), Vector3(30, 14, 8), MAT_STONE)
+	_box(far, Vector3(35, 10, -45), Vector3(12, 18, 6), MAT_STONE_LIGHT)
+	_box(far, Vector3(-20, 5, -38), Vector3(18, 12, 7), MAT_STONE)
+	_box(far, Vector3(0, 3, -35), Vector3(40, 6, 5), MAT_GRASS)
 
 func _build_river_and_bridge() -> void:
-	var water_material := _material(MAT_WATER, 0.18, 0.15)
-	for i in range(14):
-		var z := 6.5 - float(i) * 2.4
-		var x := 1.8 - sin(float(i) * 0.55) * 2.2
-		var water := _box(self, Vector3(x, 0.03, z), Vector3(9.5, 0.16, 3.6), MAT_WATER, 0.18)
-		water.material_override = water_material
-	for i in range(8):
-		var x := 2.8 + float(i) * 0.85
-		_box(self, Vector3(x, 0.38, -0.8), Vector3(0.95, 0.48, 2.5), MAT_STONE_LIGHT)
+	var water := Node3D.new()
+	water.name = "River"
+	add_child(water)
+	var wmat := _material(MAT_WATER, 0.12, 0.2)
+	wmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	wmat.albedo_color = Color(0.25, 0.65, 0.8, 0.75)
+	var river := MeshInstance3D.new()
+	var rm := BoxMesh.new()
+	rm.size = Vector3(8, 0.3, 55)
+	river.mesh = rm
+	river.position = Vector3(4, -0.1, -5)
+	river.material_override = wmat
+	water.add_child(river)
+	_box(water, Vector3(2, 0.4, 2), Vector3(1.2, 0.15, 6), MAT_WOOD)
+	_box(water, Vector3(6, 0.4, 2), Vector3(1.2, 0.15, 6), MAT_WOOD)
+	_box(water, Vector3(4, 0.55, 2), Vector3(5, 0.12, 1.5), MAT_WOOD)
 
 func _build_village() -> void:
-	_house(Vector3(-5.0, 0.0, -4.5), Vector3(3.4, 2.8, 3.1), MAT_WALL, MAT_ROOF)
-	_house(Vector3(-0.5, 0.0, -6.5), Vector3(2.8, 2.3, 2.7), Color("#d4dfc0"), Color("#7d5949"))
-	_house(Vector3(5.5, 0.0, -6.2), Vector3(3.1, 2.5, 2.9), Color("#d7bd8d"), Color("#98583f"))
-	_house(Vector3(-9.5, 0.0, -7.5), Vector3(2.9, 2.4, 2.9), Color("#c6d7d2"), Color("#6f5142"))
-
-func _house(origin: Vector3, dimensions: Vector3, wall_color: Color, roof_color: Color) -> void:
-	_box(self, origin + Vector3(0.0, dimensions.y * 0.5, 0.0), dimensions, wall_color)
-	_box(self, origin + Vector3(0.0, dimensions.y + 0.28, 0.0), Vector3(dimensions.x + 0.7, 0.5, dimensions.z + 0.7), roof_color)
-	_box(self, origin + Vector3(0.0, 0.75, dimensions.z * 0.5 + 0.04), Vector3(0.5, 1.4, 0.12), MAT_WOOD)
+	var village := Node3D.new()
+	village.name = "Village"
+	add_child(village)
+	for i in range(5):
+		var hx := 10.0 + i * 3.5
+		var hz := -2.0 - (i % 3) * 2.5
+		_box(village, Vector3(hx, 0.8, hz), Vector3(2.2, 1.6, 2.0), MAT_WALL)
+		_box(village, Vector3(hx, 1.9, hz), Vector3(2.6, 0.8, 2.4), MAT_ROOF)
+		_box(village, Vector3(hx, 1.1, hz + 1.05), Vector3(0.5, 0.7, 0.1), MAT_WOOD)
 
 func _build_forests() -> void:
-	for i in range(20):
-		var x := -20.0 + float((i * 11) % 40)
-		var z := -1.5 - float((i * 7) % 14)
-		if absf(x) < 6.0 and z > -9.0:
-			continue
-		_tree(Vector3(x, 0.0, z), 0.75 + float(i % 4) * 0.18)
-	_tree(Vector3(-14.0, 0.0, 3.5), 1.6)
-	_tree(Vector3(14.5, 0.0, 2.8), 1.55)
-
-func _tree(origin: Vector3, scale: float) -> void:
-	# Layered, offset canopy masses give the voxel trees a fuller silhouette
-	# and avoid the single oversized rectangular crown from the early prototype.
-	_box(self, origin + Vector3(0.0, 1.15 * scale, 0.0), Vector3(0.48, 2.3, 0.48) * scale, MAT_WOOD)
-	_box(self, origin + Vector3(0.0, 2.25 * scale, 0.0), Vector3(1.65, 1.25, 1.55) * scale, MAT_LEAF_DARK)
-	_box(self, origin + Vector3(-0.18 * scale, 2.85 * scale, 0.02 * scale), Vector3(1.7, 1.15, 1.6) * scale, MAT_LEAF)
-	_box(self, origin + Vector3(0.16 * scale, 3.45 * scale, -0.08 * scale), Vector3(1.18, 0.95, 1.2) * scale, MAT_LEAF_LIGHT)
-	_box(self, origin + Vector3(-0.42 * scale, 2.95 * scale, 0.42 * scale), Vector3(0.58, 0.62, 0.55) * scale, MAT_LEAF)
-	_box(self, origin + Vector3(0.46 * scale, 2.72 * scale, -0.35 * scale), Vector3(0.62, 0.66, 0.58) * scale, MAT_LEAF_DARK)
+	var forest := Node3D.new()
+	forest.name = "Forests"
+	add_child(forest)
+	for i in range(18):
+		var tx := -14.0 + (i % 6) * 2.2 + sin(i) * 0.5
+		var tz := 2.0 + (i / 6) * 2.5
+		_box(forest, Vector3(tx, 1.0, tz), Vector3(0.35, 2.0, 0.35), MAT_WOOD)
+		_box(forest, Vector3(tx, 2.4, tz), Vector3(1.6, 1.4, 1.6), MAT_LEAF)
+		_box(forest, Vector3(tx, 3.2, tz), Vector3(1.1, 1.0, 1.1), MAT_LEAF_LIGHT)
 
 func _build_floating_islands() -> void:
-	# Three distinct silhouettes across the upper panorama; keep their scale
-	# modest enough that none is clipped by the 16:9 menu camera.
-	_create_floating_island("FloatingIsland_Left", Vector3(-15.0, 7.0, -22.0), Vector3(4.6, 2.8, 3.4))
-	_create_floating_island("FloatingIsland", Vector3(1.0, 7.8, -28.0), Vector3(4.8, 3.0, 3.6))
-	_create_floating_island("FloatingIsland_Right", Vector3(15.0, 7.2, -22.0), Vector3(4.8, 3.0, 3.5))
-
-func _create_floating_island(island_name: String, origin: Vector3, dimensions: Vector3) -> void:
 	var island := Node3D.new()
-	island.name = island_name
-	island.position = origin
+	island.name = "FloatingIsland"
+	island.position = Vector3(22, 14, -18)
 	add_child(island)
-	_box(island, Vector3(0.0, 0.0, 0.0), dimensions, MAT_GRASS)
-	_box(island, Vector3(0.0, -0.72, 0.0), dimensions * Vector3(0.82, 0.72, 0.82), MAT_DIRT)
-	_box(island, Vector3(-0.16, -1.45, 0.0), dimensions * Vector3(0.56, 0.66, 0.58), MAT_STONE)
-	# Hanging rock points break up the otherwise flat underside.
-	for i in range(3):
-		var dx := (float(i) - 1.0) * dimensions.x * 0.22
-		_box(island, Vector3(dx, -2.08 - float(i % 2) * 0.18, 0.12), Vector3(0.62, 1.0, 0.7), MAT_STONE)
+	_box(island, Vector3(0, 0, 0), Vector3(6, 1.5, 5), MAT_STONE)
+	_box(island, Vector3(0, 1.0, 0), Vector3(5.5, 0.4, 4.5), MAT_GRASS)
+	_box(island, Vector3(0, -1.5, 0), Vector3(3, 2, 2.5), MAT_STONE_LIGHT)
+	var mid := Node3D.new()
+	mid.name = "MidFloatingIsland"
+	mid.position = Vector3(28, 18, -28)
+	add_child(mid)
+	_box(mid, Vector3(0, 0, 0), Vector3(4, 1.2, 3.5), MAT_STONE)
+	_box(mid, Vector3(0, 0.8, 0), Vector3(3.5, 0.3, 3), MAT_GRASS)
+	var far := Node3D.new()
+	far.name = "FarFloatingIsland"
+	far.position = Vector3(18, 22, -32)
+	add_child(far)
+	_box(far, Vector3(0, 0, 0), Vector3(3, 1, 2.5), MAT_STONE)
+	_box(far, Vector3(0, 0.7, 0), Vector3(2.5, 0.25, 2), MAT_GRASS)
 
 func _build_gatehouse_castle() -> void:
-	var root := Node3D.new()
-	root.name = "GatehouseCastle"
-	# Pull the landmark into the camera's readable midground instead of letting
-	# the village roofs and distant silhouettes swallow it at the right edge.
-	root.position = Vector3(8.0, 0.0, -12.5)
-	add_child(root)
-	_box(root, Vector3(0.0, 2.4, 0.0), Vector3(5.8, 4.8, 3.6), MAT_STONE_CASTLE)
-	_box(root, Vector3(0.0, 1.4, 1.85), Vector3(1.9, 2.8, 0.28), Color("#5a6560"))
-	for side in [-1.0, 1.0]:
-		_box(root, Vector3(side * 3.25, 3.5, 0.1), Vector3(1.7, 7.0, 2.3), MAT_STONE_CASTLE)
-		_box(root, Vector3(side * 3.25, 7.15, 0.1), Vector3(2.0, 0.3, 2.6), MAT_STONE_LIGHT)
-		for crenel in range(3):
-			_box(root, Vector3(side * 3.25 + (float(crenel) - 1.0) * 0.48, 7.48, 0.1), Vector3(0.3, 0.36, 2.25), MAT_STONE_LIGHT)
-	# Warm windows and stone courses add scale cues to the main keep.
-	for side in [-1.0, 1.0]:
-		for level in range(2):
-			var wy := 2.0 + float(level) * 1.45
-			_box(root, Vector3(side * 1.65, wy, 1.84), Vector3(0.26, 0.48, 0.06), Color("#414f50"))
-			var window := _box(root, Vector3(side * 1.65, wy, 1.89), Vector3(0.12, 0.31, 0.035), Color("#ffd27b"), 0.3)
-			window.material_override = _emissive(Color("#ffca70"), 1.25)
-	for row in range(5):
-		var yy := 0.7 + float(row) * 0.82
-		_box(root, Vector3(0.0, yy, 1.82), Vector3(5.6, 0.045, 0.04), Color("#65716e"))
+	var castle := Node3D.new()
+	castle.name = "Castle"
+	castle.position = Vector3(16, 2, -22)
+	add_child(castle)
+	_box(castle, Vector3(0, 4, 0), Vector3(10, 8, 8), MAT_STONE_CASTLE)
+	_box(castle, Vector3(-4, 9, -3), Vector3(3, 5, 3), MAT_STONE)
+	_box(castle, Vector3(4, 9, -3), Vector3(3, 5, 3), MAT_STONE)
+	_box(castle, Vector3(0, 10, 2), Vector3(4, 6, 3), MAT_STONE_LIGHT)
+	_box(castle, Vector3(0, 1, 4.2), Vector3(2.5, 3, 0.4), MAT_WOOD)
+	for dx in [-3.5, 3.5]:
+		for dy in [3.0, 5.5, 8.0]:
+			var w := _box(castle, Vector3(dx, dy, 4.1), Vector3(0.6, 0.6, 0.2), Color("#ffe8a0"), 0.3)
+			w.material_override = _emissive(Color("#ffe8a0"), 1.4)
+	# Waterfall
+	var fall := MeshInstance3D.new()
+	var fm := BoxMesh.new()
+	fm.size = Vector3(1.2, 8, 0.4)
+	fall.mesh = fm
+	fall.position = Vector3(8, 4, -2)
+	var fmat := _material(Color(0.4, 0.75, 0.9, 0.55), 0.1)
+	fmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	fall.material_override = fmat
+	castle.add_child(fall)
 
 func _build_landmark_details() -> void:
-	for lamp in [{"x": -7.5, "z": -2.8}, {"x": -2.0, "z": -3.6}, {"x": 4.0, "z": -3.0}]:
-		var lx: float = lamp["x"]
-		var lz: float = lamp["z"]
-		_box(self, Vector3(lx, 1.05, lz), Vector3(0.12, 2.1, 0.12), MAT_WOOD)
-		var glow := _box(self, Vector3(lx, 1.72, lz), Vector3(0.32, 0.38, 0.32), Color("#ffca6b"), 0.28)
-		glow.material_override = _emissive(Color("#ffb84d"), 1.6)
+	var details := Node3D.new()
+	details.name = "Details"
+	add_child(details)
+	_box(details, Vector3(12, 0.3, 5), Vector3(1, 0.6, 1), MAT_STONE)
+	_box(details, Vector3(-5, 0.4, 8), Vector3(1.5, 0.8, 1.2), MAT_DIRT)
 
 func _build_protagonist() -> void:
-	var char := Node3D.new()
-	char.name = "Protagonist"
-	char.position = Vector3(-6.5, 0.0, 6.5)
-	char.scale = Vector3(1.15, 1.15, 1.15)
-	add_child(char)
-	_box(char, Vector3(-0.22, 0.45, 0.0), Vector3(0.38, 0.9, 0.35), MAT_BLUE_PANTS)
-	_box(char, Vector3(0.22, 0.45, 0.0), Vector3(0.38, 0.9, 0.35), MAT_BLUE_PANTS)
-	_box(char, Vector3(0.0, 1.25, 0.0), Vector3(0.95, 0.95, 0.5), MAT_TEAL)
-	_box(char, Vector3(0.0, 2.05, 0.0), Vector3(0.7, 0.7, 0.65), MAT_SKIN)
-	_box(char, Vector3(0.0, 1.3, -0.4), Vector3(0.75, 0.8, 0.35), MAT_BROWN_PACK)
+	var hero := Node3D.new()
+	hero.name = "Protagonist"
+	hero.position = Vector3(-7.5, 1.5, 5.5)
+	hero.rotation_degrees = Vector3(0, 35, 0)
+	add_child(hero)
+	_box(hero, Vector3(-0.17, 0.48, 0), Vector3(0.30, 0.72, 0.28), MAT_BLUE_PANTS)
+	_box(hero, Vector3(0.17, 0.48, 0), Vector3(0.30, 0.72, 0.28), MAT_BLUE_PANTS)
+	_box(hero, Vector3(-0.17, 0.10, 0.06), Vector3(0.32, 0.18, 0.40), Color("#1e1a18"))
+	_box(hero, Vector3(0.17, 0.10, 0.06), Vector3(0.32, 0.18, 0.40), Color("#1e1a18"))
+	_box(hero, Vector3(0, 1.12, 0), Vector3(0.78, 0.72, 0.42), MAT_TEAL)
+	_box(hero, Vector3(-0.55, 1.08, 0), Vector3(0.26, 0.70, 0.26), MAT_SKIN)
+	_box(hero, Vector3(0.55, 1.08, 0), Vector3(0.26, 0.70, 0.26), MAT_SKIN)
+	_box(hero, Vector3(0, 1.18, -0.36), Vector3(0.62, 0.68, 0.28), MAT_BROWN_PACK)
+	_box(hero, Vector3(0, 1.78, 0), Vector3(0.56, 0.56, 0.54), MAT_SKIN)
+	_box(hero, Vector3(0, 2.08, -0.02), Vector3(0.60, 0.20, 0.58), Color("#5a3218"))
+	_box(hero, Vector3(-0.12, 1.80, 0.28), Vector3(0.10, 0.10, 0.06), Color("#1a1410"))
+	_box(hero, Vector3(0.12, 1.80, 0.28), Vector3(0.10, 0.10, 0.06), Color("#1a1410"))
+	var pick := Node3D.new()
+	pick.position = Vector3(0.70, 0.95, 0.22)
+	pick.rotation_degrees = Vector3(18, 0, -32)
+	hero.add_child(pick)
+	_box(pick, Vector3(0, 0, 0), Vector3(0.07, 0.90, 0.07), MAT_WOOD)
+	_box(pick, Vector3(0, 0.52, 0), Vector3(0.52, 0.14, 0.13), MAT_DIAMOND, 0.25)
