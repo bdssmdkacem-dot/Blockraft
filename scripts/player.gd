@@ -54,6 +54,10 @@ var land_player: AudioStreamPlayer3D
 
 func _ready() -> void:
 	add_to_group("player")
+	floor_snap_length = 0.4
+	floor_max_angle = deg_to_rad(50.0)
+	collision_layer = 2
+	collision_mask = 1
 	var collider := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.height = 1.8
@@ -168,6 +172,8 @@ func _build_third_person_camera() -> void:
 	_update_camera_transform()
 
 func _update_camera_transform() -> void:
+	if camera == null:
+		return
 	var pivot := global_position + Vector3(0.0, 1.35, 0.0)
 	var basis := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch)
 	var dist := CAMERA_DISTANCE
@@ -399,6 +405,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_interact(true)
 
 func _physics_process(delta: float) -> void:
+	if camera == null:
+		return
 	_update_camera_transform()
 	if is_on_floor():
 		coyote_time = 0.12
