@@ -2,10 +2,14 @@ extends Node
 ## Mining / placing feedback: colored debris + dig SFX per block type.
 
 const BLOCK_COLORS := {
-	"grass": Color(0.28, 0.62, 0.22),
-	"dirt": Color(0.38, 0.24, 0.13),
-	"stone": Color(0.42, 0.45, 0.48),
+	"grass": Color(0.30, 0.58, 0.24),
+	"dirt": Color(0.40, 0.26, 0.14),
+	"stone": Color(0.48, 0.50, 0.52),
 	"wood": Color(0.42, 0.25, 0.11),
+	"sand": Color(0.82, 0.72, 0.48),
+	"water": Color(0.22, 0.48, 0.72),
+	"gravel": Color(0.55, 0.52, 0.48),
+	"rock": Color(0.35, 0.36, 0.38),
 }
 
 const SAMPLE_RATE := 22050
@@ -17,9 +21,13 @@ var _pool_index := 0
 
 func _ready() -> void:
 	_dig_streams["stone"] = _make_dig_wav(0.14, 0.55, 90.0, 0.85)
+	_dig_streams["rock"] = _make_dig_wav(0.15, 0.6, 80.0, 0.9)
 	_dig_streams["dirt"] = _make_dig_wav(0.11, 0.45, 140.0, 0.7)
 	_dig_streams["grass"] = _make_dig_wav(0.09, 0.4, 180.0, 0.55)
 	_dig_streams["wood"] = _make_dig_wav(0.12, 0.5, 220.0, 0.65)
+	_dig_streams["sand"] = _make_dig_wav(0.1, 0.5, 160.0, 0.5)
+	_dig_streams["gravel"] = _make_dig_wav(0.12, 0.65, 120.0, 0.75)
+	_dig_streams["water"] = _make_dig_wav(0.08, 0.25, 300.0, 0.4)
 	_place_stream = _make_place_wav()
 	for i in range(4):
 		var p := AudioStreamPlayer3D.new()
@@ -80,8 +88,7 @@ func _make_dig_wav(duration: float, noise_amt: float, base_hz: float, volume: fl
 	return wav
 
 func _make_place_wav() -> AudioStreamWAV:
-	var duration := 0.07
-	var n := int(duration * SAMPLE_RATE)
+	var n := int(0.07 * SAMPLE_RATE)
 	var data := PackedByteArray()
 	data.resize(n * 2)
 	for i in range(n):
