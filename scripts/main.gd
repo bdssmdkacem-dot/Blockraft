@@ -1,10 +1,11 @@
 extends Node3D
-## Chunk-streamed voxel world with hidden resources and exploration loop.
+## Chunk-streamed voxel world optimized for mobile performance.
 
 const WORLD_RADIUS := 48
 const MIN_Y := -6
 const CHUNK_SIZE := 16
-const VIEW_CHUNKS := 3
+const VIEW_CHUNKS := 2
+const MAX_CHUNK_BUILDS_PER_FRAME := 1
 const SAVE_PATH := "user://world_blocks.json"
 const SAVE_VERSION := 3
 
@@ -27,6 +28,7 @@ var status_label: Label
 var _chunk_timer := 0.0
 var _last_player_chunk := Vector2i(9999, 9999)
 var discovered: Dictionary = {}
+var _chunk_queue: Array = []
 
 func _ready() -> void:
 	world_root = Node3D.new()
@@ -58,8 +60,14 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_chunk_timer -= delta
 	if _chunk_timer <= 0.0:
-		_chunk_timer = 0.35
+		_chunk_timer = 0.25
 		_update_chunks(false)
+	var built := 0
+	while built < MAX_CHUNK_BUILDS_PER_FRAME and not _chunk_queue.is_empty():
+		var ck: Vector2i = _chunk_queue.pop_front()
+		if not loaded_chunks.has(ck) and _is_chunk_needed(ck):
+			_load_chunk(ck)
+			built += 1
 
 func _setup_materials() -> void:
 	var colors := {
@@ -107,17 +115,14 @@ func _generate_world() -> void:
 			h += cos(fx * 0.05 - fz * 0.07) * 2.0
 			if dist < 14.0:
 				h = lerpf(h, 4.0, clampf(1.0 - dist / 14.0, 0.0, 1.0))
-			var river_path := fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0
-			var river_d := absf(river_path)
+			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
 			var in_main := river_d < 2.8 and dist > 6.0
 			var in_trib := trib_d < 1.8 and dist > 10.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
-				var carve := 2.8 - mini(river_d if in_main else trib_d, 2.8)
-				h = mini(h, 2.2 - carve * 0.35)
-			var lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0)
-			var in_lake := lake < 55.0
+				h = mini(h, 2.2 - (2.8 - mini(river_d if in_main else trib_d, 2.8)) * 0.35)
+			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
 				h = mini(h, 1.8)
 			heights[Vector2i(x, z)] = {"h": clampi(int(round(h)), MIN_Y + 2, 24), "river": in_river or in_lake, "river_d": mini(river_d if in_main else (trib_d if in_trib else 99.0), 99.0), "lake": in_lake}
@@ -195,10 +200,18 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 func _chunk_key_from_world(wx: int, wz: int) -> Vector2i:
 	return Vector2i(int(floor(float(wx) / float(CHUNK_SIZE))), int(floor(float(wz) / float(CHUNK_SIZE))))
 
-func _update_chunks(force: bool) -> void:
-	if player == null: return
+func _is_chunk_needed(ck: Vector2i) -> bool:
+	if player == null:
+		return false
 	var pc := _chunk_key_from_world(int(floor(player.global_position.x)), int(floor(player.global_position.z)))
-	if not force and pc == _last_player_chunk: return
+	return abs(ck.x - pc.x) <= VIEW_CHUNKS and abs(ck.y - pc.y) <= VIEW_CHUNKS
+
+func _update_chunks(force: bool) -> void:
+	if player == null:
+		return
+	var pc := _chunk_key_from_world(int(floor(player.global_position.x)), int(floor(player.global_position.z)))
+	if not force and pc == _last_player_chunk:
+		return
 	_last_player_chunk = pc
 	var needed: Dictionary = {}
 	for cx in range(pc.x - VIEW_CHUNKS, pc.x + VIEW_CHUNKS + 1):
@@ -206,18 +219,42 @@ func _update_chunks(force: bool) -> void:
 			needed[Vector2i(cx, cz)] = true
 	var to_remove: Array = []
 	for key in loaded_chunks.keys():
-		if not needed.has(key): to_remove.append(key)
+		if not needed.has(key):
+			to_remove.append(key)
 	for key in to_remove:
 		var node: Node = loaded_chunks[key]
-		if is_instance_valid(node): node.queue_free()
+		if is_instance_valid(node):
+			node.queue_free()
 		loaded_chunks.erase(key)
+	_chunk_queue.clear()
+	var pending: Array = []
 	for key in needed.keys():
 		if not loaded_chunks.has(key):
-			_load_chunk(key)
+			pending.append(key)
+	pending.sort_custom(func(a, b):
+		var da := absi(a.x - pc.x) + absi(a.y - pc.y)
+		var db := absi(b.x - pc.x) + absi(b.y - pc.y)
+		return da < db
+	)
+	for key in pending:
+		_chunk_queue.append(key)
+	if force and not _chunk_queue.is_empty():
+		var first: Vector2i = _chunk_queue.pop_front()
+		_load_chunk(first)
+
+func _is_exposed(pos: Vector3i) -> bool:
+	for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+		var n := pos + d
+		if not blocks.has(n):
+			return true
+		if str(blocks[n]) == "water":
+			return true
+	return false
 
 func _load_chunk(ck: Vector2i) -> void:
 	var root := Node3D.new()
 	root.name = "Chunk_%d_%d" % [ck.x, ck.y]
+	root.set_meta("chunk", ck)
 	chunk_root.add_child(root)
 	loaded_chunks[ck] = root
 	var x0 := ck.x * CHUNK_SIZE
@@ -226,8 +263,11 @@ func _load_chunk(ck: Vector2i) -> void:
 		for z in range(z0, z0 + CHUNK_SIZE):
 			for y in range(MIN_Y, 28):
 				var pos := Vector3i(x, y, z)
-				if blocks.has(pos):
-					_spawn_block_in(root, pos, str(blocks[pos]))
+				if not blocks.has(pos):
+					continue
+				var kind := str(blocks[pos])
+				if kind in ["coal", "iron", "gold", "crystal", "chest"] or _is_exposed(pos):
+					_spawn_block_in(root, pos, kind)
 
 func _spawn_block_in(parent: Node, pos: Vector3i, kind: String) -> void:
 	var body := StaticBody3D.new()
@@ -239,35 +279,55 @@ func _spawn_block_in(parent: Node, pos: Vector3i, kind: String) -> void:
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.mesh = block_mesh
 	mesh_instance.material_override = block_materials.get(kind, block_materials["stone"])
+	mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	body.add_child(mesh_instance)
-	var collision := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = Vector3.ONE
-	collision.shape = shape
-	body.add_child(collision)
+	if kind != "water":
+		var collision := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = Vector3.ONE
+		collision.shape = shape
+		body.add_child(collision)
 	parent.add_child(body)
 
 func _find_block_node(pos: Vector3i) -> Node:
 	var ck := _chunk_key_from_world(pos.x, pos.z)
-	if not loaded_chunks.has(ck): return null
+	if not loaded_chunks.has(ck):
+		return null
 	for node in loaded_chunks[ck].get_children():
 		if node.has_meta("block_position") and node.get_meta("block_position") == pos:
 			return node
 	return null
 
+func _reveal_neighbors(pos: Vector3i) -> void:
+	for d in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+		var n := pos + d
+		if not blocks.has(n):
+			continue
+		if _find_block_node(n) != null:
+			continue
+		var kind := str(blocks[n])
+		var ck := _chunk_key_from_world(n.x, n.z)
+		if loaded_chunks.has(ck):
+			_spawn_block_in(loaded_chunks[ck], n, kind)
+
 func remove_block(pos: Vector3i) -> void:
-	if not blocks.has(pos): return
+	if not blocks.has(pos):
+		return
 	var kind := str(blocks[pos])
 	if mining_fx and mining_fx.has_method("play_break"):
 		mining_fx.play_break(Vector3(pos), kind)
 	blocks.erase(pos)
 	var node := _find_block_node(pos)
-	if node: node.queue_free()
+	if node:
+		node.queue_free()
+	_reveal_neighbors(pos)
 	save_world()
 
 func place_block(pos: Vector3i, kind: String = "dirt") -> void:
-	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80: return
-	if player.global_position.distance_to(Vector3(pos)) < 1.8: return
+	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80:
+		return
+	if player.global_position.distance_to(Vector3(pos)) < 1.8:
+		return
 	blocks[pos] = kind
 	var ck := _chunk_key_from_world(pos.x, pos.z)
 	if loaded_chunks.has(ck):
@@ -285,11 +345,14 @@ func save_world() -> void:
 		file.store_string(JSON.stringify({"version": SAVE_VERSION, "blocks": serialized}))
 
 func _load_world_snapshot() -> void:
-	if not FileAccess.file_exists(SAVE_PATH): return
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if not file: return
+	if not file:
+		return
 	var parsed = JSON.parse_string(file.get_as_text())
-	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("blocks"): return
+	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("blocks"):
+		return
 	if int(parsed.get("version", 1)) < SAVE_VERSION:
 		push_warning("Old save; regenerating world for new content.")
 		return
@@ -330,7 +393,8 @@ func _setup_ui() -> void:
 	_refresh_status()
 
 func _show_toast(text: String, duration: float = 2.5) -> void:
-	if toast_label == null: return
+	if toast_label == null:
+		return
 	toast_label.text = text
 	toast_label.modulate.a = 1.0
 	var tw := create_tween()
@@ -338,10 +402,12 @@ func _show_toast(text: String, duration: float = 2.5) -> void:
 	tw.tween_property(toast_label, "modulate:a", 0.0, 0.6)
 
 func _refresh_status() -> void:
-	if status_label == null: return
+	if status_label == null:
+		return
 	var bits: PackedStringArray = []
 	for k in ["coal", "iron", "gold", "crystal", "chest"]:
-		if discovered.get(k, false): bits.append(k.capitalize())
+		if discovered.get(k, false):
+			bits.append(k.capitalize())
 	status_label.text = "Discoveries: dig underground & search clearings" if bits.is_empty() else "Discovered: " + ", ".join(bits)
 
 func _build_hotbar(layer: CanvasLayer) -> void:
@@ -391,7 +457,8 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 	get_viewport().size_changed.connect(_layout_hotbar)
 
 func _layout_hotbar() -> void:
-	if hotbar_ui == null: return
+	if hotbar_ui == null:
+		return
 	var vs := get_viewport().get_visible_rect().size
 	hotbar_ui.position = Vector2(vs.x * 0.5 - 260.0, vs.y - 78.0)
 	if toast_label:
@@ -427,10 +494,12 @@ func _on_upgrade_pressed() -> void:
 		_refresh_hotbar()
 
 func _refresh_backpack_ui() -> void:
-	if backpack_label == null: return
+	if backpack_label == null:
+		return
 	backpack_label.text = "Backpack: %s  |  max stack %d" % [inventory.get_backpack_label(), inventory.get_max_stack()]
 	backpack_label.add_theme_color_override("font_color", inventory.get_backpack_color())
-	if upgrade_btn == null: return
+	if upgrade_btn == null:
+		return
 	var nxt: String = inventory.get_next_tier()
 	if nxt == "":
 		upgrade_btn.text = "Backpack maxed (Diamond)"
@@ -438,14 +507,16 @@ func _refresh_backpack_ui() -> void:
 		return
 	var cost: Dictionary = inventory.get_upgrade_cost()
 	var parts: PackedStringArray = []
-	for k in cost.keys(): parts.append("%d %s" % [int(cost[k]), str(k)])
+	for k in cost.keys():
+		parts.append("%d %s" % [int(cost[k]), str(k)])
 	var can := inventory.can_upgrade()
 	upgrade_btn.disabled = not can
 	upgrade_btn.text = ("Upgrade to %s (%s)" % [str(inventory.BACKPACKS[nxt]["label"]), ", ".join(parts)]) if can else ("Need: %s  [B]" % ", ".join(parts))
 
 func _refresh_hotbar(_a = null) -> void:
 	_refresh_backpack_ui()
-	if hotbar_slots.is_empty(): return
+	if hotbar_slots.is_empty():
+		return
 	for i in range(inventory.SLOT_COUNT):
 		var slot: PanelContainer = hotbar_slots[i]
 		var data: Dictionary = inventory.slots[i]
@@ -457,11 +528,15 @@ func _refresh_hotbar(_a = null) -> void:
 		slot.add_theme_stylebox_override("panel", style)
 		var icon := slot.find_child("Icon", true, false) as ColorRect
 		var count := slot.find_child("Count", true, false) as Label
-		if icon: icon.color = Color(0.15, 0.18, 0.18, 0.4) if str(data.get("id", "")) == "" else data.get("color", Color.GRAY)
+		if icon:
+			icon.color = Color(0.15, 0.18, 0.18, 0.4) if str(data.get("id", "")) == "" else data.get("color", Color.GRAY)
 		if count:
-			if data.get("is_tool", false): count.text = "Pick"
-			elif str(data.get("id", "")) == "": count.text = ""
-			else: count.text = str(int(data.get("count", 0)))
+			if data.get("is_tool", false):
+				count.text = "Pick"
+			elif str(data.get("id", "")) == "":
+				count.text = ""
+			else:
+				count.text = str(int(data.get("count", 0)))
 	_layout_hotbar()
 
 func get_selected_place_kind() -> String:
@@ -469,10 +544,14 @@ func get_selected_place_kind() -> String:
 
 func try_place_selected(pos: Vector3i) -> bool:
 	var kind := inventory.get_place_kind()
-	if kind == "" or kind == "chest": return false
-	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80: return false
-	if player.global_position.distance_to(Vector3(pos)) < 1.8: return false
-	if not inventory.consume_place(): return false
+	if kind == "" or kind == "chest":
+		return false
+	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80:
+		return false
+	if player.global_position.distance_to(Vector3(pos)) < 1.8:
+		return false
+	if not inventory.consume_place():
+		return false
 	blocks[pos] = kind
 	var ck := _chunk_key_from_world(pos.x, pos.z)
 	if loaded_chunks.has(ck):
