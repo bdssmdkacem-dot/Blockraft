@@ -91,7 +91,6 @@ func _build_character_body() -> void:
 	body_root = Node3D.new()
 	body_root.name = "VoxelBody"
 	add_child(body_root)
-	# Legs (pivots at hip)
 	leg_l_pivot = Node3D.new()
 	leg_l_pivot.name = "LegL"
 	leg_l_pivot.position = Vector3(-0.17, 0.85, 0.0)
@@ -106,7 +105,6 @@ func _build_character_body() -> void:
 	_box(leg_r_pivot, Vector3(0.0, -0.36, 0.0), Vector3(0.30, 0.72, 0.28), MAT_BLUE)
 	_box(leg_r_pivot, Vector3(0.0, -0.78, 0.08), Vector3(0.32, 0.18, 0.40), MAT_BOOT)
 	_box(leg_r_pivot, Vector3(0.0, -0.70, 0.24), Vector3(0.28, 0.08, 0.12), Color("#141210"))
-	# Torso
 	torso_node = Node3D.new()
 	torso_node.name = "Torso"
 	torso_node.position = Vector3(0.0, 1.12, 0.0)
@@ -119,7 +117,6 @@ func _build_character_body() -> void:
 	_box(torso_node, Vector3(0.0, -0.07, -0.36), Vector3(0.50, 0.10, 0.26), Color("#5c3818"))
 	_box(torso_node, Vector3(-0.28, 0.13, -0.22), Vector3(0.08, 0.35, 0.08), Color("#4a3010"))
 	_box(torso_node, Vector3(0.28, 0.13, -0.22), Vector3(0.08, 0.35, 0.08), Color("#4a3010"))
-	# Arms
 	arm_l_pivot = Node3D.new()
 	arm_l_pivot.name = "ArmL"
 	arm_l_pivot.position = Vector3(-0.52, 1.40, 0.0)
@@ -134,7 +131,6 @@ func _build_character_body() -> void:
 	_box(arm_r_pivot, Vector3(0.0, -0.32, 0.0), Vector3(0.26, 0.64, 0.26), MAT_SKIN)
 	_box(arm_r_pivot, Vector3(0.0, -0.68, 0.0), Vector3(0.28, 0.14, 0.28), Color("#e0b090"))
 	_box(arm_r_pivot, Vector3(0.0, -0.05, 0.0), Vector3(0.30, 0.12, 0.30), MAT_TEAL)
-	# Head
 	head_node = Node3D.new()
 	head_node.name = "Head"
 	head_node.position = Vector3(0.0, 1.78, 0.0)
@@ -149,7 +145,6 @@ func _build_character_body() -> void:
 	_box(head_node, Vector3(-0.12, 0.04, 0.30), Vector3(0.04, 0.04, 0.04), Color("#ffffff"))
 	_box(head_node, Vector3(0.12, 0.04, 0.30), Vector3(0.04, 0.04, 0.04), Color("#ffffff"))
 	_box(head_node, Vector3(0.0, -0.10, 0.28), Vector3(0.14, 0.06, 0.05), Color("#d4887a"))
-	# Pickaxe on right arm
 	pickaxe_node = Node3D.new()
 	pickaxe_node.name = "DiamondPickaxe"
 	pickaxe_node.position = Vector3(0.12, -0.55, 0.15)
@@ -238,8 +233,7 @@ func _make_jump_wav() -> AudioStreamWAV:
 	for i in range(n):
 		var tt := float(i) / sample_rate
 		var env := exp(-tt * 18.0)
-		var s := sin(TAU * (220.0 + tt * 180.0) * tt) * 0.45 * env
-		s += sin(TAU * 90.0 * tt) * 0.2 * env
+		var s := sin(TAU * (220.0 + tt * 180.0) * tt) * 0.45 * env + sin(TAU * 90.0 * tt) * 0.2 * env
 		var s16 := int(clampf(s, -1.0, 1.0) * 30000.0)
 		data[i * 2] = s16 & 0xFF
 		data[i * 2 + 1] = (s16 >> 8) & 0xFF
@@ -292,7 +286,6 @@ func _play_land() -> void:
 
 func _build_touch_controls() -> void:
 	var layer := CanvasLayer.new()
-	layer.name = "TouchControlsLayer"
 	layer.layer = 10
 	add_child(layer)
 	var root := Control.new()
@@ -301,27 +294,14 @@ func _build_touch_controls() -> void:
 	layer.add_child(root)
 	var vs := get_viewport().get_visible_rect().size
 	var joy_base := Panel.new()
-	joy_base.name = "JoystickBase"
 	joy_base.size = Vector2(140, 140)
 	joy_base.position = Vector2(28, vs.y - 200)
 	var bs := StyleBoxFlat.new()
 	bs.bg_color = Color(0.05, 0.1, 0.1, 0.35)
-	bs.border_color = Color(0.7, 0.9, 0.75, 0.55)
-	bs.set_border_width_all(2)
 	bs.set_corner_radius_all(70)
 	joy_base.add_theme_stylebox_override("panel", bs)
 	joy_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(joy_base)
-	var knob := Panel.new()
-	knob.name = "JoystickKnob"
-	knob.size = Vector2(56, 56)
-	knob.position = Vector2(42, 42)
-	var ks := StyleBoxFlat.new()
-	ks.bg_color = Color(0.2, 0.55, 0.4, 0.75)
-	ks.set_corner_radius_all(28)
-	knob.add_theme_stylebox_override("panel", ks)
-	knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	joy_base.add_child(knob)
 	var actions := VBoxContainer.new()
 	actions.position = Vector2(vs.x - 164.0, vs.y - 210.0)
 	root.add_child(actions)
@@ -346,10 +326,7 @@ func _make_touch_button(caption: String, minimum_size: Vector2) -> Button:
 	normal.border_color = Color(0.75, 0.9, 0.75, 0.82)
 	normal.set_border_width_all(2)
 	normal.set_corner_radius_all(12)
-	var pressed := normal.duplicate() as StyleBoxFlat
-	pressed.bg_color = Color(0.76, 0.58, 0.25, 0.92)
 	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_color_override("font_color", Color("#f0f8e6"))
 	return button
 
@@ -439,10 +416,7 @@ func _physics_process(delta: float) -> void:
 		touch_jump_pressed = false
 		_jump_stretch = 1.0
 		_play_jump()
-	var input_dir := Vector2(
-		float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
-		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
-	) + touch_move
+	var input_dir := Vector2(float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)), float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))) + touch_move
 	input_dir = input_dir.limit_length(1.0)
 	var basis := Basis(Vector3.UP, yaw)
 	var direction := (basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
@@ -454,7 +428,6 @@ func _physics_process(delta: float) -> void:
 		_play_land()
 	_was_on_floor = is_on_floor()
 	_step_cooldown = maxf(0.0, _step_cooldown - delta)
-	# Body animation
 	_land_squash = maxf(0.0, _land_squash - delta * 5.0)
 	_jump_stretch = maxf(0.0, _jump_stretch - delta * 4.0)
 	var squash := 1.0 - _land_squash * 0.18
@@ -520,7 +493,7 @@ func _physics_process(delta: float) -> void:
 func _interact(place: bool) -> void:
 	pickaxe_swing_t = 1.0
 	var world = get_parent()
-	if world and world.get("mining_fx") and world.mining_fx.has_method("play_swing":
+	if world and world.get("mining_fx") and world.mining_fx.has_method("play_swing"):
 		world.mining_fx.play_swing(global_position + Vector3(0, 1.2, 0))
 	var from := camera.global_position
 	var to := from + (-camera.global_transform.basis.z * REACH)
