@@ -119,12 +119,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _build_3d_backdrop() -> void:
 	var sub := SubViewportContainer.new()
+	sub.name = "ThreeDMenuBackdrop"
 	sub.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sub.stretch = true
 	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sub)
 	move_child(sub, 0)
 	var vp := SubViewport.new()
+	vp.name = "WorldViewport"
 	vp.transparent_bg = false
 	vp.size = Vector2i(1280, 720)
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -132,6 +134,7 @@ func _build_3d_backdrop() -> void:
 	var world_script = load("res://scripts/menu_world_3d.gd")
 	if world_script:
 		var world = world_script.new()
+		world.name = "VoxelMenuWorld"
 		vp.add_child(world)
 
 func _build_title_block() -> void:
@@ -255,10 +258,20 @@ func _build_footer_bar() -> void:
 func _apply_responsive_layout() -> void:
 	pass
 
+func _start_game() -> void:
+	print("Blockraft: Play pressed; loading ", GAME_SCENE)
+	var packed := load(GAME_SCENE) as PackedScene
+	if packed == null:
+		push_error("Blockraft: cannot load gameplay scene: " + GAME_SCENE)
+		return
+	var err := get_tree().change_scene_to_packed(packed)
+	if err != OK:
+		push_error("Blockraft: gameplay scene transition failed: %s" % err)
+
 func _on_menu_action(action: String) -> void:
 	match action:
 		"play":
-			get_tree().change_scene_to_file(GAME_SCENE)
+			_start_game()
 		"settings":
 			_open_settings_panel()
 		"help":
