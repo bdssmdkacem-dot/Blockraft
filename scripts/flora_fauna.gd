@@ -64,10 +64,10 @@ func _spawn_plants() -> void:
 	_world.add_child(root)
 	var count := 0
 	var attempts := 0
-	while count < 140 and attempts < 3500:
+	while count < 180 and attempts < 4000:
 		attempts += 1
-		var x := _rng.randi_range(-40, 40)
-		var z := _rng.randi_range(-40, 40)
+		var x := _rng.randi_range(-52, 52)
+		var z := _rng.randi_range(-52, 52)
 		if abs(x) < 3 and abs(z) < 3:
 			continue
 		var sy := _surface_y(x, z)
@@ -135,10 +135,10 @@ func _spawn_animals() -> void:
 	var spawned := 0
 	var attempts := 0
 	var kinds := [AnimalScript.Kind.FOX, AnimalScript.Kind.CHICKEN, AnimalScript.Kind.COW, AnimalScript.Kind.SHEEP, AnimalScript.Kind.CHICKEN]
-	while spawned < 18 and attempts < 500:
+	while spawned < 28 and attempts < 700:
 		attempts += 1
-		var x := _rng.randi_range(-35, 35)
-		var z := _rng.randi_range(-35, 35)
+		var x := _rng.randi_range(-50, 50)
+		var z := _rng.randi_range(-50, 50)
 		if abs(x) < 6 and abs(z) < 6:
 			continue
 		if _is_water(x, z):
