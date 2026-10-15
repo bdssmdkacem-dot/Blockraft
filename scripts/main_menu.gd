@@ -6,6 +6,7 @@ const DESIGN_SIZE := Vector2(1280.0, 720.0)
 
 var menu_column: VBoxContainer
 var status_label: Label
+var _play_button: Button
 var dialog_layer: Control
 var _click_player: AudioStreamPlayer
 var _hover_player: AudioStreamPlayer
@@ -167,6 +168,8 @@ func _build_menu_buttons() -> void:
 
 func _add_menu_button(caption: String, action: String, primary: bool) -> void:
 	var button := Button.new()
+	if action == "play":
+		_play_button = button
 	button.text = caption
 	button.custom_minimum_size = Vector2(240, 48 if primary else 42)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -212,6 +215,7 @@ func _build_feature_strip() -> void:
 	]
 	for card in cards:
 		var panel := PanelContainer.new()
+		panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		panel.custom_minimum_size = Vector2(200, 130)
 		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var style := StyleBoxFlat.new()
@@ -259,14 +263,28 @@ func _apply_responsive_layout() -> void:
 	pass
 
 func _start_game() -> void:
-	print("Blockraft: Play pressed; loading ", GAME_SCENE)
+	if is_instance_valid(_play_button):
+		_play_button.disabled = true
+		_play_button.text = "Loading world..."
+	print("Blockraft: Play pressed; requesting gameplay scene")
+	call_deferred("_change_to_game_scene")
+
+func _change_to_game_scene() -> void:
 	var packed := load(GAME_SCENE) as PackedScene
 	if packed == null:
 		push_error("Blockraft: cannot load gameplay scene: " + GAME_SCENE)
+		_restore_play_button("Load failed — tap to retry")
 		return
-	var err := get_tree().change_scene_to_packed(packed)
+	var tree := get_tree()
+	var err := tree.change_scene_to_packed(packed)
 	if err != OK:
 		push_error("Blockraft: gameplay scene transition failed: %s" % err)
+		_restore_play_button("Retry Play")
+
+func _restore_play_button(caption: String) -> void:
+	if is_instance_valid(_play_button):
+		_play_button.disabled = false
+		_play_button.text = caption
 
 func _on_menu_action(action: String) -> void:
 	match action:
