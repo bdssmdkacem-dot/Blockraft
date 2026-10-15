@@ -2,6 +2,7 @@ extends Control
 ## Official Blockraft title screen — matched to reference art.
 
 const GAME_SCENE := "res://scenes/main.tscn"
+const LOGIN_SCENE := "res://scenes/login.tscn"
 const DESIGN_SIZE := Vector2(1280.0, 720.0)
 
 var menu_column: VBoxContainer
@@ -28,6 +29,7 @@ func _ready() -> void:
 	_build_footer_bar()
 	_apply_responsive_layout()
 	get_viewport().size_changed.connect(_apply_responsive_layout)
+	_show_session_user()
 	if _ambient_player:
 		_ambient_player.play()
 
@@ -403,6 +405,36 @@ func _apply_responsive_layout() -> void:
 	if _tagline:
 		_tagline.position = Vector2(vs.x - 280.0, vs.y * 0.38)
 		_tagline.custom_minimum_size = Vector2(250, 80)
+
+func _show_session_user() -> void:
+	var username := "Guest"
+	var is_guest := true
+	if Engine.has_meta("blockraft_user"):
+		username = str(Engine.get_meta("blockraft_user"))
+	if Engine.has_meta("blockraft_guest"):
+		is_guest = bool(Engine.get_meta("blockraft_guest"))
+	var bar := HBoxContainer.new()
+	bar.name = "SessionBar"
+	bar.position = Vector2(16, 8)
+	bar.add_theme_constant_override("separation", 10)
+	add_child(bar)
+	var lab := Label.new()
+	lab.text = ("Guest" if is_guest else "Player") + ": " + username
+	lab.add_theme_font_size_override("font_size", 13)
+	lab.add_theme_color_override("font_color", Color("#c8e0d0"))
+	bar.add_child(lab)
+	var out_btn := Button.new()
+	out_btn.text = "Logout"
+	out_btn.custom_minimum_size = Vector2(90, 28)
+	out_btn.pressed.connect(func():
+		_play_click()
+		Engine.set_meta("blockraft_user", "")
+		Engine.set_meta("blockraft_guest", true)
+		var packed := load(LOGIN_SCENE) as PackedScene
+		if packed:
+			get_tree().change_scene_to_packed(packed)
+	)
+	bar.add_child(out_btn)
 
 func _start_game() -> void:
 	if is_instance_valid(_play_button):
