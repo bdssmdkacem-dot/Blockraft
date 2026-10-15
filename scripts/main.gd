@@ -1,13 +1,13 @@
 extends Node3D
 ## Chunk-streamed voxel world — solid spawn so map is never empty sky.
 
-const WORLD_RADIUS := 48
+const WORLD_RADIUS := 56
 const MIN_Y := -6
 const CHUNK_SIZE := 16
 const VIEW_CHUNKS := 3
 const MAX_CHUNK_BUILDS_PER_FRAME := 6
 const SAVE_PATH := "user://world_blocks.json"
-const SAVE_VERSION := 7
+const SAVE_VERSION := 8
 const AUTO_SAVE_INTERVAL := 8.0
 
 var blocks: Dictionary = {}
@@ -41,7 +41,7 @@ func _ready() -> void:
 	chunk_root = Node3D.new()
 	chunk_root.name = "Chunks"
 	world_root.add_child(chunk_root)
-	player = get_node("Player")
+	player = get_node_or_null("Player") as CharacterBody3D
 	if player:
 		player.add_to_group("player")
 	inventory = load("res://scripts/inventory.gd").new()
@@ -68,17 +68,19 @@ func _ready() -> void:
 	_ensure_spawn_pad()
 	if player:
 		player.velocity = Vector3.ZERO
-		player.global_position = Vector3(0.5, 12.0, 0.5)
+		player.global_position = Vector3(0.5, 14.0, 0.5)
 	_update_chunks(true)
 	while not _chunk_queue.is_empty():
 		var ck: Vector2i = _chunk_queue.pop_front()
 		if not loaded_chunks.has(ck):
 			_load_chunk(ck)
-	_force_mesh_radius(20)
+	_force_mesh_radius(24)
 	_snap_player_to_surface()
 	_ensure_spawn_visible()
+	_emergency_ground_if_empty()
 	if player:
 		player.velocity = Vector3.ZERO
+	call_deferred("_deferred_world_check")
 	flora_fauna = load("res://scripts/flora_fauna.gd").new()
 	flora_fauna.name = "FloraFauna"
 	add_child(flora_fauna)
@@ -200,6 +202,78 @@ func _force_mesh_radius(radius: int) -> void:
 					continue
 				_spawn_block_in(loaded_chunks[ck], pos, str(blocks[pos]))
 
+func _count_visible_meshes() -> int:
+	var n := 0
+	for ck in loaded_chunks.keys():
+		var root = loaded_chunks[ck]
+		if is_instance_valid(root):
+			n += root.get_child_count()
+	return n
+
+func _emergency_ground_if_empty() -> void:
+	var n := _count_visible_meshes()
+	if n >= 80:
+		return
+	push_warning("Emergency ground: only %d block meshes visible" % n)
+	_force_solid_spawn_island()
+	for x in range(-18, 19):
+		for z in range(-18, 19):
+			for y in range(MIN_Y, 6):
+				var pos := Vector3i(x, y, z)
+				if not blocks.has(pos):
+					blocks[pos] = "grass" if y >= 4 else ("dirt" if y >= 2 else "stone")
+			for y in range(6, 14):
+				var p2 := Vector3i(x, y, z)
+				if abs(x) <= 2 and abs(z) <= 2 and blocks.has(p2):
+					blocks.erase(p2)
+	for ck in loaded_chunks.keys():
+		var node = loaded_chunks[ck]
+		if is_instance_valid(node):
+			node.queue_free()
+	loaded_chunks.clear()
+	_chunk_queue.clear()
+	_update_chunks(true)
+	while not _chunk_queue.is_empty():
+		var ck2: Vector2i = _chunk_queue.pop_front()
+		if not loaded_chunks.has(ck2):
+			_load_chunk(ck2)
+	_force_mesh_radius(22)
+	if _count_visible_meshes() < 40:
+		var platform := MeshInstance3D.new()
+		platform.name = "EmergencyPlatform"
+		var box := BoxMesh.new()
+		box.size = Vector3(40, 2, 40)
+		platform.mesh = box
+		platform.position = Vector3(0.5, 3.0, 0.5)
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.28, 0.55, 0.22)
+		platform.material_override = mat
+		world_root.add_child(platform)
+		var body := StaticBody3D.new()
+		body.position = Vector3(0.5, 3.0, 0.5)
+		body.collision_layer = 1
+		var col := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = Vector3(40, 2, 40)
+		col.shape = shape
+		body.add_child(col)
+		world_root.add_child(body)
+		push_warning("Spawned emergency platform")
+
+func _deferred_world_check() -> void:
+	var meshes := _count_visible_meshes()
+	var msg := "World: %d blocks, %d meshes, %d chunks" % [blocks.size(), meshes, loaded_chunks.size()]
+	print(msg)
+	_show_toast(msg, 5.0)
+	if meshes < 50:
+		_emergency_ground_if_empty()
+		_snap_player_to_surface()
+		_show_toast("Repaired empty map — walk to explore", 4.0)
+	if player:
+		var cam = player.get_node_or_null("PlayerCamera")
+		if cam:
+			cam.make_current()
+
 func _ensure_spawn_visible() -> void:
 	for x in range(-12, 13):
 		for z in range(-12, 13):
@@ -247,13 +321,13 @@ func _snap_player_to_surface() -> void:
 				if not blocks.has(pos): continue
 				if str(blocks[pos]) == "water": continue
 				if blocks.has(Vector3i(x, y + 1, z)): continue
-				var cand := Vector3(float(x) + 0.5, float(y) + 1.2, float(z) + 0.5)
+				var cand := Vector3(float(x) + 0.5, float(y) + 1.35, float(z) + 0.5)
 				if not found or Vector2(cand.x, cand.z).length() < Vector2(best_pos.x, best_pos.z).length():
 					best_pos = cand
 					found = true
 				break
 	if not found:
-		best_pos = Vector3(0.5, 5.2, 0.5)
+		best_pos = Vector3(0.5, 5.5, 0.5)
 	player.global_position = best_pos
 	player.velocity = Vector3.ZERO
 
@@ -426,7 +500,7 @@ func _load_chunk(ck: Vector2i) -> void:
 
 func _spawn_block_in(parent: Node, pos: Vector3i, kind: String) -> void:
 	var body := StaticBody3D.new()
-	body.position = Vector3(pos)
+	body.position = Vector3(float(pos.x) + 0.5, float(pos.y) + 0.5, float(pos.z) + 0.5)
 	body.collision_layer = 1
 	body.collision_mask = 0
 	body.set_meta("block_position", pos)
@@ -473,7 +547,7 @@ func remove_block(pos: Vector3i) -> void:
 
 func place_block(pos: Vector3i, kind: String = "dirt") -> void:
 	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80: return
-	if player.global_position.distance_to(Vector3(pos)) < 1.8: return
+	if player and player.global_position.distance_to(Vector3(pos) + Vector3(0.5, 0.5, 0.5)) < 1.8: return
 	blocks[pos] = kind
 	var ck := _chunk_key_from_world(pos.x, pos.z)
 	if loaded_chunks.has(ck): _spawn_block_in(loaded_chunks[ck], pos, kind)
@@ -522,6 +596,15 @@ func _load_world_snapshot() -> void:
 	if restored.size() < 2000:
 		push_warning("Save has too few blocks (%d); keeping generated world." % restored.size())
 		return
+	var near := 0
+	for x in range(-8, 9):
+		for z in range(-8, 9):
+			for y in range(0, 12):
+				if restored.has(Vector3i(x, y, z)):
+					near += 1
+	if near < 40:
+		push_warning("Save has no spawn terrain (%d near origin); regenerating." % near)
+		return
 	blocks = restored
 
 func _setup_ui() -> void:
@@ -541,7 +624,7 @@ func _setup_ui() -> void:
 	layer.add_child(status_label)
 	toast_label = Label.new()
 	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	toast_label.add_theme_font_size_override("font_size", 18)
+	toast_label.add_theme_font_size_override("font_size", 16)
 	toast_label.add_theme_color_override("font_color", Color("#ffe9a0"))
 	toast_label.position = Vector2(100, 120)
 	toast_label.size = Vector2(600, 40)
@@ -686,7 +769,7 @@ func try_place_selected(pos: Vector3i) -> bool:
 	var kind := inventory.get_place_kind()
 	if kind == "" or kind == "chest": return false
 	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80: return false
-	if player.global_position.distance_to(Vector3(pos)) < 1.8: return false
+	if player and player.global_position.distance_to(Vector3(pos) + Vector3(0.5, 0.5, 0.5)) < 1.8: return false
 	if not inventory.consume_place(): return false
 	blocks[pos] = kind
 	var ck := _chunk_key_from_world(pos.x, pos.z)
