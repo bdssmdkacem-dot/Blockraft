@@ -1,16 +1,18 @@
 extends CharacterBody3D
-## Voxel animals — wander, flee when hurt, night aggression, meat drops.
+## Voxel animals — wander, flee when hurt, night aggression (chicken/pig/cow), meat drops.
 
 enum Kind { PIG, CHICKEN, COW, SHEEP }
 
 const KIND_DATA := {
 	Kind.PIG: {"scale": 0.9, "speed": 3.2, "hp": 18.0, "dmg": 4.0, "color_body": Color("#f0a8b4"), "color_spot": Color("#d07080")},
-	Kind.CHICKEN: {"scale": 0.58, "speed": 4.0, "hp": 8.0, "dmg": 1.0, "color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")},
+	# Aggressive night chicken — fast peck, noticeable damage
+	Kind.CHICKEN: {"scale": 0.62, "speed": 4.6, "hp": 10.0, "dmg": 5.0, "color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")},
 	Kind.COW: {"scale": 1.15, "speed": 2.6, "hp": 28.0, "dmg": 6.0, "color_body": Color("#f8f6f0"), "color_spot": Color("#2c2c2c")},
 	Kind.SHEEP: {"scale": 0.95, "speed": 3.0, "hp": 16.0, "dmg": 2.0, "color_body": Color("#f5f5f5"), "color_spot": Color("#e8e4dc")},
 }
 
 const MAP_LIMIT := 38.0
+const AGGRESSIVE_KINDS := [Kind.PIG, Kind.COW, Kind.CHICKEN]
 
 var kind: int = Kind.PIG
 var move_speed := 3.0
@@ -60,12 +62,21 @@ func take_damage(amount: float, from_pos: Vector3 = Vector3.ZERO) -> void:
 		return
 	hp -= amount
 	_hurt_flash = 0.4
-	_flee_t = 2.2
-	if from_pos != Vector3.ZERO:
-		var away := global_position - from_pos
-		away.y = 0.0
-		if away.length() > 0.05:
-			_dir = away.normalized()
+	# Chickens counter-attack instead of only fleeing
+	if kind == Kind.CHICKEN:
+		_flee_t = 0.35
+		if from_pos != Vector3.ZERO:
+			var toward := from_pos - global_position
+			toward.y = 0.0
+			if toward.length() > 0.05:
+				_dir = toward.normalized()
+	else:
+		_flee_t = 2.2
+		if from_pos != Vector3.ZERO:
+			var away := global_position - from_pos
+			away.y = 0.0
+			if away.length() > 0.05:
+				_dir = away.normalized()
 	if hp <= 0.0:
 		_die()
 
@@ -157,27 +168,45 @@ func _physics_process(delta: float) -> void:
 		if surv and surv.has_method("is_night"):
 			night = surv.is_night()
 	var speed := move_speed
-	if _flee_t > 0.0:
+	if _flee_t > 0.0 and kind != Kind.CHICKEN:
 		speed = move_speed * 1.7
 	elif player:
 		var to_p: Vector3 = global_position - player.global_position
 		to_p.y = 0.0
 		var dist := to_p.length()
-		if dist < 6.0 and dist > 0.05 and not night:
+		# Day: most animals avoid the player
+		if dist < 6.0 and dist > 0.05 and not night and kind != Kind.CHICKEN:
 			_dir = to_p.normalized()
 			_timer = maxf(_timer, 0.5)
-		if night and dist < 5.0 and kind in [Kind.PIG, Kind.COW]:
+		# Night aggression: pigs, cows, AND chickens charge the player
+		var aggro_range := 8.0 if kind == Kind.CHICKEN else 5.5
+		var hit_range := 2.0 if kind == Kind.CHICKEN else 1.6
+		if night and dist < aggro_range and kind in AGGRESSIVE_KINDS:
 			_dir = player.global_position - global_position
 			_dir.y = 0.0
 			if _dir.length() > 0.05:
 				_dir = _dir.normalized()
-			speed = move_speed * 1.25
-			if dist < 1.6 and _attack_cd <= 0.0:
-				_attack_cd = 1.2
+			speed = move_speed * (1.85 if kind == Kind.CHICKEN else 1.25)
+			if dist < hit_range and _attack_cd <= 0.0:
+				_attack_cd = 0.75 if kind == Kind.CHICKEN else 1.2
+				if surv and surv.has_method("apply_damage"):
+					surv.apply_damage(attack_damage)
+					var msg := "Chicken peck! -%.0f hp" % attack_damage if kind == Kind.CHICKEN else "Hit by animal! -%.0f hp" % attack_damage
+					if player.get_parent().has_method("_show_toast"):
+						player.get_parent()._show_toast(msg, 1.0)
+		# Daytime: chickens still peck if you get too close after hitting them
+		elif not night and kind == Kind.CHICKEN and dist < 2.5 and _hurt_flash > 0.0:
+			_dir = player.global_position - global_position
+			_dir.y = 0.0
+			if _dir.length() > 0.05:
+				_dir = _dir.normalized()
+			speed = move_speed * 1.6
+			if dist < 1.8 and _attack_cd <= 0.0:
+				_attack_cd = 0.8
 				if surv and surv.has_method("apply_damage"):
 					surv.apply_damage(attack_damage)
 					if player.get_parent().has_method("_show_toast"):
-						player.get_parent()._show_toast("Hit by animal! -%.0f hp" % attack_damage, 1.0)
+						player.get_parent()._show_toast("Angry chicken! -%.0f hp" % attack_damage, 1.0)
 	_timer -= delta
 	if _timer <= 0.0 and _flee_t <= 0.0:
 		if randf() < 0.25:
