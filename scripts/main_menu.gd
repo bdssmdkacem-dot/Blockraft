@@ -169,6 +169,7 @@ func _build_menu_buttons() -> void:
 func _add_menu_button(caption: String, action: String, primary: bool) -> void:
 	var button := Button.new()
 	if action == "play":
+		button.name = "PlayButton"
 		_play_button = button
 	button.text = caption
 	button.custom_minimum_size = Vector2(240, 48 if primary else 42)
@@ -303,6 +304,7 @@ func _open_dialog(title_text: String, body_text: String, options: Array) -> void
 	if is_instance_valid(dialog_layer):
 		dialog_layer.queue_free()
 	dialog_layer = Control.new()
+	dialog_layer.name = "MenuDialog"
 	dialog_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dialog_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dialog_layer)
