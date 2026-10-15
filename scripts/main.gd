@@ -1,13 +1,13 @@
 extends Node3D
-## Chunk-streamed voxel world — solid spawn so map is never empty sky.
+## Voxel world — guaranteed floor first so map is never pure blue sky.
 
-const WORLD_RADIUS := 56
+const WORLD_RADIUS := 40
 const MIN_Y := -6
 const CHUNK_SIZE := 16
 const VIEW_CHUNKS := 3
 const MAX_CHUNK_BUILDS_PER_FRAME := 6
 const SAVE_PATH := "user://world_blocks.json"
-const SAVE_VERSION := 9
+const SAVE_VERSION := 10
 const AUTO_SAVE_INTERVAL := 8.0
 
 var blocks: Dictionary = {}
@@ -35,15 +35,19 @@ var _autosave_timer := 0.0
 var _last_save_time := 0.0
 
 func _ready() -> void:
+	player = get_node_or_null("Player") as CharacterBody3D
+	if player:
+		player.add_to_group("player")
+		player.velocity = Vector3.ZERO
+		player.global_position = Vector3(0.0, 6.0, 0.0)
+	# Floor FIRST — always visible even if world gen fails
+	_spawn_guaranteed_floor()
 	world_root = Node3D.new()
 	world_root.name = "GeneratedWorld"
 	add_child(world_root)
 	chunk_root = Node3D.new()
 	chunk_root.name = "Chunks"
 	world_root.add_child(chunk_root)
-	player = get_node_or_null("Player") as CharacterBody3D
-	if player:
-		player.add_to_group("player")
 	inventory = load("res://scripts/inventory.gd").new()
 	inventory.name = "Inventory"
 	add_child(inventory)
@@ -61,33 +65,83 @@ func _ready() -> void:
 	_setup_environment()
 	_clear_old_save()
 	_generate_world()
-	_load_world_snapshot()
 	if blocks.size() < 2000:
-		push_warning("World too small (%d blocks); regenerating." % blocks.size())
 		_generate_world()
 	_force_solid_spawn_island()
 	_ensure_spawn_pad()
 	if player:
+		player.global_position = Vector3(0.5, 10.0, 0.5)
 		player.velocity = Vector3.ZERO
-		player.global_position = Vector3(0.5, 14.0, 0.5)
 	_update_chunks(true)
 	while not _chunk_queue.is_empty():
 		var ck: Vector2i = _chunk_queue.pop_front()
 		if not loaded_chunks.has(ck):
 			_load_chunk(ck)
-	_force_mesh_radius(24)
+	_force_mesh_radius(16)
 	_snap_player_to_surface()
 	_ensure_spawn_visible()
 	_emergency_ground_if_empty()
 	if player:
 		player.velocity = Vector3.ZERO
+		if player.global_position.y < 1.0 or player.global_position.y > 30.0:
+			player.global_position = Vector3(0.0, 5.0, 0.0)
 	call_deferred("_deferred_world_check")
 	flora_fauna = load("res://scripts/flora_fauna.gd").new()
 	flora_fauna.name = "FloraFauna"
 	add_child(flora_fauna)
 	flora_fauna.setup(self, blocks)
 	_setup_ui()
-	_show_toast("Fresh world — explore!  |  E eat  |  LMB dig  |  RMB place", 4.5)
+	_show_toast("Map loaded — walk to explore", 4.0)
+
+func _spawn_guaranteed_floor() -> void:
+	var floor_y := 2.0
+	var size := Vector3(80.0, 4.0, 80.0)
+	var mi := MeshInstance3D.new()
+	mi.name = "GuaranteedFloorMesh"
+	var box := BoxMesh.new()
+	box.size = size
+	mi.mesh = box
+	mi.position = Vector3(0.0, floor_y, 0.0)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.32, 0.62, 0.28)
+	mat.roughness = 0.9
+	mi.material_override = mat
+	add_child(mi)
+	var mi2 := MeshInstance3D.new()
+	mi2.name = "GuaranteedDirtMesh"
+	var box2 := BoxMesh.new()
+	box2.size = Vector3(80.0, 6.0, 80.0)
+	mi2.mesh = box2
+	mi2.position = Vector3(0.0, floor_y - 5.0, 0.0)
+	var mat2 := StandardMaterial3D.new()
+	mat2.albedo_color = Color(0.42, 0.28, 0.14)
+	mi2.material_override = mat2
+	add_child(mi2)
+	var body := StaticBody3D.new()
+	body.name = "GuaranteedFloorBody"
+	body.position = Vector3(0.0, floor_y, 0.0)
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	col.shape = shape
+	body.add_child(col)
+	add_child(body)
+	var body2 := StaticBody3D.new()
+	body2.name = "GuaranteedDirtBody"
+	body2.position = Vector3(0.0, floor_y - 5.0, 0.0)
+	body2.collision_layer = 1
+	var col2 := CollisionShape3D.new()
+	var shape2 := BoxShape3D.new()
+	shape2.size = Vector3(80.0, 6.0, 80.0)
+	col2.shape = shape2
+	body2.add_child(col2)
+	add_child(body2)
+	print("Blockraft: guaranteed floor spawned")
+	if player:
+		player.global_position = Vector3(0.0, floor_y + size.y * 0.5 + 1.2, 0.0)
+		player.velocity = Vector3.ZERO
 
 func _process(delta: float) -> void:
 	_chunk_timer -= delta
@@ -176,8 +230,7 @@ func _clear_old_save() -> void:
 		var ud := DirAccess.open("user://")
 		if ud and ud.file_exists("world_blocks.json"):
 			ud.remove("world_blocks.json")
-		push_warning("Old world save deleted.")
-		print("Blockraft: deleted user://world_blocks.json")
+		print("Blockraft: deleted old save")
 
 func _force_solid_spawn_island() -> void:
 	for x in range(-16, 17):
@@ -223,10 +276,8 @@ func _count_visible_meshes() -> int:
 	return n
 
 func _emergency_ground_if_empty() -> void:
-	var n := _count_visible_meshes()
-	if n >= 80:
+	if _count_visible_meshes() >= 80:
 		return
-	push_warning("Emergency ground: only %d block meshes visible" % n)
 	_force_solid_spawn_island()
 	for x in range(-18, 19):
 		for z in range(-18, 19):
@@ -234,10 +285,6 @@ func _emergency_ground_if_empty() -> void:
 				var pos := Vector3i(x, y, z)
 				if not blocks.has(pos):
 					blocks[pos] = "grass" if y >= 4 else ("dirt" if y >= 2 else "stone")
-			for y in range(6, 14):
-				var p2 := Vector3i(x, y, z)
-				if abs(x) <= 2 and abs(z) <= 2 and blocks.has(p2):
-					blocks.erase(p2)
 	for ck in loaded_chunks.keys():
 		var node = loaded_chunks[ck]
 		if is_instance_valid(node):
@@ -250,41 +297,18 @@ func _emergency_ground_if_empty() -> void:
 		if not loaded_chunks.has(ck2):
 			_load_chunk(ck2)
 	_force_mesh_radius(22)
-	if _count_visible_meshes() < 40:
-		var platform := MeshInstance3D.new()
-		platform.name = "EmergencyPlatform"
-		var box := BoxMesh.new()
-		box.size = Vector3(40, 2, 40)
-		platform.mesh = box
-		platform.position = Vector3(0.5, 3.0, 0.5)
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.28, 0.55, 0.22)
-		platform.material_override = mat
-		world_root.add_child(platform)
-		var body := StaticBody3D.new()
-		body.position = Vector3(0.5, 3.0, 0.5)
-		body.collision_layer = 1
-		var col := CollisionShape3D.new()
-		var shape := BoxShape3D.new()
-		shape.size = Vector3(40, 2, 40)
-		col.shape = shape
-		body.add_child(col)
-		world_root.add_child(body)
-		push_warning("Spawned emergency platform")
 
 func _deferred_world_check() -> void:
 	var meshes := _count_visible_meshes()
 	var msg := "World: %d blocks, %d meshes, %d chunks" % [blocks.size(), meshes, loaded_chunks.size()]
 	print(msg)
 	_show_toast(msg, 5.0)
-	if meshes < 50:
-		_emergency_ground_if_empty()
-		_snap_player_to_surface()
-		_show_toast("Repaired empty map — walk to explore", 4.0)
 	if player:
 		var cam = player.get_node_or_null("PlayerCamera")
 		if cam:
 			cam.make_current()
+		if player.global_position.y < 2.0:
+			player.global_position = Vector3(0.0, 5.0, 0.0)
 
 func _ensure_spawn_visible() -> void:
 	for x in range(-12, 13):
@@ -301,7 +325,7 @@ func _ensure_spawn_visible() -> void:
 func _check_fall_respawn() -> void:
 	if player == null: return
 	if player.global_position.y < float(MIN_Y) - 8.0:
-		_snap_player_to_surface()
+		player.global_position = Vector3(0.0, 5.0, 0.0)
 		player.velocity = Vector3.ZERO
 		_show_toast("You fell — returned to surface", 2.0)
 
@@ -315,16 +339,10 @@ func _ensure_spawn_pad() -> void:
 			if top < 3:
 				for y in range(MIN_Y, 4):
 					blocks[Vector3i(x, y, z)] = "dirt" if y < 3 else "grass"
-				top = 3
-			for y in range(top + 1, 12):
-				var p2 := Vector3i(x, y, z)
-				if blocks.has(p2) and abs(x) <= 2 and abs(z) <= 2:
-					if str(blocks[p2]) not in ["wood", "leaves"]:
-						blocks.erase(p2)
 
 func _snap_player_to_surface() -> void:
 	if player == null: return
-	var best_pos := Vector3(0.5, 6.0, 0.5)
+	var best_pos := Vector3(0.0, 5.0, 0.0)
 	var found := false
 	for x in range(-6, 7):
 		for z in range(-6, 7):
@@ -338,9 +356,7 @@ func _snap_player_to_surface() -> void:
 					best_pos = cand
 					found = true
 				break
-	if not found:
-		best_pos = Vector3(0.5, 5.5, 0.5)
-	player.global_position = best_pos
+	player.global_position = best_pos if found else Vector3(0.0, 5.0, 0.0)
 	player.velocity = Vector3.ZERO
 
 func _generate_world() -> void:
@@ -428,12 +444,6 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 	var trunk := 4 + r.randi_range(0, 3)
 	for dy in range(trunk):
 		blocks[Vector3i(x, y + dy, z)] = "wood"
-		if dy > 1 and dy < trunk - 1 and r.randf() < 0.18:
-			var bx := 1 if r.randf() < 0.5 else -1
-			var bz := 0 if r.randf() < 0.5 else (1 if r.randf() < 0.5 else -1)
-			var bp := Vector3i(x + bx, y + dy, z + bz)
-			if not blocks.has(bp):
-				blocks[bp] = "wood"
 	var canopy_y := y + trunk - 1
 	for dx in range(-3, 4):
 		for dz in range(-3, 4):
@@ -444,11 +454,6 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 				var p := Vector3i(x + dx, canopy_y + dy, z + dz)
 				if not blocks.has(p):
 					blocks[p] = "leaves"
-	for dx in range(-1, 2):
-		for dz in range(-1, 2):
-			var p2 := Vector3i(x + dx, canopy_y + 4, z + dz)
-			if not blocks.has(p2) and r.randf() < 0.7:
-				blocks[p2] = "leaves"
 
 func _chunk_key_from_world(wx: int, wz: int) -> Vector2i:
 	return Vector2i(int(floor(float(wx) / float(CHUNK_SIZE))), int(floor(float(wz) / float(CHUNK_SIZE))))
@@ -593,49 +598,14 @@ func save_world(show_feedback: bool = false) -> void:
 		if show_feedback: _show_toast("World saved", 1.2)
 
 func _load_world_snapshot() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
-		return
-	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if not file:
-		return
-	var parsed = JSON.parse_string(file.get_as_text())
-	file = null
-	var ver := 0
-	if typeof(parsed) == TYPE_DICTIONARY:
-		ver = int(parsed.get("version", 1))
-	if ver < SAVE_VERSION:
-		_clear_old_save()
-		push_warning("Deleted old save v%d — fresh world." % ver)
-		return
-	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("blocks"):
-		_clear_old_save()
-		return
-	var restored: Dictionary = {}
-	for entry in parsed["blocks"]:
-		if typeof(entry) == TYPE_DICTIONARY and entry.has("x") and entry.has("kind"):
-			restored[Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))] = str(entry["kind"])
-	if restored.size() < 2000:
-		push_warning("Save has too few blocks (%d); keeping generated world." % restored.size())
-		_clear_old_save()
-		return
-	var near := 0
-	for x in range(-8, 9):
-		for z in range(-8, 9):
-			for y in range(0, 12):
-				if restored.has(Vector3i(x, y, z)):
-					near += 1
-	if near < 40:
-		push_warning("Save has no spawn terrain; deleting and regenerating.")
-		_clear_old_save()
-		return
-	blocks = restored
+	pass
 
 func _setup_ui() -> void:
 	var layer := CanvasLayer.new()
 	layer.name = "GameUI"
 	add_child(layer)
 	var label := Label.new()
-	label.text = "BLOCKRAFT  |  Explore • Survive • Build"
+	label.text = "BLOCKRAFT"
 	label.add_theme_font_size_override("font_size", 14)
 	label.position = Vector2(16, 14)
 	label.add_theme_color_override("font_color", Color("#f0f8e6"))
@@ -682,7 +652,7 @@ func _refresh_status() -> void:
 	var bits: PackedStringArray = []
 	for k in ["coal", "iron", "gold", "crystal", "chest"]:
 		if discovered.get(k, false): bits.append(k.capitalize())
-	status_label.text = "Discoveries: dig underground & search clearings" if bits.is_empty() else "Discovered: " + ", ".join(bits)
+	status_label.text = "Discoveries: dig & explore" if bits.is_empty() else "Discovered: " + ", ".join(bits)
 
 func _build_hotbar(layer: CanvasLayer) -> void:
 	var bar := HBoxContainer.new()
@@ -811,7 +781,8 @@ func on_block_mined(kind: String) -> void:
 		discovered[kind] = true
 		_show_toast("Discovered %s ore!" % kind.capitalize(), 2.8)
 		_refresh_status()
-	elif kind in ["coal", "iron", "gold", "crystal"]:
+
+elif kind in ["coal", "iron", "gold", "crystal"]:
 		_show_toast("+1 %s" % kind.capitalize(), 1.2)
 
 func _open_chest_loot() -> void:
