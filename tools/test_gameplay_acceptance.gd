@@ -87,7 +87,12 @@ func _run_checks() -> void:
         _fail("world save does not contain a blocks array", 12)
         return
     for entry in parsed["blocks"]:
-        if typeof(entry) == TYPE_DICTIONARY and int(entry.get("x", 9999)) == probe.x and int(entry.get("y", 9999)) == probe.y and int(entry.get("z", 9999)) == probe.z:
+        var entry_pos := Vector3i(9999, 9999, 9999)
+        if typeof(entry) == TYPE_ARRAY and entry.size() >= 4:
+            entry_pos = Vector3i(int(entry[0]), int(entry[1]), int(entry[2]))
+        elif typeof(entry) == TYPE_DICTIONARY:
+            entry_pos = Vector3i(int(entry.get("x", 9999)), int(entry.get("y", 9999)), int(entry.get("z", 9999)))
+        if entry_pos == probe:
             _fail("deleted block was still present in the saved snapshot", 13)
             return
 
