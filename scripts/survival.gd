@@ -1,5 +1,5 @@
 extends Node
-## Day/night cycle + health/hunger + redesigned game HUD.
+## Day/night cycle + health/hunger + game HUD.
 
 var time_of_day := 0.28
 var day_cycle_speed := 0.012
@@ -29,10 +29,18 @@ func setup(world: Node, settings_node: Node = null) -> void:
 	if settings:
 		day_cycle_speed = 0.012 * float(settings.day_speed)
 	sun_light = world.get_node_or_null("DirectionalLight3D") as DirectionalLight3D
+	if sun_light == null:
+		sun_light = DirectionalLight3D.new()
+		sun_light.name = "DirectionalLight3D"
+		sun_light.shadow_enabled = false
+		sun_light.light_energy = 1.0
+		sun_light.light_color = Color(1.0, 0.95, 0.85)
+		world.add_child(sun_light)
 	var we = world.get_node_or_null("WorldEnvironment") as WorldEnvironment
 	if we:
 		world_env = we.environment
 	_build_ui()
+	_update_day_night(0.0)
 
 func is_night() -> bool:
 	var angle := time_of_day * TAU - PI * 0.5
@@ -41,6 +49,24 @@ func is_night() -> bool:
 func day_factor() -> float:
 	var angle := time_of_day * TAU - PI * 0.5
 	return clampf(sin(angle) * 0.5 + 0.5, 0.0, 1.0)
+
+func _phase_name() -> String:
+	var h := time_of_day * 24.0
+	if h < 5.0:
+		return "Midnight"
+	if h < 7.0:
+		return "Dawn"
+	if h < 11.0:
+		return "Morning"
+	if h < 14.0:
+		return "Noon"
+	if h < 17.0:
+		return "Afternoon"
+	if h < 19.5:
+		return "Dusk"
+	if h < 22.0:
+		return "Evening"
+	return "Night"
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -146,12 +172,12 @@ func _build_ui() -> void:
 	night_banner.add_theme_stylebox_override("panel", ns)
 	_ui_root.add_child(night_banner)
 	night_label = Label.new()
-	night_label.text = "NIGHT — chickens, foxes & cows attack!"
+	night_label.text = "NIGHT — animals attack!"
 	night_label.add_theme_font_size_override("font_size", 14)
 	night_label.add_theme_color_override("font_color", Color("#e8d0ff"))
 	night_banner.add_child(night_label)
 	hint_label = Label.new()
-	hint_label.text = "WASD move · Mouse look · LMB dig/attack · RMB place · E eat · B bag"
+	hint_label.text = "WASD move · Mouse look · LMB dig/attack · RMB place · E eat · F depot · B bag"
 	hint_label.add_theme_font_size_override("font_size", 11)
 	hint_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
 	_ui_root.add_child(hint_label)
@@ -170,7 +196,7 @@ func _layout_ui() -> void:
 	if night_banner:
 		night_banner.position = Vector2(vs.x * 0.5 - 180.0, 52)
 	if hint_label:
-		hint_label.position = Vector2(vs.x * 0.5 - 220.0, vs.y - 28)
+		hint_label.position = Vector2(vs.x * 0.5 - 240.0, vs.y - 28)
 
 func tick(delta: float) -> void:
 	_invuln = maxf(0.0, _invuln - delta)
@@ -181,29 +207,58 @@ func _update_day_night(delta: float) -> void:
 	var spd := day_cycle_speed
 	if settings:
 		spd = 0.012 * float(settings.day_speed)
-	time_of_day = fmod(time_of_day + spd * delta, 1.0)
+	if delta > 0.0:
+		time_of_day = fmod(time_of_day + spd * delta, 1.0)
 	var angle := time_of_day * TAU - PI * 0.5
 	var factor := day_factor()
-	if sun_light:
-		sun_light.rotation = Vector3(-angle, 0.4, 0.15)
-		sun_light.light_energy = lerpf(0.08, 1.15, factor)
-		sun_light.light_color = Color(1.0, 0.95, 0.85).lerp(Color(0.35, 0.4, 0.7), 1.0 - factor)
-	if world_env:
-		world_env.background_color = Color(0.55, 0.72, 0.92).lerp(Color(0.08, 0.1, 0.2), 1.0 - factor)
-		world_env.ambient_light_energy = lerpf(0.25, 0.6, factor)
-	var hour := int(time_of_day * 24.0)
-	var minute := int(fmod(time_of_day * 24.0, 1.0) * 60.0)
 	var night := is_night()
+	if sun_light:
+		sun_light.rotation = Vector3(-angle, 0.55, 0.12)
+		var day_col := Color(1.0, 0.96, 0.88)
+		var dusk_col := Color(1.0, 0.55, 0.28)
+		var night_col := Color(0.35, 0.42, 0.75)
+		var sun_col := day_col
+		if factor < 0.35:
+			sun_col = night_col.lerp(dusk_col, clampf(factor / 0.35, 0.0, 1.0))
+		elif factor < 0.55:
+			sun_col = dusk_col.lerp(day_col, clampf((factor - 0.35) / 0.2, 0.0, 1.0))
+		else:
+			sun_col = day_col
+		sun_light.light_color = sun_col
+		sun_light.light_energy = lerpf(0.06, 1.2, factor * factor)
+		sun_light.visible = true
+	if world_env:
+		var sky_day := Color(0.52, 0.72, 0.95)
+		var sky_dusk := Color(0.85, 0.45, 0.28)
+		var sky_night := Color(0.05, 0.07, 0.16)
+		var sky := sky_day
+		if factor < 0.3:
+			sky = sky_night.lerp(sky_dusk, clampf(factor / 0.3, 0.0, 1.0))
+		elif factor < 0.5:
+			sky = sky_dusk.lerp(sky_day, clampf((factor - 0.3) / 0.2, 0.0, 1.0))
+		else:
+			sky = sky_day
+		world_env.background_color = sky
+		world_env.ambient_light_color = sky.lerp(Color(0.75, 0.8, 0.9), factor)
+		world_env.ambient_light_energy = lerpf(0.18, 0.62, factor)
+		world_env.fog_enabled = true
+		world_env.fog_light_color = sky
+		world_env.fog_density = lerpf(0.0045, 0.002, factor)
+	var hour := int(time_of_day * 24.0) % 24
+	var minute := int(fmod(time_of_day * 24.0, 1.0) * 60.0)
+	var phase := _phase_name()
 	if time_label:
-		time_label.text = "%s %02d:%02d" % ["Night" if night else "Day", hour, minute]
+		time_label.text = "%s  %02d:%02d" % [phase, hour, minute]
 	if phase_icon:
-		phase_icon.text = "C" if night else "*"
+		phase_icon.text = "C" if night else ("~" if factor < 0.45 else "*")
 	if phase_detail:
-		phase_detail.text = "cycle %.0f%% · sun %.0f%%" % [time_of_day * 100.0, factor * 100.0]
+		phase_detail.text = "day cycle %.0f%% · light %.0f%%" % [time_of_day * 100.0, factor * 100.0]
 	if clock_bar:
 		clock_bar.value = time_of_day * 100.0
 	if night_banner:
 		night_banner.visible = night
+		if night_label and night:
+			night_label.text = "NIGHT — animals attack!  %02d:%02d" % [hour, minute]
 
 func _update_survival(delta: float) -> void:
 	hunger = maxf(0.0, hunger - delta * 0.8)
