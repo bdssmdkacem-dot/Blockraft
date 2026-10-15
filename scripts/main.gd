@@ -40,7 +40,6 @@ func _ready() -> void:
 		player.add_to_group("player")
 		player.velocity = Vector3.ZERO
 		player.global_position = Vector3(0.0, 6.0, 0.0)
-	# Floor FIRST — always visible even if world gen fails
 	_spawn_guaranteed_floor()
 	world_root = Node3D.new()
 	world_root.name = "GeneratedWorld"
@@ -781,8 +780,7 @@ func on_block_mined(kind: String) -> void:
 		discovered[kind] = true
 		_show_toast("Discovered %s ore!" % kind.capitalize(), 2.8)
 		_refresh_status()
-
-elif kind in ["coal", "iron", "gold", "crystal"]:
+	elif kind in ["coal", "iron", "gold", "crystal"]:
 		_show_toast("+1 %s" % kind.capitalize(), 1.2)
 
 func _open_chest_loot() -> void:
