@@ -40,6 +40,11 @@ func _setup_menu_audio() -> void:
 	_ambient_player.stream = _make_ambient_wav()
 	_ambient_player.volume_db = -18.0
 	add_child(_ambient_player)
+	var s = load("res://scripts/settings.gd").new()
+	s.load_settings()
+	s.apply_audio()
+	if _ambient_player:
+		_ambient_player.volume_db = -18.0 + linear_to_db(maxf(s.master_volume, 0.01))
 
 func _make_click_wav() -> AudioStreamWAV:
 	var rate := 22050
@@ -84,17 +89,10 @@ func _make_ambient_wav() -> AudioStreamWAV:
 	var n := int(2.5 * rate)
 	var data := PackedByteArray()
 	data.resize(n * 2)
-	var prev := 0.0
 	for i in range(n):
 		var t := float(i) / rate
-		var wind := sin(TAU * 0.15 * t) * 0.04 + sin(TAU * 0.37 * t) * 0.03
-		var noise := (randf() * 2.0 - 1.0)
-		prev = prev * 0.92 + noise * 0.08
-		var bird := 0.0
-		if int(t * 2.0) % 5 == 0 and fmod(t, 0.5) < 0.08:
-			bird = sin(TAU * (1800.0 + sin(t * 20.0) * 200.0) * t) * 0.06 * exp(-fmod(t, 0.5) * 20.0)
-		var s := clampf(wind + prev * 0.12 + bird, -1.0, 1.0)
-		var s16 := int(s * 16000.0)
+		var s := sin(TAU * 110.0 * t) * 0.04 + sin(TAU * 165.0 * t) * 0.03 + sin(TAU * 55.0 * t) * 0.05
+		var s16 := int(clampf(s, -1.0, 1.0) * 12000.0)
 		data[i * 2] = s16 & 0xFF
 		data[i * 2 + 1] = (s16 >> 8) & 0xFF
 	var wav := AudioStreamWAV.new()
@@ -102,91 +100,67 @@ func _make_ambient_wav() -> AudioStreamWAV:
 	wav.mix_rate = rate
 	wav.stereo = false
 	wav.data = data
-	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	wav.loop_begin = 0
-	wav.loop_end = n
 	return wav
 
 func _play_click() -> void:
-	if _click_player:
-		_click_player.play()
+	if _click_player: _click_player.play()
 
 func _play_hover() -> void:
-	if _hover_player and not _hover_player.playing:
-		_hover_player.play()
+	if _hover_player: _hover_player.play()
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_RESIZED and is_node_ready():
+	if what == NOTIFICATION_RESIZED:
 		_apply_responsive_layout()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and is_instance_valid(dialog_layer):
 		dialog_layer.queue_free()
 		dialog_layer = null
-		get_viewport().set_input_as_handled()
 
 func _build_3d_backdrop() -> void:
-	var container := SubViewportContainer.new()
-	container.name = "ThreeDMenuBackdrop"
-	container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	container.stretch = true
-	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(container)
-	move_child(container, 0)
-	var viewport := SubViewport.new()
-	viewport.name = "WorldViewport"
-	viewport.transparent_bg = false
-	viewport.handle_input_locally = false
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	viewport.size = Vector2i(1280, 720)
-	container.add_child(viewport)
+	var sub := SubViewportContainer.new()
+	sub.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	sub.stretch = true
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sub)
+	move_child(sub, 0)
+	var vp := SubViewport.new()
+	vp.transparent_bg = false
+	vp.size = Vector2i(1280, 720)
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	sub.add_child(vp)
 	var world_script = load("res://scripts/menu_world_3d.gd")
-	var world: Node3D = world_script.new() if world_script else Node3D.new()
-	world.name = "VoxelMenuWorld"
-	viewport.add_child(world)
+	if world_script:
+		var world = world_script.new()
+		vp.add_child(world)
 
 func _build_title_block() -> void:
 	var title := Label.new()
-	title.name = "GameTitle"
 	title.text = "BLOCKCRAFT"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	title.add_theme_font_size_override("font_size", 52)
-	title.add_theme_color_override("font_color", Color("#f5f0e6"))
-	title.add_theme_color_override("font_shadow_color", Color("#1a1208"))
+	title.position = Vector2(40, 36)
+	title.add_theme_font_size_override("font_size", 48)
+	title.add_theme_color_override("font_color", Color("#f5f8f0"))
+	title.add_theme_color_override("font_shadow_color", Color("#1a2e22"))
 	title.add_theme_constant_override("shadow_offset_x", 3)
 	title.add_theme_constant_override("shadow_offset_y", 3)
-	title.position = Vector2(36, 28)
-	title.size = Vector2(520, 64)
 	add_child(title)
-	var tagline := Label.new()
-	tagline.name = "Tagline"
-	tagline.text = "EXPLORE  •  BUILD  •  SURVIVE"
-	tagline.add_theme_font_size_override("font_size", 14)
-	tagline.add_theme_color_override("font_color", Color("#d8e8f0"))
-	tagline.add_theme_color_override("font_shadow_color", Color("#102030"))
-	tagline.add_theme_constant_override("shadow_offset_x", 1)
-	tagline.add_theme_constant_override("shadow_offset_y", 1)
-	tagline.position = Vector2(42, 88)
-	tagline.size = Vector2(400, 24)
-	add_child(tagline)
+	var sub := Label.new()
+	sub.text = "EXPLORE  ·  BUILD  ·  SURVIVE"
+	sub.position = Vector2(44, 88)
+	sub.add_theme_font_size_override("font_size", 14)
+	sub.add_theme_color_override("font_color", Color("#b8d4c0"))
+	add_child(sub)
 
 func _build_menu_buttons() -> void:
-	var panel := PanelContainer.new()
-	panel.name = "MainMenuPanel"
-	panel.position = Vector2(36, 130)
-	panel.custom_minimum_size = Vector2(260, 220)
-	var empty := StyleBoxEmpty.new()
-	panel.add_theme_stylebox_override("panel", empty)
-	add_child(panel)
 	menu_column = VBoxContainer.new()
-	menu_column.name = "MenuColumn"
+	menu_column.position = Vector2(40, 140)
+	menu_column.custom_minimum_size = Vector2(260, 0)
 	menu_column.add_theme_constant_override("separation", 10)
-	panel.add_child(menu_column)
+	add_child(menu_column)
 	_add_menu_button("▶  Play", "play", true)
 	_add_menu_button("⚙  Settings", "settings", false)
 	_add_menu_button("📖  Help", "help", false)
 	_add_menu_button("⏻  Exit", "exit", false)
-	status_label = null
 
 func _add_menu_button(caption: String, action: String, primary: bool) -> void:
 	var button := Button.new()
@@ -196,24 +170,14 @@ func _add_menu_button(caption: String, action: String, primary: bool) -> void:
 	button.focus_mode = Control.FOCUS_ALL
 	button.add_theme_font_size_override("font_size", 18 if primary else 16)
 	var normal := StyleBoxFlat.new()
-	if primary:
-		normal.bg_color = Color(0.12, 0.55, 0.28, 0.92)
-		normal.border_color = Color(0.45, 0.92, 0.55, 0.95)
-	else:
-		normal.bg_color = Color(0.06, 0.10, 0.12, 0.78)
-		normal.border_color = Color(0.55, 0.70, 0.65, 0.55)
+	normal.bg_color = Color(0.12, 0.45, 0.28, 0.92) if primary else Color(0.08, 0.12, 0.1, 0.85)
+	normal.border_color = Color("#8fd4a8") if primary else Color("#4a6a58")
 	normal.set_border_width_all(2)
 	normal.set_corner_radius_all(10)
-	normal.content_margin_left = 16
-	normal.content_margin_right = 16
 	var hover := normal.duplicate() as StyleBoxFlat
-	if primary:
-		hover.bg_color = Color(0.18, 0.68, 0.35, 0.96)
-	else:
-		hover.bg_color = Color(0.12, 0.18, 0.20, 0.90)
-		hover.border_color = Color(0.75, 0.95, 0.80, 0.85)
+	hover.bg_color = Color(0.18, 0.55, 0.35, 0.95) if primary else Color(0.14, 0.2, 0.16, 0.9)
 	var pressed := normal.duplicate() as StyleBoxFlat
-	pressed.bg_color = Color(0.76, 0.55, 0.18, 0.95) if primary else Color(0.18, 0.22, 0.20, 0.95)
+	pressed.bg_color = Color(0.85, 0.75, 0.35, 0.95)
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
 	button.add_theme_stylebox_override("pressed", pressed)
@@ -277,155 +241,195 @@ func _build_feature_strip() -> void:
 
 func _build_footer_bar() -> void:
 	var footer := HBoxContainer.new()
-	footer.name = "Footer"
-	footer.add_theme_constant_override("separation", 24)
-	footer.position = Vector2(24, 660)
-	footer.size = Vector2(1232, 48)
+	footer.position = Vector2(16, 660)
+	footer.add_theme_constant_override("separation", 18)
 	add_child(footer)
-	var items := [
-		["⬡", "Procedural Worlds", "Never the same twice"],
-		["🌲", "Dynamic Biomes", "Forests, mountains, deserts..."],
-		["⛏", "Multiple Tools", "Mine, craft, build"],
-		["♥", "Health & Hunger", "Stay alive"],
-		["☀", "Day & Night Cycle", "New challenges"],
-		["👥", "Online Play", "Play with friends"],
-	]
-	for item in items:
-		var cell := VBoxContainer.new()
-		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var icon := Label.new()
-		icon.text = item[0] + "  " + item[1]
-		icon.add_theme_font_size_override("font_size", 12)
-		icon.add_theme_color_override("font_color", Color("#d0e8d8"))
-		cell.add_child(icon)
-		var desc := Label.new()
-		desc.text = item[2]
-		desc.add_theme_font_size_override("font_size", 10)
-		desc.add_theme_color_override("font_color", Color("#809890"))
-		cell.add_child(desc)
-		footer.add_child(cell)
+	for item in ["○ Procedural Worlds", "▲ Dynamic Biomes", "⚒ Multiple Tools", "♥ Health & Hunger", "☀ Day & Night Cycle", "👥 Online Play"]:
+		var l := Label.new()
+		l.text = item
+		l.add_theme_font_size_override("font_size", 11)
+		l.add_theme_color_override("font_color", Color("#9ab8a8")
+		)
+		footer.add_child(l)
 
 func _apply_responsive_layout() -> void:
-	var vs := size
-	if vs.x <= 0.0 or vs.y <= 0.0:
-		return
-	var sx := vs.x / DESIGN_SIZE.x
-	var sy := vs.y / DESIGN_SIZE.y
-	var s := minf(sx, sy)
-	var title := get_node_or_null("GameTitle") as Label
-	var tagline := get_node_or_null("Tagline") as Label
-	var panel := get_node_or_null("MainMenuPanel") as Control
-	var strip := get_node_or_null("FeatureStrip") as Control
-	var footer := get_node_or_null("Footer") as Control
-	if title:
-		title.position = Vector2(36 * sx, 28 * sy)
-		title.add_theme_font_size_override("font_size", int(52 * s))
-	if tagline:
-		tagline.position = Vector2(42 * sx, 88 * sy)
-	if panel:
-		panel.position = Vector2(36 * sx, 130 * sy)
-		panel.custom_minimum_size = Vector2(260 * s, 220 * s)
-	if strip:
-		strip.position = Vector2(16 * sx, vs.y - 220 * sy)
-		strip.size = Vector2(vs.x - 32 * sx, 140 * sy)
-	if footer:
-		footer.position = Vector2(24 * sx, vs.y - 55 * sy)
-		footer.size = Vector2(vs.x - 48 * sx, 48 * sy)
-	var backdrop := get_node_or_null("ThreeDMenuBackdrop") as SubViewportContainer
-	if backdrop:
-		var vp := backdrop.get_node_or_null("WorldViewport") as SubViewport
-		if vp:
-			vp.size = Vector2i(maxi(int(vs.x), 640), maxi(int(vs.y), 360))
+	pass
 
 func _on_menu_action(action: String) -> void:
 	match action:
 		"play":
 			get_tree().change_scene_to_file(GAME_SCENE)
 		"settings":
-			_open_dialog("Settings", "Audio, controls, and graphics options will expand here.\n\n• Master volume\n• Music / SFX balance\n• Touch controls (mobile)", [
-				{"label": "Close", "action": "close", "primary": true}
-			])
+			_open_settings_panel()
 		"help":
-			_open_dialog("How to Play", "• Move with WASD or the left joystick\n• Look with mouse or right-side drag\n• LMB / MINE to dig blocks\n• RMB / PLACE to build\n• 1–9 select hotbar slots\n• B upgrade backpack\n• Explore, mine ores, find chests!", [
-				{"label": "Got it", "action": "close", "primary": true}
+			_open_dialog("How to Play", "• Move with WASD or the left joystick\n• Look with mouse or right-side drag\n• LMB / MINE to dig blocks\n• RMB / PLACE to build\n• 1–9 select hotbar slots\n• B upgrade backpack\n• E eat / forage\n• Explore, mine ores, find chests!", [
+				{"label": "Close", "action": "close", "primary": true}
 			])
 		"exit":
 			get_tree().quit()
-		"worlds":
-			_open_dialog("Worlds", "Single world for now — your progress auto-saves.", [
-				{"label": "Play", "action": "play", "primary": true},
-				{"label": "Back", "action": "close", "primary": false}
-			])
 
 func _open_dialog(title_text: String, body_text: String, options: Array) -> void:
 	if is_instance_valid(dialog_layer):
 		dialog_layer.queue_free()
 	dialog_layer = Control.new()
-	dialog_layer.name = "DialogLayer"
 	dialog_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dialog_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dialog_layer)
 	var dim := ColorRect.new()
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.02, 0.05, 0.06, 0.72)
+	dim.color = Color(0, 0, 0, 0.55)
 	dialog_layer.add_child(dim)
 	var box := PanelContainer.new()
 	box.custom_minimum_size = Vector2(480, 280)
-	box.position = Vector2(size.x * 0.5 - 240, size.y * 0.5 - 140)
-	var box_style := StyleBoxFlat.new()
-	box_style.bg_color = Color(0.06, 0.12, 0.12, 0.96)
-	box_style.border_color = Color("#6ab88a")
-	box_style.set_border_width_all(2)
-	box_style.set_corner_radius_all(14)
-	box_style.content_margin_left = 20
-	box_style.content_margin_right = 20
-	box_style.content_margin_top = 16
-	box_style.content_margin_bottom = 16
-	box.add_theme_stylebox_override("panel", box_style)
+	box.set_anchors_preset(Control.PRESET_CENTER)
+	box.position = Vector2(-240, -140)
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.08, 0.12, 0.1, 0.96)
+	st.border_color = Color("#6ab88a")
+	st.set_border_width_all(2)
+	st.set_corner_radius_all(12)
+	box.add_theme_stylebox_override("panel", st)
 	dialog_layer.add_child(box)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	box.add_child(col)
-	var t := Label.new()
-	t.text = title_text
-	t.add_theme_font_size_override("font_size", 22)
-	t.add_theme_color_override("font_color", Color("#f0f8e6"))
-	col.add_child(t)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	box.add_child(v)
+	var title := Label.new()
+	title.text = title_text
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color("#f0f8e6"))
+	v.add_child(title)
 	var body := Label.new()
 	body.text = body_text
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD
-	body.add_theme_font_size_override("font_size", 14)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_color_override("font_color", Color("#c8e0d0"))
-	col.add_child(body)
-	var btn_row := HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 10)
-	col.add_child(btn_row)
+	v.add_child(body)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(row)
 	for opt in options:
 		var b := Button.new()
-		b.text = str(opt.get("label", "OK"))
-		b.custom_minimum_size = Vector2(120, 40)
-		b.focus_mode = Control.FOCUS_NONE
-		var is_primary: bool = bool(opt.get("primary", false))
-		var ns := StyleBoxFlat.new()
-		ns.bg_color = Color(0.12, 0.55, 0.28, 0.92) if is_primary else Color(0.08, 0.14, 0.14, 0.9)
-		ns.border_color = Color("#6ab88a")
-		ns.set_border_width_all(2)
-		ns.set_corner_radius_all(8)
-		b.add_theme_stylebox_override("normal", ns)
-		b.add_theme_color_override("font_color", Color("#f0f8e6"))
-		var act := str(opt.get("action", "close"))
-		b.pressed.connect(func():
-			_play_click()
-			_on_dialog_action(act)
-		)
-		btn_row.add_child(b)
+		b.text = opt["label"]
+		b.custom_minimum_size = Vector2(120, 36)
+		var act: String = opt["action"]
+		b.pressed.connect(func(): _on_dialog_action(act))
+		row.add_child(b)
 
 func _on_dialog_action(action: String) -> void:
-	if action == "close":
+	if is_instance_valid(dialog_layer):
+		dialog_layer.queue_free()
+		dialog_layer = null
+
+func _open_settings_panel() -> void:
+	if is_instance_valid(dialog_layer):
+		dialog_layer.queue_free()
+	var cfg_node = load("res://scripts/settings.gd").new()
+	cfg_node.load_settings()
+	dialog_layer = Control.new()
+	dialog_layer.name = "SettingsPanel"
+	dialog_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dialog_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dialog_layer)
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.55)
+	dialog_layer.add_child(dim)
+	var box := PanelContainer.new()
+	box.custom_minimum_size = Vector2(420, 360)
+	box.set_anchors_preset(Control.PRESET_CENTER)
+	box.position = Vector2(-210, -180)
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.08, 0.12, 0.1, 0.96)
+	st.border_color = Color("#6ab88a")
+	st.set_border_width_all(2)
+	st.set_corner_radius_all(12)
+	box.add_theme_stylebox_override("panel", st)
+	dialog_layer.add_child(box)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	box.add_child(v)
+	var title := Label.new()
+	title.text = "⚙  Settings"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color("#f0f8e6"))
+	v.add_child(title)
+	var sens_l := Label.new()
+	sens_l.text = "Look sensitivity: %.0f%%" % (cfg_node.look_sensitivity * 100.0)
+	sens_l.add_theme_color_override("font_color", Color("#d0e8d8"))
+	v.add_child(sens_l)
+	var sens := HSlider.new()
+	sens.min_value = 0.4
+	sens.max_value = 2.0
+	sens.step = 0.05
+	sens.value = cfg_node.look_sensitivity
+	sens.custom_minimum_size = Vector2(360, 24)
+	sens.value_changed.connect(func(val):
+		cfg_node.look_sensitivity = val
+		sens_l.text = "Look sensitivity: %.0f%%" % (val * 100.0)
+	)
+	v.add_child(sens)
+	var vol_l := Label.new()
+	vol_l.text = "Master volume: %.0f%%" % (cfg_node.master_volume * 100.0)
+	vol_l.add_theme_color_override("font_color", Color("#d0e8d8"))
+	v.add_child(vol_l)
+	var vol := HSlider.new()
+	vol.min_value = 0.0
+	vol.max_value = 1.0
+	vol.step = 0.05
+	vol.value = cfg_node.master_volume
+	vol.custom_minimum_size = Vector2(360, 24)
+	vol.value_changed.connect(func(val):
+		cfg_node.master_volume = val
+		cfg_node.apply_audio()
+		vol_l.text = "Master volume: %.0f%%" % (val * 100.0)
+		if _ambient_player:
+			_ambient_player.volume_db = -18.0 + linear_to_db(maxf(val, 0.01))
+	)
+	v.add_child(vol)
+	var day_l := Label.new()
+	day_l.text = "Day cycle speed: %.0f%%" % (cfg_node.day_speed * 100.0)
+	day_l.add_theme_color_override("font_color", Color("#d0e8d8"))
+	v.add_child(day_l)
+	var day := HSlider.new()
+	day.min_value = 0.25
+	day.max_value = 3.0
+	day.step = 0.25
+	day.value = cfg_node.day_speed
+	day.custom_minimum_size = Vector2(360, 24)
+	day.value_changed.connect(func(val):
+		cfg_node.day_speed = val
+		day_l.text = "Day cycle speed: %.0f%%" % (val * 100.0)
+	)
+	v.add_child(day)
+	var hint := Label.new()
+	hint.text = "Saved settings apply in the next Play session."
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", Color("#88a898"))
+	v.add_child(hint)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	v.add_child(row)
+	var save_btn := Button.new()
+	save_btn.text = "Save"
+	save_btn.custom_minimum_size = Vector2(120, 40)
+	save_btn.pressed.connect(func():
+		cfg_node.save_settings()
+		cfg_node.apply_audio()
+		_play_click()
 		if is_instance_valid(dialog_layer):
 			dialog_layer.queue_free()
 			dialog_layer = null
-	elif action == "play":
+	)
+	row.add_child(save_btn)
+	var close_btn := Button.new()
+	close_btn.text = "Cancel"
+	close_btn.custom_minimum_size = Vector2(120, 40)
+	close_btn.pressed.connect(func():
+		_play_click()
 		if is_instance_valid(dialog_layer):
 			dialog_layer.queue_free()
-		_on_menu_action("play")
+			dialog_layer = null
+	)
+	row.add_child(close_btn)
