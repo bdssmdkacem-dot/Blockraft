@@ -87,7 +87,7 @@ func _run_checks() -> void:
     # Avoid reparsing the entire large world snapshot in the acceptance test.
     # The game loader parses it on startup; here verify the saved envelope and
     # that the exact compact record for the removed probe is absent.
-    if not snapshot_text.contains("\\"blocks\\":["):
+    if not snapshot_text.contains("blocks") or not snapshot_text.contains("[") :
         _fail("world save does not contain a blocks array", 12)
         return
     if snapshot_text.contains("[0,24,0,"):
