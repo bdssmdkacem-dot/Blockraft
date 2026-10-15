@@ -1,0 +1,15 @@
+CRITICAL RESTORE
+
+These files were emptied by accident:
+  scripts/player.gd
+  scripts/main_menu.gd
+
+Recover from last good commit (login button update):
+
+  git fetch origin
+  git checkout 1e1604f3eecfdb1cbf197efc2ca2d4445bf519f6 -- scripts/player.gd scripts/main_menu.gd
+  git add scripts/player.gd scripts/main_menu.gd
+  git commit -m "Restore player and main_menu from 1e1604f3"
+  git push origin main
+
+Then pull in Godot and re-open the project.
