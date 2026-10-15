@@ -1,18 +1,23 @@
 extends CharacterBody3D
-## Third-person voxel player — dig, place, combat, touch controls.
+## Third-person voxel player — smooth move, swim-to-shore, progressive mining.
 
-const SPEED := 6.2
+const SPEED := 7.6
 const SPRINT_MULT := 1.45
-const ACCEL := 24.0
-const DECEL := 30.0
-const AIR_ACCEL := 14.0
+const ACCEL := 38.0
+const DECEL := 42.0
+const AIR_ACCEL := 18.0
 const AIR_DRAG := 0.35
-const JUMP_VELOCITY := 9.2
+const JUMP_VELOCITY := 9.6
 const JUMP_CUT_MULT := 0.45
 const FALL_GRAVITY_MULT := 1.35
 const MAX_FALL_SPEED := 28.0
 const LAND_HARD_SPEED := 12.0
-const REACH := 7.0
+const REACH := 6.5
+const SWIM_SPEED := 5.2
+const SWIM_ACCEL := 16.0
+const SWIM_RISE := 4.5
+const WATER_DRAG := 0.55
+const MINE_RANGE := 6.5
 const CAMERA_SENSITIVITY := 0.0022
 const TOUCH_LOOK_SENSITIVITY := 0.0036
 const TOUCH_LOOK_SMOOTH := 0.28
@@ -79,6 +84,10 @@ var head_node: Node3D
 var jump_player: AudioStreamPlayer3D
 var land_player: AudioStreamPlayer3D
 var _look_sens_mult := 1.0
+var _in_water := false
+var _mine_pos: Vector3i = Vector3i(99999, 99999, 99999)
+var _mine_progress := 0.0
+var _mine_kind := ""
 
 func _ready() -> void:
 	add_to_group("player")
@@ -228,27 +237,23 @@ func _build_touch_controls() -> void:
 	_touch_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_touch_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_touch_root)
-	_joy_base_ui = Panel.new()
-	_joy_base_ui.size = Vector2(TOUCH_JOY_RADIUS * 2.0, TOUCH_JOY_RADIUS * 2.0)
-	_joy_base_ui.visible = false
-	_touch_root.add_child(_joy_base_ui)
 	_action_column = VBoxContainer.new()
 	_action_column.add_theme_constant_override("separation", 14)
 	_touch_root.add_child(_action_column)
 	var jump := Button.new()
-	jump.text = "⬆ JUMP"
+	jump.text = "JUMP"
 	jump.custom_minimum_size = Vector2(150, 68)
 	jump.button_down.connect(func(): touch_jump_pressed = true; jump_buffer = 0.18)
 	jump.button_up.connect(func(): touch_jump_pressed = false)
 	_action_column.add_child(jump)
 	var mine := Button.new()
-	mine.text = "⛏ MINE"
+	mine.text = "MINE"
 	mine.custom_minimum_size = Vector2(150, 64)
-	mine.button_down.connect(func(): _mine_held = true; _interact(false))
+	mine.button_down.connect(func(): _mine_held = true)
 	mine.button_up.connect(func(): _mine_held = false)
 	_action_column.add_child(mine)
 	var place := Button.new()
-	place.text = "🧱 PLACE"
+	place.text = "PLACE"
 	place.custom_minimum_size = Vector2(150, 64)
 	place.pressed.connect(_interact.bind(true))
 	_action_column.add_child(place)
@@ -285,7 +290,6 @@ func _input(event: InputEvent) -> void:
 			var delta := drag.position - joystick_origin
 			if delta.length() > TOUCH_JOY_RADIUS:
 				delta = delta.normalized() * TOUCH_JOY_RADIUS
-			# Screen Y grows downward; invert it so dragging the stick upward means forward.
 			var raw := Vector2(delta.x / TOUCH_JOY_RADIUS, delta.y / TOUCH_JOY_RADIUS)
 			if raw.length() < TOUCH_JOY_DEADZONE:
 				_touch_move_target = Vector2.ZERO
@@ -324,9 +328,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_yaw_target -= event.relative.x * CAMERA_SENSITIVITY * _look_sens_mult
 		_pitch_target = clampf(_pitch_target - event.relative.y * CAMERA_SENSITIVITY * _look_sens_mult, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
 	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			_interact(false)
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
 			_interact(true)
 
 func _init_footsteps() -> void:
@@ -338,21 +340,112 @@ func _init_footsteps() -> void:
 	add_child(land_player)
 
 func _physics_process(delta: float) -> void:
-	if camera == null: return
+	if camera == null:
+		return
 	_update_camera_transform(delta)
+	if not touch_controls_enabled:
+		_mine_held = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	_in_water = _check_in_water()
 	if _mine_held:
-		_mine_cooldown -= delta
-		if _mine_cooldown <= 0.0:
-			_mine_cooldown = 0.28
-			_interact(false)
+		_tick_mining(delta)
 	else:
-		_mine_cooldown = 0.0
+		_mine_progress = 0.0
+		_mine_pos = Vector3i(99999, 99999, 99999)
 	touch_move = touch_move.lerp(_touch_move_target, 1.0 - exp(-TOUCH_MOVE_SMOOTH * delta))
 	var want_jump := Input.is_key_pressed(KEY_SPACE) or touch_jump_pressed
+	var input_dir := Vector2(
+		float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
+		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
+	) + touch_move
+	input_dir = input_dir.limit_length(1.0)
+	var forward := -camera.global_transform.basis.z
+	forward.y = 0.0
+	if forward.length() > 0.001:
+		forward = forward.normalized()
+	var right := camera.global_transform.basis.x
+	right.y = 0.0
+	if right.length() > 0.001:
+		right = right.normalized()
+	var direction := right * input_dir.x + (-forward) * input_dir.y
+	if direction.length() > 0.001:
+		direction = direction.normalized()
+	if _in_water:
+		_physics_swim(delta, direction, want_jump)
+	else:
+		_physics_land(delta, direction, want_jump)
+	move_and_slide()
+	_update_body_anim(delta, direction)
+
+func _check_in_water() -> bool:
+	var world = get_parent()
+	if world == null or not world.get("blocks"):
+		return false
+	var feet := Vector3i(int(floor(global_position.x)), int(floor(global_position.y + 0.3)), int(floor(global_position.z)))
+	var torso := Vector3i(int(floor(global_position.x)), int(floor(global_position.y + 1.0)), int(floor(global_position.z)))
+	for p in [feet, torso]:
+		if world.blocks.has(p) and str(world.blocks[p]) == "water":
+			return true
+	return false
+
+func _physics_swim(delta: float, direction: Vector3, want_jump: bool) -> void:
+	velocity.y = move_toward(velocity.y, 0.6 if want_jump else -0.4, 8.0 * delta)
+	var wish := direction
+	if direction.length() < 0.12:
+		var shore := _find_nearest_shore()
+		if shore != Vector3.ZERO:
+			var to_shore := shore - global_position
+			to_shore.y = 0.0
+			if to_shore.length() > 0.4:
+				wish = to_shore.normalized()
+	var target := wish * SWIM_SPEED
+	velocity.x = move_toward(velocity.x, target.x, SWIM_ACCEL * delta)
+	velocity.z = move_toward(velocity.z, target.z, SWIM_ACCEL * delta)
+	velocity.x *= (1.0 - WATER_DRAG * delta)
+	velocity.z *= (1.0 - WATER_DRAG * delta)
+	if want_jump:
+		velocity.y = maxf(velocity.y, SWIM_RISE)
+		touch_jump_pressed = false
+
+func _find_nearest_shore() -> Vector3:
+	var world = get_parent()
+	if world == null or not world.get("blocks"):
+		return Vector3.ZERO
+	var ox := int(floor(global_position.x))
+	var oz := int(floor(global_position.z))
+	var best := Vector3.ZERO
+	var best_d := 9999.0
+	for r in range(1, 18):
+		for dx in range(-r, r + 1):
+			for dz in range(-r, r + 1):
+				if abs(dx) != r and abs(dz) != r:
+					continue
+				var x := ox + dx
+				var z := oz + dz
+				for y in range(12, -4, -1):
+					var pos := Vector3i(x, y, z)
+					if not world.blocks.has(pos):
+						continue
+					var kind := str(world.blocks[pos])
+					if kind == "water":
+						continue
+					var above := Vector3i(x, y + 1, z)
+					if world.blocks.has(above) and str(world.blocks[above]) not in ["", "water"]:
+						continue
+					var cand := Vector3(float(x) + 0.5, float(y) + 1.2, float(z) + 0.5)
+					var d := Vector2(cand.x - global_position.x, cand.z - global_position.z).length()
+					if d < best_d:
+						best_d = d
+						best = cand
+		if best_d < 9990.0:
+			break
+	return best
+
+func _physics_land(delta: float, direction: Vector3, want_jump: bool) -> void:
 	if is_on_floor():
-		coyote_time = 0.15
+		coyote_time = 0.16
 		_fall_speed_peak = 0.0
-		if velocity.y < 0.0: velocity.y = 0.0
+		if velocity.y < 0.0:
+			velocity.y = 0.0
 	else:
 		coyote_time = maxf(0.0, coyote_time - delta)
 		var g := gravity
@@ -364,8 +457,10 @@ func _physics_process(delta: float) -> void:
 			_jump_held = false
 		velocity.y -= g * delta
 		velocity.y = maxf(velocity.y, -MAX_FALL_SPEED)
-	if want_jump: jump_buffer = 0.16
-	else: jump_buffer = maxf(0.0, jump_buffer - delta)
+	if want_jump:
+		jump_buffer = 0.16
+	else:
+		jump_buffer = maxf(0.0, jump_buffer - delta)
 	if jump_buffer > 0.0 and coyote_time > 0.0:
 		velocity.y = JUMP_VELOCITY
 		jump_buffer = 0.0
@@ -373,28 +468,14 @@ func _physics_process(delta: float) -> void:
 		touch_jump_pressed = false
 		_jump_held = true
 		_jump_stretch = 1.0
-	var input_dir := Vector2(
-		float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
-		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
-	) + touch_move
-	input_dir = input_dir.limit_length(1.0)
-	# Drive relative to the camera's actual horizontal view direction.
-	# This keeps joystick/WASD directions intuitive after the player rotates the camera.
-	var forward := -camera.global_transform.basis.z
-	forward.y = 0.0
-	forward = forward.normalized()
-	var right := camera.global_transform.basis.x
-	right.y = 0.0
-	right = right.normalized()
-	var direction := right * input_dir.x + (-forward) * input_dir.y
-	if direction.length() > 0.001:
-		direction = direction.normalized()
 	var wish := direction
-	if is_on_floor() and get_floor_normal().y > 0.4 and direction.length() > 0.01:
+	if is_on_floor() and get_floor_normal().y > 0.35 and direction.length() > 0.01:
 		var n := get_floor_normal()
 		var projected := direction - n * direction.dot(n)
-		if projected.length() > 0.01: wish = projected.normalized()
-		else: wish = Vector3.ZERO
+		if projected.length() > 0.01:
+			wish = projected.normalized()
+		else:
+			wish = Vector3.ZERO
 	var speed := SPEED
 	if Input.is_key_pressed(KEY_SHIFT) and is_on_floor():
 		speed *= SPRINT_MULT
@@ -405,16 +486,17 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, AIR_DRAG * absf(velocity.z) * delta)
 	velocity.x = move_toward(velocity.x, target_vel.x, rate * delta)
 	velocity.z = move_toward(velocity.z, target_vel.z, rate * delta)
-	move_and_slide()
 	if is_on_floor() and not _was_on_floor:
 		_land_squash = clampf(_fall_speed_peak / LAND_HARD_SPEED, 0.35, 1.0)
 	_was_on_floor = is_on_floor()
 	_land_squash = maxf(0.0, _land_squash - delta * 5.0)
 	_jump_stretch = maxf(0.0, _jump_stretch - delta * 4.0)
-	if body_root and direction.length() > 0.05 and is_on_floor():
+
+func _update_body_anim(delta: float, direction: Vector3) -> void:
+	if body_root and direction.length() > 0.05 and (is_on_floor() or _in_water):
 		body_root.rotation.y = lerp_angle(body_root.rotation.y, atan2(-direction.x, -direction.z), 1.0 - exp(-12.0 * delta))
-		walk_phase += delta * 11.0
-		var swing := sin(walk_phase) * 0.55
+		walk_phase += delta * (9.0 if _in_water else 12.0)
+		var swing := sin(walk_phase) * (0.35 if _in_water else 0.55)
 		if leg_l_pivot: leg_l_pivot.rotation.x = swing
 		if leg_r_pivot: leg_r_pivot.rotation.x = -swing
 		if arm_l_pivot: arm_l_pivot.rotation.x = -swing * 0.75
@@ -426,13 +508,74 @@ func _physics_process(delta: float) -> void:
 			arm_r_pivot.rotation.x = sin(st * PI) * 1.35
 			arm_r_pivot.rotation.z = -sin(st * PI) * 0.25
 
+func _block_hardness(kind: String) -> float:
+	match kind:
+		"leaves", "sand", "gravel":
+			return 0.18
+		"dirt", "grass", "wood":
+			return 0.32
+		"stone", "rock", "coal":
+			return 0.55
+		"iron":
+			return 0.75
+		"gold", "crystal", "chest":
+			return 0.9
+		_:
+			return 0.4
+
+func _tick_mining(delta: float) -> void:
+	var world = get_parent()
+	if world == null:
+		return
+	var from := camera.global_position
+	var to := from + (-camera.global_transform.basis.z * MINE_RANGE)
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.exclude = [self]
+	query.collision_mask = 1 | 4
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		_mine_progress = 0.0
+		return
+	var collider = hit.get("collider")
+	if collider == null:
+		return
+	if collider.is_in_group("animals") or collider.is_in_group("hittable"):
+		_mine_cooldown -= delta
+		if _mine_cooldown <= 0.0:
+			_mine_cooldown = 0.35
+			if collider.has_method("take_damage"):
+				collider.take_damage(14.0, global_position)
+				if world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
+					world.mining_fx.play_hit(hit.get("position", global_position))
+		return
+	if not collider.has_meta("block_position"):
+		_mine_progress = 0.0
+		return
+	var pos: Vector3i = collider.get_meta("block_position")
+	var kind := str(collider.get_meta("block_kind")) if collider.has_meta("block_kind") else "dirt"
+	if pos != _mine_pos:
+		_mine_pos = pos
+		_mine_progress = 0.0
+		_mine_kind = kind
+	var hard := _block_hardness(kind)
+	_mine_progress += delta / hard
+	pickaxe_swing_t = maxf(pickaxe_swing_t, 0.35)
+	if _mine_progress >= 1.0:
+		_mine_progress = 0.0
+		if kind == "water":
+			return
+		world.remove_block(pos)
+		if world.has_method("on_block_mined"):
+			world.on_block_mined(kind)
+		_mine_pos = Vector3i(99999, 99999, 99999)
+
 func _interact(place: bool) -> void:
 	pickaxe_swing_t = 1.0
 	var world = get_parent()
 	if world and world.get("mining_fx") and world.mining_fx.has_method("play_swing"):
 		world.mining_fx.play_swing(global_position + Vector3(0, 1.2, 0))
 	var from := camera.global_position
-	var to := from + (-camera.global_transform.basis.z * REACH)
+	var to := from + (-camera.global_transform.basis.z * MINE_RANGE)
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.exclude = [self]
 	query.collision_mask = 1 | 4
@@ -444,13 +587,9 @@ func _interact(place: bool) -> void:
 		return
 	if not place and (collider.is_in_group("animals") or collider.is_in_group("hittable")):
 		if collider.has_method("take_damage"):
-			collider.take_damage(12.0, global_position)
+			collider.take_damage(14.0, global_position)
 			if world and world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
 				world.mining_fx.play_hit(hit.get("position", global_position))
-			if world and world.has_method("_show_toast"):
-				var hp_left = collider.get("hp")
-				if hp_left != null and float(hp_left) > 0.0:
-					world._show_toast("Hit! animal hp %.0f" % float(hp_left), 0.8)
 		return
 	if not collider.has_meta("block_position"):
 		return
@@ -458,16 +597,13 @@ func _interact(place: bool) -> void:
 	if place:
 		var normal: Vector3 = hit.get("normal")
 		var target := pos + Vector3i(roundi(normal.x), roundi(normal.y), roundi(normal.z))
+		if global_position.distance_to(Vector3(target) + Vector3(0.5, 0.5, 0.5)) > MINE_RANGE + 0.5:
+			return
+		var ok := false
 		if world.has_method("try_place_selected"):
-			world.try_place_selected(target)
-		else:
+			ok = world.try_place_selected(target)
+		elif world.has_method("place_block"):
 			world.place_block(target, "dirt")
-	else:
-		var kind := "dirt"
-		if collider.has_meta("block_kind"):
-			kind = str(collider.get_meta("block_kind"))
-		elif world.get("blocks") and world.blocks.has(pos):
-			kind = str(world.blocks[pos])
-		world.remove_block(pos)
-		if world.has_method("on_block_mined"):
-			world.on_block_mined(kind)
+			ok = true
+		if ok and world and world.has_method("_show_toast"):
+			world._show_toast("Placed", 0.6)
