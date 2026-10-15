@@ -63,7 +63,6 @@ func _ready() -> void:
 	survival.setup(self, settings)
 	_setup_materials()
 	_setup_environment()
-	_clear_old_save()
 	_setup_ui()
 	_show_toast("Preparing the full world...", 30.0)
 	if player:
@@ -76,10 +75,12 @@ func _initialize_world_async() -> void:
 	# Yield once so the gameplay scene can render immediately after Play is pressed.
 	await get_tree().process_frame
 	_generate_world()
-	if blocks.size() < 2000:
-		_generate_world()
-	_force_solid_spawn_island()
-	_ensure_spawn_pad()
+	var restored_snapshot := _load_world_snapshot()
+	if not restored_snapshot:
+		if blocks.size() < 2000:
+			_generate_world()
+		_force_solid_spawn_island()
+		_ensure_spawn_pad()
 	if player:
 		player.global_position = Vector3(0.5, 10.0, 0.5)
 		player.velocity = Vector3.ZERO
@@ -601,8 +602,44 @@ func save_world(show_feedback: bool = false) -> void:
 		_autosave_timer = AUTO_SAVE_INTERVAL
 		if show_feedback: _show_toast("World saved", 1.2)
 
-func _load_world_snapshot() -> void:
-	pass
+func _load_world_snapshot() -> bool:
+	# Restore a complete, versioned block dictionary when a world save exists.
+	# If no valid save is found, keep the freshly generated deterministic world.
+	if not FileAccess.file_exists(SAVE_PATH):
+		return false
+	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if file == null:
+		push_warning("Blockraft: world save could not be opened; generating a fresh map")
+		return false
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_warning("Blockraft: world save is invalid; generating a fresh map")
+		return false
+	if int(parsed.get("version", -1)) != SAVE_VERSION:
+		push_warning("Blockraft: world save version changed; generating a fresh map")
+		return false
+	var entries: Variant = parsed.get("blocks", [])
+	if typeof(entries) != TYPE_ARRAY:
+		push_warning("Blockraft: saved block list is invalid; generating a fresh map")
+		return false
+	var restored: Dictionary = {}
+	for entry in entries:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if not entry.has("x") or not entry.has("y") or not entry.has("z") or not entry.has("kind"):
+			continue
+		var kind := str(entry["kind"])
+		if not block_materials.has(kind):
+			continue
+		var pos := Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))
+		restored[pos] = kind
+	if restored.size() < 2000:
+		push_warning("Blockraft: saved world is incomplete; generating a fresh map")
+		return false
+	blocks = restored
+	print("Blockraft: restored saved world with %d blocks" % blocks.size())
+	return true
 
 func _setup_ui() -> void:
 	var layer := CanvasLayer.new()
