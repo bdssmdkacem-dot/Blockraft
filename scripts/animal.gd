@@ -1,20 +1,32 @@
 extends CharacterBody3D
-## Voxel animals — wander, flee when hurt, night aggression (chicken/pig/cow), meat drops.
+## Animals: chicken (aggressive), fox (replaces pig), cow, sheep.
 
-enum Kind { PIG, CHICKEN, COW, SHEEP }
+enum Kind { FOX, CHICKEN, COW, SHEEP }
 
 const KIND_DATA := {
-	Kind.PIG: {"scale": 0.9, "speed": 3.2, "hp": 18.0, "dmg": 4.0, "color_body": Color("#f0a8b4"), "color_spot": Color("#d07080")},
-	# Aggressive night chicken — fast peck, noticeable damage
-	Kind.CHICKEN: {"scale": 0.62, "speed": 4.6, "hp": 10.0, "dmg": 5.0, "color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")},
-	Kind.COW: {"scale": 1.15, "speed": 2.6, "hp": 28.0, "dmg": 6.0, "color_body": Color("#f8f6f0"), "color_spot": Color("#2c2c2c")},
-	Kind.SHEEP: {"scale": 0.95, "speed": 3.0, "hp": 16.0, "dmg": 2.0, "color_body": Color("#f5f5f5"), "color_spot": Color("#e8e4dc")},
+	Kind.FOX: {
+		"scale": 0.85, "speed": 4.2, "hp": 16.0, "dmg": 5.0,
+		"color_body": Color("#c46828"), "color_spot": Color("#f0e8e0")
+	},
+	Kind.CHICKEN: {
+		"scale": 0.65, "speed": 5.0, "hp": 12.0, "dmg": 6.0,
+		"color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")
+	},
+	Kind.COW: {
+		"scale": 1.15, "speed": 2.6, "hp": 28.0, "dmg": 6.0,
+		"color_body": Color("#f8f6f0"), "color_spot": Color("#2c2c2c")
+	},
+	Kind.SHEEP: {
+		"scale": 0.95, "speed": 3.0, "hp": 16.0, "dmg": 2.0,
+		"color_body": Color("#f5f5f5"), "color_spot": Color("#e8e4dc")
+	},
 }
 
 const MAP_LIMIT := 38.0
-const AGGRESSIVE_KINDS := [Kind.PIG, Kind.COW, Kind.CHICKEN]
+# Night attackers: chicken + fox + cow (sheep stays peaceful)
+const AGGRESSIVE_KINDS := [Kind.FOX, Kind.COW, Kind.CHICKEN]
 
-var kind: int = Kind.PIG
+var kind: int = Kind.CHICKEN
 var move_speed := 3.0
 var max_hp := 16.0
 var hp := 16.0
@@ -61,10 +73,10 @@ func take_damage(amount: float, from_pos: Vector3 = Vector3.ZERO) -> void:
 	if hp <= 0.0:
 		return
 	hp -= amount
-	_hurt_flash = 0.4
-	# Chickens counter-attack instead of only fleeing
-	if kind == Kind.CHICKEN:
-		_flee_t = 0.35
+	_hurt_flash = 0.55
+	# Chicken & fox fight back; sheep/cow flee
+	if kind == Kind.CHICKEN or kind == Kind.FOX:
+		_flee_t = 0.2
 		if from_pos != Vector3.ZERO:
 			var toward := from_pos - global_position
 			toward.y = 0.0
@@ -84,9 +96,14 @@ func _die() -> void:
 	var player_node = get_tree().get_first_node_in_group("player")
 	var world = player_node.get_parent() if player_node else null
 	if world and world.get("inventory") and world.inventory.has_method("add_block"):
-		world.inventory.add_block("meat", 1 if kind == Kind.CHICKEN else 2)
+		var meat_amt := 1
+		if kind == Kind.COW:
+			meat_amt = 3
+		elif kind == Kind.FOX or kind == Kind.SHEEP:
+			meat_amt = 2
+		world.inventory.add_block("meat", meat_amt)
 		if world.has_method("_show_toast"):
-			world._show_toast("+meat from hunt", 1.4)
+			world._show_toast("+%d meat" % meat_amt, 1.4)
 		if world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
 			world.mining_fx.play_hit(global_position)
 	queue_free()
@@ -111,23 +128,33 @@ func _build_mesh(data: Dictionary) -> void:
 	var spot_c: Color = data["color_spot"]
 	match kind:
 		Kind.CHICKEN:
-			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.38 * s, 0.32 * s, 0.42 * s), body_c)
-			_box(_body_root, Vector3(0, 0.52 * s, 0.18 * s), Vector3(0.26 * s, 0.26 * s, 0.26 * s), body_c)
-			_box(_body_root, Vector3(0, 0.50 * s, 0.34 * s), Vector3(0.10 * s, 0.08 * s, 0.16 * s), Color("#f0a020"))
-			_box(_body_root, Vector3(0, 0.62 * s, 0.12 * s), Vector3(0.12 * s, 0.14 * s, 0.08 * s), spot_c)
+			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.40 * s, 0.34 * s, 0.44 * s), body_c)
+			_box(_body_root, Vector3(0, 0.54 * s, 0.18 * s), Vector3(0.28 * s, 0.28 * s, 0.28 * s), body_c)
+			_box(_body_root, Vector3(0, 0.52 * s, 0.36 * s), Vector3(0.12 * s, 0.09 * s, 0.18 * s), Color("#f0a020"))
+			_box(_body_root, Vector3(0, 0.66 * s, 0.12 * s), Vector3(0.14 * s, 0.16 * s, 0.10 * s), spot_c)
+		Kind.FOX:
+			# Body + white chest + pointed snout + bushy tail
+			_box(_body_root, Vector3(0, 0.40 * s, 0), Vector3(0.42 * s, 0.34 * s, 0.72 * s), body_c)
+			_box(_body_root, Vector3(0, 0.38 * s, 0.12 * s), Vector3(0.36 * s, 0.22 * s, 0.28 * s), spot_c)
+			_box(_body_root, Vector3(0, 0.52 * s, 0.42 * s), Vector3(0.30 * s, 0.28 * s, 0.30 * s), body_c)
+			_box(_body_root, Vector3(0, 0.48 * s, 0.58 * s), Vector3(0.16 * s, 0.12 * s, 0.18 * s), body_c)
+			_box(_body_root, Vector3(-0.10 * s, 0.66 * s, 0.40 * s), Vector3(0.08 * s, 0.14 * s, 0.06 * s), body_c)
+			_box(_body_root, Vector3(0.10 * s, 0.66 * s, 0.40 * s), Vector3(0.08 * s, 0.14 * s, 0.06 * s), body_c)
+			_box(_body_root, Vector3(0, 0.44 * s, -0.48 * s), Vector3(0.18 * s, 0.16 * s, 0.36 * s), body_c)
+			_box(_body_root, Vector3(0, 0.44 * s, -0.68 * s), Vector3(0.14 * s, 0.12 * s, 0.12 * s), spot_c)
 		Kind.COW:
 			_box(_body_root, Vector3(0, 0.58 * s, 0), Vector3(0.58 * s, 0.48 * s, 0.90 * s), body_c)
 			_box(_body_root, Vector3(0.14 * s, 0.62 * s, 0.12 * s), Vector3(0.22 * s, 0.28 * s, 0.32 * s), spot_c)
 			_box(_body_root, Vector3(0, 0.78 * s, 0.52 * s), Vector3(0.36 * s, 0.34 * s, 0.36 * s), body_c)
-		Kind.PIG:
-			_box(_body_root, Vector3(0, 0.42 * s, 0), Vector3(0.50 * s, 0.40 * s, 0.70 * s), body_c)
-			_box(_body_root, Vector3(0, 0.48 * s, 0.40 * s), Vector3(0.32 * s, 0.28 * s, 0.28 * s), body_c)
-			_box(_body_root, Vector3(0, 0.44 * s, 0.58 * s), Vector3(0.14 * s, 0.10 * s, 0.12 * s), spot_c)
 		Kind.SHEEP:
 			_box(_body_root, Vector3(0, 0.48 * s, 0), Vector3(0.52 * s, 0.44 * s, 0.72 * s), body_c)
 			_box(_body_root, Vector3(0, 0.55 * s, 0.05 * s), Vector3(0.58 * s, 0.20 * s, 0.60 * s), spot_c)
 			_box(_body_root, Vector3(0, 0.62 * s, 0.42 * s), Vector3(0.28 * s, 0.28 * s, 0.28 * s), Color("#2a2a2a"))
-	var leg_c := Color("#2a2218") if kind != Kind.CHICKEN else Color("#f0a020")
+	var leg_c := Color("#2a2218")
+	if kind == Kind.CHICKEN:
+		leg_c = Color("#f0a020")
+	elif kind == Kind.FOX:
+		leg_c = Color("#8a4018")
 	var leg_h := 0.22 * s
 	var leg_w := 0.08 * s if kind != Kind.CHICKEN else 0.05 * s
 	for p in [Vector3(-0.14, 0.12, 0.16), Vector3(0.14, 0.12, 0.16), Vector3(-0.14, 0.12, -0.16), Vector3(0.14, 0.12, -0.16)]:
@@ -168,45 +195,55 @@ func _physics_process(delta: float) -> void:
 		if surv and surv.has_method("is_night"):
 			night = surv.is_night()
 	var speed := move_speed
-	if _flee_t > 0.0 and kind != Kind.CHICKEN:
+	if _flee_t > 0.0 and kind != Kind.CHICKEN and kind != Kind.FOX:
 		speed = move_speed * 1.7
 	elif player:
 		var to_p: Vector3 = global_position - player.global_position
 		to_p.y = 0.0
 		var dist := to_p.length()
-		# Day: most animals avoid the player
-		if dist < 6.0 and dist > 0.05 and not night and kind != Kind.CHICKEN:
+		# Day: peaceful animals avoid player
+		if dist < 6.0 and dist > 0.05 and not night and kind == Kind.SHEEP:
 			_dir = to_p.normalized()
 			_timer = maxf(_timer, 0.5)
-		# Night aggression: pigs, cows, AND chickens charge the player
-		var aggro_range := 8.0 if kind == Kind.CHICKEN else 5.5
-		var hit_range := 2.0 if kind == Kind.CHICKEN else 1.6
+		var aggro_range := 9.0 if kind == Kind.CHICKEN else (7.0 if kind == Kind.FOX else 5.5)
+		var hit_range := 2.2 if kind == Kind.CHICKEN else 1.7
+		# Night: chicken, fox, cow charge
 		if night and dist < aggro_range and kind in AGGRESSIVE_KINDS:
 			_dir = player.global_position - global_position
 			_dir.y = 0.0
 			if _dir.length() > 0.05:
 				_dir = _dir.normalized()
-			speed = move_speed * (1.85 if kind == Kind.CHICKEN else 1.25)
+			match kind:
+				Kind.CHICKEN:
+					speed = move_speed * 2.0
+				Kind.FOX:
+					speed = move_speed * 1.7
+				_:
+					speed = move_speed * 1.25
 			if dist < hit_range and _attack_cd <= 0.0:
-				_attack_cd = 0.75 if kind == Kind.CHICKEN else 1.2
+				_attack_cd = 0.65 if kind == Kind.CHICKEN else 1.0
 				if surv and surv.has_method("apply_damage"):
 					surv.apply_damage(attack_damage)
-					var msg := "Chicken peck! -%.0f hp" % attack_damage if kind == Kind.CHICKEN else "Hit by animal! -%.0f hp" % attack_damage
+					var msg := "Chicken attack! -%.0f" % attack_damage
+					if kind == Kind.FOX:
+						msg = "Fox bite! -%.0f" % attack_damage
+					elif kind == Kind.COW:
+						msg = "Cow charge! -%.0f" % attack_damage
 					if player.get_parent().has_method("_show_toast"):
 						player.get_parent()._show_toast(msg, 1.0)
-		# Daytime: chickens still peck if you get too close after hitting them
-		elif not night and kind == Kind.CHICKEN and dist < 2.5 and _hurt_flash > 0.0:
+		# Day: chicken still attacks if you hit it or stand too close
+		elif kind == Kind.CHICKEN and dist < 3.5:
 			_dir = player.global_position - global_position
 			_dir.y = 0.0
 			if _dir.length() > 0.05:
 				_dir = _dir.normalized()
-			speed = move_speed * 1.6
-			if dist < 1.8 and _attack_cd <= 0.0:
-				_attack_cd = 0.8
+			speed = move_speed * 1.7
+			if dist < 2.0 and _attack_cd <= 0.0:
+				_attack_cd = 0.7
 				if surv and surv.has_method("apply_damage"):
 					surv.apply_damage(attack_damage)
 					if player.get_parent().has_method("_show_toast"):
-						player.get_parent()._show_toast("Angry chicken! -%.0f hp" % attack_damage, 1.0)
+						player.get_parent()._show_toast("Angry chicken! -%.0f" % attack_damage, 1.0)
 	_timer -= delta
 	if _timer <= 0.0 and _flee_t <= 0.0:
 		if randf() < 0.25:
