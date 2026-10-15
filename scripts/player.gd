@@ -82,6 +82,7 @@ var _look_sens_mult := 1.0
 
 func _ready() -> void:
 	add_to_group("player")
+	call_deferred("_spawn_backup_floor")
 	floor_snap_length = 0.55
 	floor_max_angle = deg_to_rad(55.0)
 	floor_constant_speed = true
@@ -114,6 +115,36 @@ func _ready() -> void:
 		_build_touch_controls()
 	else:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _spawn_backup_floor() -> void:
+	var root := get_parent()
+	if root == null:
+		return
+	if root.get_node_or_null("PlayerBackupFloor"):
+		return
+	var mi := MeshInstance3D.new()
+	mi.name = "PlayerBackupFloor"
+	var box := BoxMesh.new()
+	box.size = Vector3(120, 4, 120)
+	mi.mesh = box
+	mi.position = Vector3(0, 0, 0)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.28, 0.58, 0.24)
+	mi.material_override = mat
+	root.add_child(mi)
+	var body := StaticBody3D.new()
+	body.name = "PlayerBackupFloorBody"
+	body.position = Vector3(0, 0, 0)
+	body.collision_layer = 1
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(120, 4, 120)
+	col.shape = shape
+	body.add_child(col)
+	root.add_child(body)
+	global_position = Vector3(0, 4.5, 0)
+	velocity = Vector3.ZERO
+	print("PLAYER backup floor spawned")
 
 func _material(color: Color, roughness: float = 0.85) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -236,19 +267,19 @@ func _build_touch_controls() -> void:
 	_action_column.add_theme_constant_override("separation", 14)
 	_touch_root.add_child(_action_column)
 	var jump := Button.new()
-	jump.text = "⬆ JUMP"
+	jump.text = "JUMP"
 	jump.custom_minimum_size = Vector2(150, 68)
 	jump.button_down.connect(func(): touch_jump_pressed = true; jump_buffer = 0.18)
 	jump.button_up.connect(func(): touch_jump_pressed = false)
 	_action_column.add_child(jump)
 	var mine := Button.new()
-	mine.text = "⛏ MINE"
+	mine.text = "MINE"
 	mine.custom_minimum_size = Vector2(150, 64)
 	mine.button_down.connect(func(): _mine_held = true; _interact(false))
 	mine.button_up.connect(func(): _mine_held = false)
 	_action_column.add_child(mine)
 	var place := Button.new()
-	place.text = "🧱 PLACE"
+	place.text = "PLACE"
 	place.custom_minimum_size = Vector2(150, 64)
 	place.pressed.connect(_interact.bind(true))
 	_action_column.add_child(place)
@@ -438,10 +469,6 @@ func _interact(place: bool) -> void:
 			collider.take_damage(12.0, global_position)
 			if world and world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
 				world.mining_fx.play_hit(hit.get("position", global_position))
-			if world and world.has_method("_show_toast"):
-				var hp_left = collider.get("hp")
-				if hp_left != null and float(hp_left) > 0.0:
-					world._show_toast("Hit! animal hp %.0f" % float(hp_left), 0.8)
 		return
 	if not collider.has_meta("block_position"):
 		return
@@ -451,14 +478,13 @@ func _interact(place: bool) -> void:
 		var target := pos + Vector3i(roundi(normal.x), roundi(normal.y), roundi(normal.z))
 		if world.has_method("try_place_selected"):
 			world.try_place_selected(target)
-		else:
+		elif world.has_method("place_block"):
 			world.place_block(target, "dirt")
 	else:
 		var kind := "dirt"
 		if collider.has_meta("block_kind"):
 			kind = str(collider.get_meta("block_kind"))
-		elif world.get("blocks") and world.blocks.has(pos):
-			kind = str(world.blocks[pos])
-		world.remove_block(pos)
+		if world.has_method("remove_block"):
+			world.remove_block(pos)
 		if world.has_method("on_block_mined"):
 			world.on_block_mined(kind)
