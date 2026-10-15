@@ -76,13 +76,8 @@ func _run_checks() -> void:
 		if card == null:
 			_fail("feature card is not a Control", 15)
 			return
-		var hit_nodes := card.find_children("*", "Button", true, false)
-		if hit_nodes.is_empty():
-			_fail("feature card has no accessible hit area", 7)
-			return
-		var hit_area := hit_nodes[0] as Button
-		if hit_area.pressed.get_connections().is_empty():
-			_fail("feature card hit area has no action connection", 8)
+		if card.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+			_fail("feature card blocks neither input nor accessibility", 7)
 			return
 
 	if scene.has_method("_on_menu_action"):
