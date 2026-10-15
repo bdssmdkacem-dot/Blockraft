@@ -1,5 +1,5 @@
 extends Node3D
-## Chunk-streamed voxel world with survival and day/night.
+## Chunk-streamed voxel world — solid spawn so map is never empty sky.
 
 const WORLD_RADIUS := 48
 const MIN_Y := -6
@@ -7,7 +7,7 @@ const CHUNK_SIZE := 16
 const VIEW_CHUNKS := 3
 const MAX_CHUNK_BUILDS_PER_FRAME := 6
 const SAVE_PATH := "user://world_blocks.json"
-const SAVE_VERSION := 6
+const SAVE_VERSION := 7
 const AUTO_SAVE_INTERVAL := 8.0
 
 var blocks: Dictionary = {}
@@ -61,26 +61,30 @@ func _ready() -> void:
 	_setup_environment()
 	_generate_world()
 	_load_world_snapshot()
-	if blocks.size() < 500:
+	if blocks.size() < 2000:
 		push_warning("World too small (%d blocks); regenerating." % blocks.size())
 		_generate_world()
+	_force_solid_spawn_island()
 	_ensure_spawn_pad()
-	_snap_player_to_surface()
 	if player:
 		player.velocity = Vector3.ZERO
+		player.global_position = Vector3(0.5, 12.0, 0.5)
 	_update_chunks(true)
 	while not _chunk_queue.is_empty():
 		var ck: Vector2i = _chunk_queue.pop_front()
 		if not loaded_chunks.has(ck):
 			_load_chunk(ck)
+	_force_mesh_radius(20)
 	_snap_player_to_surface()
 	_ensure_spawn_visible()
+	if player:
+		player.velocity = Vector3.ZERO
 	flora_fauna = load("res://scripts/flora_fauna.gd").new()
 	flora_fauna.name = "FloraFauna"
 	add_child(flora_fauna)
 	flora_fauna.setup(self, blocks)
 	_setup_ui()
-	_show_toast("Explore • Survive the night  |  E = eat  |  LMB dig  |  RMB place", 4.5)
+	_show_toast("Explore • Survive  |  E = eat  |  LMB dig/attack  |  RMB place", 4.5)
 
 func _process(delta: float) -> void:
 	_chunk_timer -= delta
@@ -161,6 +165,41 @@ func _setup_materials() -> void:
 			mat.roughness = 0.85
 		block_materials[key] = mat
 
+func _force_solid_spawn_island() -> void:
+	for x in range(-16, 17):
+		for z in range(-16, 17):
+			for y in range(MIN_Y, 5):
+				var pos := Vector3i(x, y, z)
+				if y < 3:
+					if not blocks.has(pos) or str(blocks[pos]) == "water":
+						blocks[pos] = "stone" if y < 1 else "dirt"
+				elif y == 3:
+					blocks[pos] = "dirt"
+				else:
+					if not blocks.has(pos) or str(blocks[pos]) in ["water", ""]:
+						blocks[pos] = "grass"
+			for y in range(5, 12):
+				var p2 := Vector3i(x, y, z)
+				if abs(x) <= 3 and abs(z) <= 3 and blocks.has(p2):
+					if str(blocks[p2]) not in ["wood", "leaves", "chest"]:
+						blocks.erase(p2)
+
+func _force_mesh_radius(radius: int) -> void:
+	for x in range(-radius, radius + 1):
+		for z in range(-radius, radius + 1):
+			var ck := _chunk_key_from_world(x, z)
+			if not loaded_chunks.has(ck):
+				_load_chunk(ck)
+			if not loaded_chunks.has(ck):
+				continue
+			for y in range(MIN_Y, 20):
+				var pos := Vector3i(x, y, z)
+				if not blocks.has(pos):
+					continue
+				if _find_block_node(pos) != null:
+					continue
+				_spawn_block_in(loaded_chunks[ck], pos, str(blocks[pos]))
+
 func _ensure_spawn_visible() -> void:
 	for x in range(-12, 13):
 		for z in range(-12, 13):
@@ -199,7 +238,7 @@ func _ensure_spawn_pad() -> void:
 
 func _snap_player_to_surface() -> void:
 	if player == null: return
-	var best_pos := Vector3(0.5, 8.0, 0.5)
+	var best_pos := Vector3(0.5, 6.0, 0.5)
 	var found := false
 	for x in range(-6, 7):
 		for z in range(-6, 7):
@@ -208,11 +247,13 @@ func _snap_player_to_surface() -> void:
 				if not blocks.has(pos): continue
 				if str(blocks[pos]) == "water": continue
 				if blocks.has(Vector3i(x, y + 1, z)): continue
-				var cand := Vector3(float(x) + 0.5, float(y) + 1.15, float(z) + 0.5)
+				var cand := Vector3(float(x) + 0.5, float(y) + 1.2, float(z) + 0.5)
 				if not found or Vector2(cand.x, cand.z).length() < Vector2(best_pos.x, best_pos.z).length():
 					best_pos = cand
 					found = true
 				break
+	if not found:
+		best_pos = Vector3(0.5, 5.2, 0.5)
 	player.global_position = best_pos
 	player.velocity = Vector3.ZERO
 
@@ -373,13 +414,14 @@ func _load_chunk(ck: Vector2i) -> void:
 	loaded_chunks[ck] = root
 	var x0 := ck.x * CHUNK_SIZE
 	var z0 := ck.y * CHUNK_SIZE
+	var near_spawn := abs(ck.x) <= 2 and abs(ck.y) <= 2
 	for x in range(x0, x0 + CHUNK_SIZE):
 		for z in range(z0, z0 + CHUNK_SIZE):
 			for y in range(MIN_Y, 28):
 				var pos := Vector3i(x, y, z)
 				if not blocks.has(pos): continue
 				var kind := str(blocks[pos])
-				if kind in ["coal", "iron", "gold", "crystal", "chest"] or _is_exposed(pos):
+				if near_spawn or kind in ["coal", "iron", "gold", "crystal", "chest", "water"] or _is_exposed(pos):
 					_spawn_block_in(root, pos, kind)
 
 func _spawn_block_in(parent: Node, pos: Vector3i, kind: String) -> void:
@@ -477,7 +519,7 @@ func _load_world_snapshot() -> void:
 	for entry in parsed["blocks"]:
 		if typeof(entry) == TYPE_DICTIONARY and entry.has("x") and entry.has("kind"):
 			restored[Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))] = str(entry["kind"])
-	if restored.size() < 500:
+	if restored.size() < 2000:
 		push_warning("Save has too few blocks (%d); keeping generated world." % restored.size())
 		return
 	blocks = restored
