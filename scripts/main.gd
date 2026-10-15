@@ -1,13 +1,13 @@
 extends Node3D
-## Voxel world — streaming, rivers, smooth walkable terrain.
+## Voxel world expanded + resource depot.
 
-const WORLD_RADIUS := 40
+const WORLD_RADIUS := 56
 const MIN_Y := -6
 const CHUNK_SIZE := 16
-const VIEW_CHUNKS := 3
+const VIEW_CHUNKS := 4
 const MAX_CHUNK_BUILDS_PER_FRAME := 1
 const SAVE_PATH := "user://world_blocks.json"
-const SAVE_VERSION := 13
+const SAVE_VERSION := 14
 const AUTO_SAVE_INTERVAL := 8.0
 
 var blocks: Dictionary = {}
@@ -64,7 +64,7 @@ func _ready() -> void:
 	_setup_materials()
 	_setup_environment()
 	_setup_ui()
-	_show_toast("Building new terrain...", 30.0)
+	_show_toast("Building expanded world...", 30.0)
 	if player:
 		var cam := player.get_node_or_null("PlayerCamera") as Camera3D
 		if cam:
@@ -73,13 +73,13 @@ func _ready() -> void:
 
 func _initialize_world_async() -> void:
 	await get_tree().process_frame
-	# Always rebuild with latest smoothed terrain
 	_clear_old_save()
 	_generate_world()
 	if blocks.size() < 2000:
 		_generate_world()
 	_force_solid_spawn_island()
 	_ensure_spawn_pad()
+	_spawn_depot()
 	if player:
 		player.global_position = Vector3(0.5, 10.0, 0.5)
 		player.velocity = Vector3.ZERO
@@ -94,12 +94,12 @@ func _initialize_world_async() -> void:
 		if player.global_position.y < 1.0 or player.global_position.y > 30.0:
 			player.global_position = Vector3(0.0, 5.0, 0.0)
 	world_initialized = true
-	_show_toast("New map ready — smooth hills & paths", 4.0)
+	_show_toast("Explore · dig · F=depot · B=upgrade bag · E=eat", 5.0)
 	print("Blockraft world ready blocks=", blocks.size(), " chunks=", loaded_chunks.size())
 
 func _spawn_guaranteed_floor() -> void:
 	var floor_y := 2.0
-	var size := Vector3(80.0, 4.0, 80.0)
+	var size := Vector3(100.0, 4.0, 100.0)
 	var mi := MeshInstance3D.new()
 	mi.name = "GuaranteedFloorMesh"
 	var box := BoxMesh.new()
@@ -145,10 +145,13 @@ func _process(delta: float) -> void:
 		surv.tick(delta)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
-		var surv = get_node_or_null("Survival")
-		if surv:
-			surv.try_eat()
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_E:
+			var surv = get_node_or_null("Survival")
+			if surv:
+				surv.try_eat()
+		elif event.keycode == KEY_F:
+			use_depot()
 
 func _setup_environment() -> void:
 	var we := WorldEnvironment.new()
@@ -192,6 +195,57 @@ func _clear_old_save() -> void:
 		if ud and ud.file_exists("world_blocks.json"):
 			ud.remove("world_blocks.json")
 		print("Blockraft: cleared old save for new terrain")
+
+func _spawn_depot() -> void:
+	var root := Node3D.new()
+	root.name = "ResourceDepot"
+	add_child(root)
+	var base := StaticBody3D.new()
+	base.collision_layer = 1
+	base.set_meta("is_depot", true)
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(2.2, 2.4, 2.2)
+	col.shape = shape
+	base.add_child(col)
+	var mi := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(2.2, 2.4, 2.2)
+	mi.mesh = box
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.45, 0.28, 0.12)
+	mi.material_override = mat
+	base.add_child(mi)
+	var roof := MeshInstance3D.new()
+	var rbox := BoxMesh.new()
+	rbox.size = Vector3(2.6, 0.35, 2.6)
+	roof.mesh = rbox
+	roof.position.y = 1.4
+	var rmat := StandardMaterial3D.new()
+	rmat.albedo_color = Color(0.55, 0.2, 0.12)
+	roof.material_override = rmat
+	base.add_child(roof)
+	root.add_child(base)
+	var top := 3
+	for y in range(30, -5, -1):
+		if blocks.has(Vector3i(3, y, 3)) and str(blocks[Vector3i(3, y, 3)]) != "water":
+			top = y
+			break
+	base.position = Vector3(3.5, float(top) + 1.7, 3.5)
+
+func use_depot() -> void:
+	if inventory == null:
+		return
+	var moved := inventory.deposit_all()
+	if moved > 0:
+		_show_toast("Deposited %d items to warehouse" % moved, 2.0)
+	else:
+		_show_toast(inventory.storage_summary(), 2.5)
+	if inventory.try_upgrade():
+		_show_toast("Backpack upgraded: %s" % inventory.get_backpack_label(), 2.5)
+	else:
+		_show_toast(inventory.upgrade_cost_text(), 3.0)
+	_refresh_backpack_ui()
 
 func _generate_world() -> void:
 	blocks.clear()
@@ -319,11 +373,11 @@ func _generate_world() -> void:
 			if not is_river and river_d < 4.2 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5:
-				var tree_chance := 0.04 if sin(float(x) * 0.17) * cos(float(z) * 0.19) > 0.4 else 0.015
+				var tree_chance := 0.045 if sin(float(x) * 0.17) * cos(float(z) * 0.19) > 0.35 else 0.018
 				if river_d < 8.0: tree_chance *= 0.4
 				if rng.randf() < tree_chance:
 					_make_tree(x, height + 1, z, rng)
-			if not is_river and not steep and height >= 3 and abs(x) > 12 and abs(z) > 12 and rng.randf() < 0.0018:
+			if not is_river and not steep and height >= 3 and abs(x) > 10 and abs(z) > 10 and rng.randf() < 0.0024:
 				blocks[Vector3i(x, height + 1, z)] = "chest"
 
 func _ore_noise(x: int, y: int, z: int) -> float:
@@ -545,12 +599,6 @@ func _setup_ui() -> void:
 	var layer := CanvasLayer.new()
 	layer.name = "GameUI"
 	add_child(layer)
-	var label := Label.new()
-	label.text = "BLOCKRAFT"
-	label.add_theme_font_size_override("font_size", 14)
-	label.position = Vector2(16, 14)
-	label.add_theme_color_override("font_color", Color("#f0f8e6"))
-	layer.add_child(label)
 	status_label = Label.new()
 	status_label.position = Vector2(16, 100)
 	status_label.add_theme_font_size_override("font_size", 13)
@@ -640,11 +688,11 @@ func _layout_hotbar() -> void:
 func _build_backpack_ui(layer: CanvasLayer) -> void:
 	backpack_label = Label.new()
 	backpack_label.position = Vector2(16, 42)
-	backpack_label.add_theme_font_size_override("font_size", 13)
+	backpack_label.add_theme_font_size_override("font_size", 12)
 	backpack_label.add_theme_color_override("font_color", Color("#d8e8d0"))
 	layer.add_child(backpack_label)
 	upgrade_btn = Button.new()
-	upgrade_btn.text = "Upgrade Bag (B)"
+	upgrade_btn.text = "Depot F / Bag B"
 	upgrade_btn.position = Vector2(16, 66)
 	upgrade_btn.custom_minimum_size = Vector2(160, 28)
 	upgrade_btn.pressed.connect(_on_upgrade_pressed)
@@ -656,12 +704,11 @@ func _on_backpack_changed(_tier: String = "") -> void:
 	_refresh_hotbar()
 
 func _on_upgrade_pressed() -> void:
-	if inventory.try_upgrade():
-		_show_toast("Backpack upgraded!", 2.0)
+	use_depot()
 
 func _refresh_backpack_ui() -> void:
 	if backpack_label == null: return
-	backpack_label.text = "Backpack: %s  |  max stack %d" % [inventory.get_backpack_label(), inventory.get_max_stack()]
+	backpack_label.text = "%s (stack %d) | %s" % [inventory.get_backpack_label(), inventory.get_max_stack(), inventory.upgrade_cost_text()]
 
 func _refresh_hotbar(_arg = null) -> void:
 	_refresh_backpack_ui()
