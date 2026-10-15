@@ -1,4 +1,4 @@
 extends CharacterBody3D
-## Loading full file via follow-up if truncated — bootstrap
+## TEMP - will replace with full boot content in next call
 func _ready():
-	printerr("player.gd incomplete — restore from artifacts")
+	push_error("waiting for full restore")
