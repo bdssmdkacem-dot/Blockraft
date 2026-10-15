@@ -131,14 +131,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _build_3d_backdrop() -> void:
 	var host := SubViewportContainer.new()
-	host.name = "MenuWorldHost"
+	host.name = "ThreeDMenuBackdrop"
 	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.stretch = true
 	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(host)
 	move_child(host, 0)
 	var vp := SubViewport.new()
-	vp.name = "MenuWorldViewport"
+	vp.name = "WorldViewport"
 	vp.transparent_bg = false
 	vp.handle_input_locally = false
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -147,7 +147,7 @@ func _build_3d_backdrop() -> void:
 	var world_script = load("res://scripts/menu_world_3d.gd")
 	if world_script:
 		var world: Node = world_script.new()
-		world.name = "MenuWorld3D"
+		world.name = "VoxelMenuWorld"
 		vp.add_child(world)
 	var top_fade := ColorRect.new()
 	top_fade.color = Color(0.02, 0.04, 0.06, 0.35)
