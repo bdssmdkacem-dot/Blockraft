@@ -50,8 +50,6 @@ func _build_ui() -> void:
 	_ui_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_ui_root)
-
-	# === TOP BAR ===
 	_top_bar = PanelContainer.new()
 	_top_bar.position = Vector2(0, 0)
 	var top_st := StyleBoxFlat.new()
@@ -91,8 +89,6 @@ func _build_ui() -> void:
 	phase_detail.add_theme_font_size_override("font_size", 12)
 	phase_detail.add_theme_color_override("font_color", Color(0.7, 0.85, 0.75))
 	top_row.add_child(phase_detail)
-
-	# === LEFT STATS CARD ===
 	var card := PanelContainer.new()
 	card.position = Vector2(14, 52)
 	card.custom_minimum_size = Vector2(220, 130)
@@ -131,8 +127,6 @@ func _build_ui() -> void:
 	v.add_child(clock_bar)
 	health_bar = _make_stat_bar(v, "❤  Health", Color(0.9, 0.28, 0.32), Color(0.35, 0.08, 0.1))
 	hunger_bar = _make_stat_bar(v, "🍖  Hunger", Color(0.95, 0.7, 0.28), Color(0.35, 0.25, 0.08))
-
-	# === NIGHT WARNING BANNER (hidden by day) ===
 	night_banner = PanelContainer.new()
 	night_banner.visible = false
 	var nb_st := StyleBoxFlat.new()
@@ -147,21 +141,18 @@ func _build_ui() -> void:
 	night_banner.add_theme_stylebox_override("panel", nb_st)
 	_ui_root.add_child(night_banner)
 	night_label = Label.new()
-	night_label.text = "☾  NIGHT — chickens, pigs & cows attack!"
+	night_label.text = "☾  NIGHT — chickens, foxes & cows attack!"
 	night_label.add_theme_font_size_override("font_size", 14)
 	night_label.add_theme_color_override("font_color", Color(0.95, 0.85, 1.0))
 	night_banner.add_child(night_label)
-
-	# === BOTTOM HINTS ===
 	hint_label = Label.new()
-	hint_label.text = "WASD move  ·  Mouse look  ·  LMB dig/attack  ·  RMB place  ·  E eat  ·  B bag  ·  night = danger"
+	hint_label.text = "WASD move  ·  Mouse look  ·  LMB dig/attack  ·  RMB place  ·  E eat  ·  B bag  ·  chickens attack day+night"
 	hint_label.add_theme_font_size_override("font_size", 12)
 	hint_label.add_theme_color_override("font_color", Color(0.85, 0.95, 0.88, 0.8))
 	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_ui_root.add_child(hint_label)
 	_layout_hints()
 	host.get_viewport().size_changed.connect(_layout_hints)
-
 	_dmg_flash = ColorRect.new()
 	_dmg_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_dmg_flash.color = Color(0.7, 0.05, 0.05, 0.0)
@@ -202,7 +193,7 @@ func _layout_hints() -> void:
 		hint_label.size = Vector2(vs.x - 40, 24)
 	if night_banner:
 		night_banner.position = Vector2(vs.x * 0.5 - 200.0, 56)
-		night_banner.custom_minimum_size = Vector2(400, 36)
+		night_banner.custom_minimum_size = Vector2(420, 36)
 
 func tick(delta: float) -> void:
 	_update_day_night(delta)
