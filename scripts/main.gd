@@ -73,10 +73,11 @@ func _ready() -> void:
 
 func _initialize_world_async() -> void:
 	await get_tree().process_frame
-	_clear_old_save()
-	_generate_world()
-	if blocks.size() < 2000:
+	var restored := _load_world_snapshot()
+	if not restored:
 		_generate_world()
+		if blocks.size() < 2000:
+			_generate_world()
 	_force_solid_spawn_island()
 	_ensure_spawn_pad()
 	_spawn_depot()
@@ -593,7 +594,35 @@ func save_world(show_feedback: bool = false) -> void:
 		if show_feedback: _show_toast("World saved", 1.2)
 
 func _load_world_snapshot() -> bool:
-	return false
+	if not FileAccess.file_exists(SAVE_PATH):
+		return false
+	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if file == null:
+		push_warning("Blockraft: could not open saved world; generating a fresh world")
+		return false
+	var parsed = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(parsed) != TYPE_DICTIONARY or int(parsed.get("version", -1)) != SAVE_VERSION:
+		push_warning("Blockraft: saved world version is incompatible; generating a fresh world")
+		return false
+	var entries = parsed.get("blocks", [])
+	if typeof(entries) != TYPE_ARRAY or entries.size() < 2000:
+		push_warning("Blockraft: saved world snapshot is incomplete; generating a fresh world")
+		return false
+	var restored: Dictionary = {}
+	for entry in entries:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if not entry.has("x") or not entry.has("y") or not entry.has("z") or not entry.has("kind"):
+			continue
+		var pos := Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))
+		restored[pos] = str(entry["kind"])
+	if restored.size() < 2000:
+		push_warning("Blockraft: saved world contains too few valid blocks; generating a fresh world")
+		return false
+	blocks = restored
+	print("Blockraft: restored saved world blocks=", blocks.size())
+	return true
 
 func _setup_ui() -> void:
 	var layer := CanvasLayer.new()
