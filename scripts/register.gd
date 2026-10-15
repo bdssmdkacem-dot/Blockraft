@@ -92,9 +92,11 @@ func _build_backdrop() -> void:
 func _build_ui() -> void:
 	var card := PanelContainer.new()
 	card.name = "RegisterCard"
-	card.custom_minimum_size = Vector2(460, 560)
+	card.custom_minimum_size = Vector2(460, 580)
 	card.set_anchors_preset(Control.PRESET_CENTER)
-	card.position = Vector2(-60, -280)
+	card.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	card.grow_vertical = Control.GROW_DIRECTION_BOTH
+	card.position = Vector2(-20, -290)
 	var st := StyleBoxFlat.new()
 	st.bg_color = Color(0.08, 0.11, 0.1, 0.98)
 	st.border_color = Color("#4ab87a")
@@ -170,7 +172,20 @@ func _build_ui() -> void:
 	var create_btn := _btn("Create Account", true)
 	create_btn.pressed.connect(_on_create)
 	v.add_child(create_btn)
-	var back_btn := _btn("← Back to Login", false)
+	var login_row := HBoxContainer.new()
+	login_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	login_row.add_theme_constant_override("separation", 10)
+	v.add_child(login_row)
+	var already := Label.new()
+	already.text = "Already have an account?"
+	already.add_theme_font_size_override("font_size", 12)
+	already.add_theme_color_override("font_color", Color("#9ab8a8"))
+	login_row.add_child(already)
+	var login_btn := _btn("Login  ·  تسجيل الدخول", true)
+	login_btn.custom_minimum_size = Vector2(220, 44)
+	login_btn.pressed.connect(_on_back)
+	v.add_child(login_btn)
+	var back_btn := _btn("← Back", false)
 	back_btn.pressed.connect(_on_back)
 	v.add_child(back_btn)
 	var legal := Label.new()

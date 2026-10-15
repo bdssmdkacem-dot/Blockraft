@@ -69,9 +69,9 @@ func _build_backdrop() -> void:
 func _build_ui() -> void:
 	var center := PanelContainer.new()
 	center.name = "LoginCard"
-	center.custom_minimum_size = Vector2(420, 480)
+	center.custom_minimum_size = Vector2(420, 500)
 	center.set_anchors_preset(Control.PRESET_CENTER)
-	center.position = Vector2(-210, -240)
+	center.position = Vector2(-210, -250)
 	var st := StyleBoxFlat.new()
 	st.bg_color = Color(0.07, 0.1, 0.09, 0.96)
 	st.border_color = Color("#5ecf8a")
@@ -111,7 +111,7 @@ func _build_ui() -> void:
 	v.add_child(ul)
 	_user_edit = LineEdit.new()
 	_user_edit.placeholder_text = "Enter your name"
-	_user_edit.custom_minimum_size = Vector2(0, 40)
+	_user_edit.custom_minimum_size = Vector2(0, 42)
 	_user_edit.max_length = 20
 	v.add_child(_user_edit)
 	var pl := Label.new()
@@ -122,7 +122,7 @@ func _build_ui() -> void:
 	_pass_edit = LineEdit.new()
 	_pass_edit.secret = true
 	_pass_edit.placeholder_text = "••••••••"
-	_pass_edit.custom_minimum_size = Vector2(0, 40)
+	_pass_edit.custom_minimum_size = Vector2(0, 42)
 	_pass_edit.max_length = 32
 	v.add_child(_pass_edit)
 	_status = Label.new()
@@ -131,9 +131,11 @@ func _build_ui() -> void:
 	_status.add_theme_font_size_override("font_size", 12)
 	_status.add_theme_color_override("font_color", Color("#e8a070"))
 	v.add_child(_status)
-	var login_btn := _make_btn("Login", true)
+	var login_btn := _make_btn("Login  ·  تسجيل الدخول", true)
 	login_btn.pressed.connect(_on_login)
 	v.add_child(login_btn)
+	_user_edit.text_submitted.connect(func(_t): _on_login())
+	_pass_edit.text_submitted.connect(func(_t): _on_login())
 	var guest_btn := _make_btn("Continue as Guest", false)
 	guest_btn.pressed.connect(_on_guest)
 	v.add_child(guest_btn)
@@ -151,7 +153,7 @@ func _build_ui() -> void:
 func _make_btn(caption: String, primary: bool) -> Button:
 	var b := Button.new()
 	b.text = caption
-	b.custom_minimum_size = Vector2(0, 46)
+	b.custom_minimum_size = Vector2(0, 48)
 	var normal := StyleBoxFlat.new()
 	var hover := StyleBoxFlat.new()
 	if primary:
@@ -165,8 +167,8 @@ func _make_btn(caption: String, primary: bool) -> Button:
 	for s in [normal, hover]:
 		s.set_corner_radius_all(10)
 		s.set_border_width_all(2)
-		s.content_margin_top = 8
-		s.content_margin_bottom = 8
+		s.content_margin_top = 10
+		s.content_margin_bottom = 10
 	b.add_theme_stylebox_override("normal", normal)
 	b.add_theme_stylebox_override("hover", hover)
 	b.add_theme_stylebox_override("pressed", normal)
