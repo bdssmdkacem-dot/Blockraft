@@ -7,7 +7,7 @@ const CHUNK_SIZE := 16
 const VIEW_CHUNKS := 3
 const MAX_CHUNK_BUILDS_PER_FRAME := 6
 const SAVE_PATH := "user://world_blocks.json"
-const SAVE_VERSION := 8
+const SAVE_VERSION := 9
 const AUTO_SAVE_INTERVAL := 8.0
 
 var blocks: Dictionary = {}
@@ -59,6 +59,7 @@ func _ready() -> void:
 	survival.setup(self, settings)
 	_setup_materials()
 	_setup_environment()
+	_clear_old_save()
 	_generate_world()
 	_load_world_snapshot()
 	if blocks.size() < 2000:
@@ -86,7 +87,7 @@ func _ready() -> void:
 	add_child(flora_fauna)
 	flora_fauna.setup(self, blocks)
 	_setup_ui()
-	_show_toast("Explore • Survive  |  E = eat  |  LMB dig/attack  |  RMB place", 4.5)
+	_show_toast("Fresh world — explore!  |  E eat  |  LMB dig  |  RMB place", 4.5)
 
 func _process(delta: float) -> void:
 	_chunk_timer -= delta
@@ -166,6 +167,17 @@ func _setup_materials() -> void:
 		elif key == "leaves":
 			mat.roughness = 0.85
 		block_materials[key] = mat
+
+func _clear_old_save() -> void:
+	if FileAccess.file_exists(SAVE_PATH):
+		var err := DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+		if err != OK:
+			DirAccess.remove_absolute(SAVE_PATH)
+		var ud := DirAccess.open("user://")
+		if ud and ud.file_exists("world_blocks.json"):
+			ud.remove("world_blocks.json")
+		push_warning("Old world save deleted.")
+		print("Blockraft: deleted user://world_blocks.json")
 
 func _force_solid_spawn_island() -> void:
 	for x in range(-16, 17):
@@ -581,13 +593,22 @@ func save_world(show_feedback: bool = false) -> void:
 		if show_feedback: _show_toast("World saved", 1.2)
 
 func _load_world_snapshot() -> void:
-	if not FileAccess.file_exists(SAVE_PATH): return
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if not file: return
+	if not file:
+		return
 	var parsed = JSON.parse_string(file.get_as_text())
-	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("blocks"): return
-	if int(parsed.get("version", 1)) < SAVE_VERSION:
-		push_warning("Old save; regenerating world.")
+	file = null
+	var ver := 0
+	if typeof(parsed) == TYPE_DICTIONARY:
+		ver = int(parsed.get("version", 1))
+	if ver < SAVE_VERSION:
+		_clear_old_save()
+		push_warning("Deleted old save v%d — fresh world." % ver)
+		return
+	if typeof(parsed) != TYPE_DICTIONARY or not parsed.has("blocks"):
+		_clear_old_save()
 		return
 	var restored: Dictionary = {}
 	for entry in parsed["blocks"]:
@@ -595,6 +616,7 @@ func _load_world_snapshot() -> void:
 			restored[Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))] = str(entry["kind"])
 	if restored.size() < 2000:
 		push_warning("Save has too few blocks (%d); keeping generated world." % restored.size())
+		_clear_old_save()
 		return
 	var near := 0
 	for x in range(-8, 9):
@@ -603,7 +625,8 @@ func _load_world_snapshot() -> void:
 				if restored.has(Vector3i(x, y, z)):
 					near += 1
 	if near < 40:
-		push_warning("Save has no spawn terrain (%d near origin); regenerating." % near)
+		push_warning("Save has no spawn terrain; deleting and regenerating.")
+		_clear_old_save()
 		return
 	blocks = restored
 
