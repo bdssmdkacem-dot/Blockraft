@@ -5,7 +5,7 @@ const WORLD_RADIUS := 40
 const MIN_Y := -6
 const CHUNK_SIZE := 16
 const VIEW_CHUNKS := 3
-const MAX_CHUNK_BUILDS_PER_FRAME := 6
+const MAX_CHUNK_BUILDS_PER_FRAME := 1
 const SAVE_PATH := "user://world_blocks.json"
 const SAVE_VERSION := 10
 const AUTO_SAVE_INTERVAL := 8.0
@@ -33,6 +33,7 @@ var _chunk_queue: Array = []
 var _save_dirty := false
 var _autosave_timer := 0.0
 var _last_save_time := 0.0
+var world_initialized := false
 
 func _ready() -> void:
 	player = get_node_or_null("Player") as CharacterBody3D
@@ -63,6 +64,17 @@ func _ready() -> void:
 	_setup_materials()
 	_setup_environment()
 	_clear_old_save()
+	_setup_ui()
+	_show_toast("Preparing the full world...", 30.0)
+	if player:
+		var cam := player.get_node_or_null("PlayerCamera") as Camera3D
+		if cam:
+			cam.make_current()
+	call_deferred("_initialize_world_async")
+
+func _initialize_world_async() -> void:
+	# Yield once so the gameplay scene can render immediately after Play is pressed.
+	await get_tree().process_frame
 	_generate_world()
 	if blocks.size() < 2000:
 		_generate_world()
@@ -71,25 +83,24 @@ func _ready() -> void:
 	if player:
 		player.global_position = Vector3(0.5, 10.0, 0.5)
 		player.velocity = Vector3.ZERO
-	_update_chunks(true)
-	while not _chunk_queue.is_empty():
-		var ck: Vector2i = _chunk_queue.pop_front()
-		if not loaded_chunks.has(ck):
-			_load_chunk(ck)
-	_force_mesh_radius(16)
 	_snap_player_to_surface()
-	_ensure_spawn_visible()
-	_emergency_ground_if_empty()
-	if player:
-		player.velocity = Vector3.ZERO
-		if player.global_position.y < 1.0 or player.global_position.y > 30.0:
-			player.global_position = Vector3(0.0, 5.0, 0.0)
-	call_deferred("_deferred_world_check")
+	_update_chunks(true)
 	flora_fauna = load("res://scripts/flora_fauna.gd").new()
 	flora_fauna.name = "FloraFauna"
 	add_child(flora_fauna)
 	flora_fauna.setup(self, blocks)
-	_setup_ui()
+	if player:
+		player.velocity = Vector3.ZERO
+		if player.global_position.y < 1.0 or player.global_position.y > 30.0:
+			player.global_position = Vector3(0.0, 5.0, 0.0)
+	world_initialized = true
+	print("Blockraft: full terrain model generated; chunk streaming started")
+	# Let nearby chunks stream in over several frames instead of constructing tens of thousands of nodes at once.
+	for frame in range(12):
+		await get_tree().process_frame
+		if not is_inside_tree():
+			return
+	_deferred_world_check()
 	_show_toast("Map loaded — walk to explore", 4.0)
 
 func _spawn_guaranteed_floor() -> void:
@@ -291,11 +302,6 @@ func _emergency_ground_if_empty() -> void:
 	loaded_chunks.clear()
 	_chunk_queue.clear()
 	_update_chunks(true)
-	while not _chunk_queue.is_empty():
-		var ck2: Vector2i = _chunk_queue.pop_front()
-		if not loaded_chunks.has(ck2):
-			_load_chunk(ck2)
-	_force_mesh_radius(22)
 
 func _deferred_world_check() -> void:
 	var meshes := _count_visible_meshes()
@@ -484,14 +490,13 @@ func _update_chunks(force: bool) -> void:
 		if not loaded_chunks.has(key): pending.append(key)
 	pending.sort_custom(func(a, b): return (absi(a.x - pc.x) + absi(a.y - pc.y)) < (absi(b.x - pc.x) + absi(b.y - pc.y)))
 	for key in pending: _chunk_queue.append(key)
-	if force:
-		while not _chunk_queue.is_empty():
-			var ck2: Vector2i = _chunk_queue.pop_front()
-			if not loaded_chunks.has(ck2):
-				_load_chunk(ck2)
+	# Both initial and later streaming use the per-frame chunk budget in _process().
 
 func _is_exposed(pos: Vector3i) -> bool:
 	for d in [Vector3i(1,0,0), Vector3i(-1,0,0), Vector3i(0,1,0), Vector3i(0,-1,0), Vector3i(0,0,1), Vector3i(0,0,-1)]:
+		# The bottom of the generated world is not visible terrain; don't instantiate its entire bedrock layer.
+		if d.y == -1 and pos.y <= MIN_Y:
+			continue
 		var n: Vector3i = pos + d
 		if not blocks.has(n) or str(blocks[n]) == "water": return true
 	return false
@@ -504,15 +509,15 @@ func _load_chunk(ck: Vector2i) -> void:
 	loaded_chunks[ck] = root
 	var x0 := ck.x * CHUNK_SIZE
 	var z0 := ck.y * CHUNK_SIZE
-	var near_spawn: bool = absi(ck.x) <= 2 and absi(ck.y) <= 2
 	for x in range(x0, x0 + CHUNK_SIZE):
 		for z in range(z0, z0 + CHUNK_SIZE):
 			for y in range(MIN_Y, 28):
 				var pos := Vector3i(x, y, z)
 				if not blocks.has(pos): continue
-				var kind := str(blocks[pos])
-				if near_spawn or kind in ["coal", "iron", "gold", "crystal", "chest", "water"] or _is_exposed(pos):
-					_spawn_block_in(root, pos, kind)
+				# Keep the full block data, but render/collide only the exposed shell.
+				# Hidden ores and underground blocks appear naturally as mining reveals neighbors.
+				if _is_exposed(pos):
+					_spawn_block_in(root, pos, str(blocks[pos]))
 
 func _spawn_block_in(parent: Node, pos: Vector3i, kind: String) -> void:
 	var body := StaticBody3D.new()
