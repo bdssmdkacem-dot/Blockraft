@@ -391,6 +391,41 @@ func _generate_world() -> void:
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake: h = mini(h, 1.8)
 			heights[Vector2i(x, z)] = {"h": clampi(int(round(h)), MIN_Y + 2, 24), "river": in_river or in_lake, "river_d": mini(river_d if in_main else (trib_d if in_trib else 99.0), 99.0), "lake": in_lake}
+	# One conservative smoothing pass for ordinary walkable ground. River/lake cells,
+	# their immediate banks, lowlands, and high peaks are kept unchanged so waterways
+	# retain their shape and the mountain silhouette is not flattened.
+	var smoothed_heights: Dictionary = {}
+	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+			var key := Vector2i(x, z)
+			var info: Dictionary = heights[key]
+			var original_h: int = int(info["h"])
+			var next_h := original_h
+			var near_water := false
+			var neighbor_total := 0.0
+			var neighbor_count := 0
+			for ox in [-1, 0, 1]:
+				for oz in [-1, 0, 1]:
+					if ox == 0 and oz == 0: continue
+					var nkey := Vector2i(x + ox, z + oz)
+					if not heights.has(nkey): continue
+					var neighbor: Dictionary = heights[nkey]
+					if bool(neighbor["river"]): near_water = true
+					neighbor_total += float(neighbor["h"])
+					neighbor_count += 1
+			if not bool(info["river"]) and not near_water and original_h >= 4 and original_h <= 14 and neighbor_count > 0:
+				var average_h := neighbor_total / float(neighbor_count)
+				if average_h - float(original_h) >= 0.65:
+					next_h = mini(original_h + 1, int(round(average_h)))
+				elif float(original_h) - average_h >= 0.65:
+					next_h = maxi(original_h - 1, int(round(average_h)))
+			smoothed_heights[key] = next_h
+	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+			var key := Vector2i(x, z)
+			var info: Dictionary = heights[key]
+			info["h"] = smoothed_heights[key]
+			heights[key] = info
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var info: Dictionary = heights[Vector2i(x, z)]
