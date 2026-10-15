@@ -7,7 +7,7 @@ const CHUNK_SIZE := 16
 const VIEW_CHUNKS := 3
 const MAX_CHUNK_BUILDS_PER_FRAME := 1
 const SAVE_PATH := "user://world_blocks.json"
-const SAVE_VERSION := 12
+const SAVE_VERSION := 13
 const AUTO_SAVE_INTERVAL := 8.0
 
 var blocks: Dictionary = {}
@@ -64,7 +64,7 @@ func _ready() -> void:
 	_setup_materials()
 	_setup_environment()
 	_setup_ui()
-	_show_toast("Preparing the full world...", 30.0)
+	_show_toast("Building new terrain...", 30.0)
 	if player:
 		var cam := player.get_node_or_null("PlayerCamera") as Camera3D
 		if cam:
@@ -73,13 +73,13 @@ func _ready() -> void:
 
 func _initialize_world_async() -> void:
 	await get_tree().process_frame
-	var restored_snapshot := _load_world_snapshot()
-	if not restored_snapshot:
+	# Always rebuild with latest smoothed terrain
+	_clear_old_save()
+	_generate_world()
+	if blocks.size() < 2000:
 		_generate_world()
-		if blocks.size() < 2000:
-			_generate_world()
-		_force_solid_spawn_island()
-		_ensure_spawn_pad()
+	_force_solid_spawn_island()
+	_ensure_spawn_pad()
 	if player:
 		player.global_position = Vector3(0.5, 10.0, 0.5)
 		player.velocity = Vector3.ZERO
@@ -94,7 +94,7 @@ func _initialize_world_async() -> void:
 		if player.global_position.y < 1.0 or player.global_position.y > 30.0:
 			player.global_position = Vector3(0.0, 5.0, 0.0)
 	world_initialized = true
-	_show_toast("Map loaded — walk to explore", 4.0)
+	_show_toast("New map ready — smooth hills & paths", 4.0)
 	print("Blockraft world ready blocks=", blocks.size(), " chunks=", loaded_chunks.size())
 
 func _spawn_guaranteed_floor() -> void:
@@ -184,6 +184,14 @@ func _setup_materials() -> void:
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			mat.albedo_color.a = 0.72
 		block_materials[key] = mat
+
+func _clear_old_save() -> void:
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+		var ud := DirAccess.open("user://")
+		if ud and ud.file_exists("world_blocks.json"):
+			ud.remove("world_blocks.json")
+		print("Blockraft: cleared old save for new terrain")
 
 func _generate_world() -> void:
 	blocks.clear()
@@ -531,26 +539,7 @@ func save_world(show_feedback: bool = false) -> void:
 		if show_feedback: _show_toast("World saved", 1.2)
 
 func _load_world_snapshot() -> bool:
-	if not FileAccess.file_exists(SAVE_PATH):
-		return false
-	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if file == null:
-		return false
-	var data = JSON.parse_string(file.get_as_text())
-	if typeof(data) != TYPE_DICTIONARY:
-		return false
-	var ver := int(data.get("version", 0))
-	if ver < SAVE_VERSION:
-		return false
-	var arr = data.get("blocks", [])
-	if typeof(arr) != TYPE_ARRAY or arr.size() < 500:
-		return false
-	blocks.clear()
-	for item in arr:
-		if typeof(item) != TYPE_DICTIONARY: continue
-		var pos := Vector3i(int(item.get("x", 0)), int(item.get("y", 0)), int(item.get("z", 0)))
-		blocks[pos] = str(item.get("kind", "dirt"))
-	return blocks.size() >= 500
+	return false
 
 func _setup_ui() -> void:
 	var layer := CanvasLayer.new()
