@@ -237,7 +237,7 @@ func _spawn_depot() -> void:
 func use_depot() -> void:
 	if inventory == null:
 		return
-	var moved := inventory.deposit_all()
+	var moved: int = int(inventory.deposit_all())
 	if moved > 0:
 		_show_toast("Deposited %d items to warehouse" % moved, 2.0)
 	else:
@@ -427,7 +427,7 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 	for dx in range(-3, 4):
 		for dz in range(-3, 4):
 			for dy in range(-1, 4):
-				var dist := abs(dx) + abs(dz) + abs(dy)
+				var dist: int = abs(dx) + abs(dz) + abs(dy)
 				if dist > 6: continue
 				if dist > 4 and r.randf() < 0.45: continue
 				var p := Vector3i(x + dx, canopy_y + dy, z + dz)
@@ -516,7 +516,7 @@ func _update_chunks(force: bool) -> void:
 
 func _is_exposed(pos: Vector3i) -> bool:
 	for d in [Vector3i(1,0,0), Vector3i(-1,0,0), Vector3i(0,1,0), Vector3i(0,-1,0), Vector3i(0,0,1), Vector3i(0,0,-1)]:
-		var n := pos + d
+		var n: Vector3i = pos + d
 		if not blocks.has(n) or str(blocks[n]) == "water": return true
 	return false
 
@@ -528,7 +528,7 @@ func _load_chunk(ck: Vector2i) -> void:
 	loaded_chunks[ck] = root
 	var x0 := ck.x * CHUNK_SIZE
 	var z0 := ck.y * CHUNK_SIZE
-	var near_spawn := abs(ck.x) <= 2 and abs(ck.y) <= 2
+	var near_spawn: bool = abs(ck.x) <= 2 and abs(ck.y) <= 2
 	for x in range(x0, x0 + CHUNK_SIZE):
 		for z in range(z0, z0 + CHUNK_SIZE):
 			for y in range(MIN_Y, 28):
