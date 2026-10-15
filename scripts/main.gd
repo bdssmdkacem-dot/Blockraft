@@ -1,5 +1,5 @@
 extends Node3D
-## Chunk-streamed voxel world — playable with spawn safety and auto-save.
+## Chunk-streamed voxel world with survival and day/night.
 
 const WORLD_RADIUS := 48
 const MIN_Y := -6
@@ -50,6 +50,13 @@ func _ready() -> void:
 	mining_fx = load("res://scripts/mining_fx.gd").new()
 	mining_fx.name = "MiningFX"
 	add_child(mining_fx)
+	var settings = load("res://scripts/settings.gd").new()
+	settings.name = "Settings"
+	add_child(settings)
+	var survival = load("res://scripts/survival.gd").new()
+	survival.name = "Survival"
+	add_child(survival)
+	survival.setup(self, settings)
 	_setup_materials()
 	_setup_environment()
 	_generate_world()
@@ -73,7 +80,7 @@ func _ready() -> void:
 	add_child(flora_fauna)
 	flora_fauna.setup(self, blocks)
 	_setup_ui()
-	_show_toast("Explore • Mine • Build  |  WASD  •  Mouse  •  LMB dig  •  RMB place", 4.5)
+	_show_toast("Explore • Survive the night  |  E = eat  |  LMB dig  |  RMB place", 4.5)
 
 func _process(delta: float) -> void:
 	_chunk_timer -= delta
@@ -88,6 +95,15 @@ func _process(delta: float) -> void:
 			built += 1
 	_tick_autosave(delta)
 	_check_fall_respawn()
+	var surv = get_node_or_null("Survival")
+	if surv:
+		surv.tick(delta)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		var surv = get_node_or_null("Survival")
+		if surv:
+			surv.try_eat()
 
 func _setup_environment() -> void:
 	var we := WorldEnvironment.new()
@@ -150,19 +166,15 @@ func _ensure_spawn_visible() -> void:
 		for z in range(-12, 13):
 			for y in range(MIN_Y, 20):
 				var pos := Vector3i(x, y, z)
-				if not blocks.has(pos):
-					continue
-				if _find_block_node(pos) != null:
-					continue
+				if not blocks.has(pos): continue
+				if _find_block_node(pos) != null: continue
 				var ck := _chunk_key_from_world(x, z)
-				if not loaded_chunks.has(ck):
-					_load_chunk(ck)
+				if not loaded_chunks.has(ck): _load_chunk(ck)
 				if loaded_chunks.has(ck) and _find_block_node(pos) == null:
 					_spawn_block_in(loaded_chunks[ck], pos, str(blocks[pos]))
 
 func _check_fall_respawn() -> void:
-	if player == null:
-		return
+	if player == null: return
 	if player.global_position.y < float(MIN_Y) - 8.0:
 		_snap_player_to_surface()
 		player.velocity = Vector3.ZERO
@@ -186,20 +198,16 @@ func _ensure_spawn_pad() -> void:
 						blocks.erase(p2)
 
 func _snap_player_to_surface() -> void:
-	if player == null:
-		return
+	if player == null: return
 	var best_pos := Vector3(0.5, 8.0, 0.5)
 	var found := false
 	for x in range(-6, 7):
 		for z in range(-6, 7):
 			for y in range(30, MIN_Y - 1, -1):
 				var pos := Vector3i(x, y, z)
-				if not blocks.has(pos):
-					continue
-				if str(blocks[pos]) == "water":
-					continue
-				if blocks.has(Vector3i(x, y + 1, z)):
-					continue
+				if not blocks.has(pos): continue
+				if str(blocks[pos]) == "water": continue
+				if blocks.has(Vector3i(x, y + 1, z)): continue
 				var cand := Vector3(float(x) + 0.5, float(y) + 1.15, float(z) + 0.5)
 				if not found or Vector2(cand.x, cand.z).length() < Vector2(best_pos.x, best_pos.z).length():
 					best_pos = cand
@@ -229,11 +237,9 @@ func _generate_world() -> void:
 			var in_main := river_d < 2.8 and dist > 6.0
 			var in_trib := trib_d < 1.8 and dist > 10.0 and fz > 0.0
 			var in_river := in_main or in_trib
-			if in_river:
-				h = mini(h, 2.2)
+			if in_river: h = mini(h, 2.2)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
-			if in_lake:
-				h = mini(h, 1.8)
+			if in_lake: h = mini(h, 1.8)
 			heights[Vector2i(x, z)] = {"h": clampi(int(round(h)), MIN_Y + 2, 24), "river": in_river or in_lake, "river_d": mini(river_d if in_main else (trib_d if in_trib else 99.0), 99.0), "lake": in_lake}
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
@@ -291,17 +297,31 @@ func _ore_noise(x: int, y: int, z: int) -> float:
 	return 0.5 + 0.5 * sin(float(x) * 0.19 + float(y) * 0.37) * cos(float(z) * 0.17 + float(y) * 0.23) * sin(float(x + z) * 0.11 + float(y) * 0.29)
 
 func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> void:
-	var trunk := 3 + (rng.randi_range(0, 2) if rng else 1)
+	var r := rng if rng else RandomNumberGenerator.new()
+	var trunk := 4 + r.randi_range(0, 3)
 	for dy in range(trunk):
 		blocks[Vector3i(x, y + dy, z)] = "wood"
+		if dy > 1 and dy < trunk - 1 and r.randf() < 0.18:
+			var bx := 1 if r.randf() < 0.5 else -1
+			var bz := 0 if r.randf() < 0.5 else (1 if r.randf() < 0.5 else -1)
+			var bp := Vector3i(x + bx, y + dy, z + bz)
+			if not blocks.has(bp):
+				blocks[bp] = "wood"
 	var canopy_y := y + trunk - 1
-	for dx in range(-2, 3):
-		for dz in range(-2, 3):
-			for dy in range(0, 3):
-				if abs(dx) + abs(dz) + abs(dy) < 5:
-					var p := Vector3i(x + dx, canopy_y + dy, z + dz)
-					if not blocks.has(p):
-						blocks[p] = "leaves"
+	for dx in range(-3, 4):
+		for dz in range(-3, 4):
+			for dy in range(-1, 4):
+				var dist := abs(dx) + abs(dz) + abs(dy)
+				if dist > 6: continue
+				if dist > 4 and r.randf() < 0.45: continue
+				var p := Vector3i(x + dx, canopy_y + dy, z + dz)
+				if not blocks.has(p):
+					blocks[p] = "leaves"
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			var p2 := Vector3i(x + dx, canopy_y + 4, z + dz)
+			if not blocks.has(p2) and r.randf() < 0.7:
+				blocks[p2] = "leaves"
 
 func _chunk_key_from_world(wx: int, wz: int) -> Vector2i:
 	return Vector2i(int(floor(float(wx) / float(CHUNK_SIZE))), int(floor(float(wz) / float(CHUNK_SIZE))))
@@ -331,9 +351,7 @@ func _update_chunks(force: bool) -> void:
 	var pending: Array = []
 	for key in needed.keys():
 		if not loaded_chunks.has(key): pending.append(key)
-	pending.sort_custom(func(a, b):
-		return (absi(a.x - pc.x) + absi(a.y - pc.y)) < (absi(b.x - pc.x) + absi(b.y - pc.y))
-	)
+	pending.sort_custom(func(a, b): return (absi(a.x - pc.x) + absi(a.y - pc.y)) < (absi(b.x - pc.x) + absi(b.y - pc.y)))
 	for key in pending: _chunk_queue.append(key)
 	if force:
 		while not _chunk_queue.is_empty():
@@ -348,8 +366,7 @@ func _is_exposed(pos: Vector3i) -> bool:
 	return false
 
 func _load_chunk(ck: Vector2i) -> void:
-	if loaded_chunks.has(ck):
-		return
+	if loaded_chunks.has(ck): return
 	var root := Node3D.new()
 	root.name = "Chunk_%d_%d" % [ck.x, ck.y]
 	chunk_root.add_child(root)
@@ -470,7 +487,7 @@ func _setup_ui() -> void:
 	layer.name = "GameUI"
 	add_child(layer)
 	var label := Label.new()
-	label.text = "BLOCKRAFT  |  Explore • Mine • Build"
+	label.text = "BLOCKRAFT  |  Explore • Survive • Build"
 	label.add_theme_font_size_override("font_size", 14)
 	label.position = Vector2(16, 14)
 	label.add_theme_color_override("font_color", Color("#f0f8e6"))
