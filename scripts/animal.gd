@@ -47,7 +47,9 @@ func setup(animal_kind: int, spawn_pos: Vector3) -> void:
 func _enable_physics() -> void:
 	_ready_physics = true
 	if is_inside_tree() and get_world_3d():
-		var q := PhysicsRayQueryParameters3D.create(global_position + Vector3(0, 2.0, 0), global_position + Vector3(0, -8.0, 0))
+		var from := global_position + Vector3(0, 2.0, 0)
+		var to := global_position + Vector3(0, -8.0, 0)
+		var q := PhysicsRayQueryParameters3D.create(from, to)
 		q.exclude = [self]
 		q.collision_mask = 1
 		var hit := get_world_3d().direct_space_state.intersect_ray(q)
@@ -65,30 +67,34 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.38 * s, 0.32 * s, 0.42 * s), body_c)
 			_box(_body_root, Vector3(0, 0.52 * s, 0.18 * s), Vector3(0.26 * s, 0.26 * s, 0.26 * s), body_c)
 			_box(_body_root, Vector3(0, 0.50 * s, 0.34 * s), Vector3(0.10 * s, 0.08 * s, 0.16 * s), Color("#f0a020"))
-			_box(_body_root, Vector3(0, 0.62 * s, 0.18 * s), Vector3(0.08 * s, 0.14 * s, 0.10 * s), spot_c)
-			_box(_body_root, Vector3(0, 0.42 * s, -0.24 * s), Vector3(0.06 * s, 0.18 * s, 0.28 * s), spot_c)
-			_box(_body_root, Vector3(-0.08 * s, 0.12 * s, 0.05 * s), Vector3(0.06 * s, 0.22 * s, 0.06 * s), Color("#f0a020"))
-			_box(_body_root, Vector3(0.08 * s, 0.12 * s, 0.05 * s), Vector3(0.06 * s, 0.22 * s, 0.06 * s), Color("#f0a020"))
+			_box(_body_root, Vector3(0, 0.62 * s, 0.12 * s), Vector3(0.12 * s, 0.14 * s, 0.08 * s), spot_c)
+			_box(_body_root, Vector3(-0.12 * s, 0.55 * s, 0.22 * s), Vector3(0.06 * s, 0.06 * s, 0.04 * s), Color("#1a1a1a"))
+			_box(_body_root, Vector3(0.12 * s, 0.55 * s, 0.22 * s), Vector3(0.06 * s, 0.06 * s, 0.04 * s), Color("#1a1a1a"))
 		Kind.COW:
 			_box(_body_root, Vector3(0, 0.58 * s, 0), Vector3(0.58 * s, 0.48 * s, 0.90 * s), body_c)
 			_box(_body_root, Vector3(0.14 * s, 0.62 * s, 0.12 * s), Vector3(0.22 * s, 0.28 * s, 0.32 * s), spot_c)
 			_box(_body_root, Vector3(-0.16 * s, 0.52 * s, -0.18 * s), Vector3(0.24 * s, 0.22 * s, 0.30 * s), spot_c)
 			_box(_body_root, Vector3(0, 0.78 * s, 0.52 * s), Vector3(0.36 * s, 0.34 * s, 0.36 * s), body_c)
-			_box(_body_root, Vector3(0, 0.72 * s, 0.68 * s), Vector3(0.10 * s, 0.08 * s, 0.08 * s), Color("#e89090"))
-			for leg in [Vector3(-0.18, 0.20, 0.28), Vector3(0.18, 0.20, 0.28), Vector3(-0.18, 0.20, -0.30), Vector3(0.18, 0.20, -0.30)]:
-				_box(_body_root, leg * s, Vector3(0.12 * s, 0.40 * s, 0.12 * s), Color("#2a2a2a"))
-		Kind.SHEEP:
-			_box(_body_root, Vector3(0, 0.52 * s, 0), Vector3(0.58 * s, 0.52 * s, 0.72 * s), body_c)
-			_box(_body_root, Vector3(0.12 * s, 0.58 * s, 0.08 * s), Vector3(0.28 * s, 0.28 * s, 0.28 * s), spot_c)
-			_box(_body_root, Vector3(0, 0.72 * s, 0.42 * s), Vector3(0.30 * s, 0.28 * s, 0.30 * s), Color("#2a2a2a"))
-			for leg in [Vector3(-0.16, 0.16, 0.22), Vector3(0.16, 0.16, 0.22), Vector3(-0.16, 0.16, -0.22), Vector3(0.16, 0.16, -0.22)]:
-				_box(_body_root, leg * s, Vector3(0.10 * s, 0.32 * s, 0.10 * s), Color("#2a2a2a"))
-		_:
-			_box(_body_root, Vector3(0, 0.42 * s, 0), Vector3(0.52 * s, 0.42 * s, 0.72 * s), body_c)
-			_box(_body_root, Vector3(0, 0.48 * s, 0.42 * s), Vector3(0.34 * s, 0.30 * s, 0.30 * s), body_c)
+			_box(_body_root, Vector3(-0.12 * s, 0.88 * s, 0.48 * s), Vector3(0.08 * s, 0.16 * s, 0.08 * s), Color("#f0e8d8"))
+			_box(_body_root, Vector3(0.12 * s, 0.88 * s, 0.48 * s), Vector3(0.08 * s, 0.16 * s, 0.08 * s), Color("#f0e8d8"))
+		Kind.PIG:
+			_box(_body_root, Vector3(0, 0.42 * s, 0), Vector3(0.50 * s, 0.40 * s, 0.70 * s), body_c)
+			_box(_body_root, Vector3(0, 0.48 * s, 0.40 * s), Vector3(0.32 * s, 0.28 * s, 0.28 * s), body_c)
 			_box(_body_root, Vector3(0, 0.44 * s, 0.58 * s), Vector3(0.14 * s, 0.10 * s, 0.12 * s), spot_c)
-			for leg in [Vector3(-0.15, 0.14, 0.22), Vector3(0.15, 0.14, 0.22), Vector3(-0.15, 0.14, -0.24), Vector3(0.15, 0.14, -0.24)]:
-				_box(_body_root, leg * s, Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#c87888"))
+			_box(_body_root, Vector3(-0.10 * s, 0.52 * s, 0.48 * s), Vector3(0.06 * s, 0.06 * s, 0.04 * s), Color("#1a1a1a"))
+			_box(_body_root, Vector3(0.10 * s, 0.52 * s, 0.48 * s), Vector3(0.06 * s, 0.06 * s, 0.04 * s), Color("#1a1a1a"))
+		Kind.SHEEP:
+			_box(_body_root, Vector3(0, 0.48 * s, 0), Vector3(0.52 * s, 0.44 * s, 0.72 * s), body_c)
+			_box(_body_root, Vector3(0, 0.55 * s, 0.05 * s), Vector3(0.58 * s, 0.20 * s, 0.60 * s), spot_c)
+			_box(_body_root, Vector3(0, 0.62 * s, 0.42 * s), Vector3(0.28 * s, 0.28 * s, 0.28 * s), Color("#2a2a2a"))
+	# Legs for silhouette and ground feel
+	var leg_c := Color("#2a2218") if kind != Kind.CHICKEN else Color("#f0a020")
+	var leg_h := 0.22 * s
+	var leg_w := 0.08 * s if kind != Kind.CHICKEN else 0.05 * s
+	_box(_body_root, Vector3(-0.14 * s, 0.12 * s, 0.16 * s), Vector3(leg_w, leg_h, leg_w), leg_c)
+	_box(_body_root, Vector3(0.14 * s, 0.12 * s, 0.16 * s), Vector3(leg_w, leg_h, leg_w), leg_c)
+	_box(_body_root, Vector3(-0.14 * s, 0.12 * s, -0.16 * s), Vector3(leg_w, leg_h, leg_w), leg_c)
+	_box(_body_root, Vector3(0.14 * s, 0.12 * s, -0.16 * s), Vector3(leg_w, leg_h, leg_w), leg_c)
 
 func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88) -> void:
 	var mi := MeshInstance3D.new()
