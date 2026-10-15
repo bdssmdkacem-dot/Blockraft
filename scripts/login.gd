@@ -96,7 +96,7 @@ func _build_ui() -> void:
 	logo.add_theme_constant_override("shadow_offset_y", 3)
 	v.add_child(logo)
 	var sub := Label.new()
-	sub.text = "Sign in to continue"
+	sub.text = "Sign in · in-app account"
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 14)
 	sub.add_theme_color_override("font_color", Color("#9ab8a8"))
@@ -141,7 +141,7 @@ func _build_ui() -> void:
 	reg_btn.pressed.connect(_on_go_register)
 	v.add_child(reg_btn)
 	var note := Label.new()
-	note.text = "Profiles are stored on this device only.\nOnline multiplayer coming later."
+	note.text = "In-app accounts only — stored on this device.\nNo cloud server. Multiplayer later."
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.add_theme_font_size_override("font_size", 11)
 	note.add_theme_color_override("font_color", Color("#6a8878"))
