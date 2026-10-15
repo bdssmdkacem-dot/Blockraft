@@ -1,5 +1,15 @@
 extends Node
-## Day/night cycle + health/hunger + game HUD.
+## Realistic day/night + weather system + health/hunger HUD.
+
+enum Weather { CLEAR, CLOUDY, RAIN, STORM, FOG }
+
+const WEATHER_NAMES := {
+	Weather.CLEAR: "Clear",
+	Weather.CLOUDY: "Cloudy",
+	Weather.RAIN: "Rain",
+	Weather.STORM: "Storm",
+	Weather.FOG: "Fog",
+}
 
 var time_of_day := 0.28
 var day_cycle_speed := 0.012
@@ -13,6 +23,7 @@ var time_label: Label
 var phase_icon: Label
 var clock_bar: ProgressBar
 var phase_detail: Label
+var weather_label: Label
 var night_banner: PanelContainer
 var night_label: Label
 var hint_label: Label
@@ -22,10 +33,18 @@ var _ui_root: Control
 var _dmg_flash: ColorRect
 var _top_bar: PanelContainer
 var _invuln := 0.0
+var weather: int = Weather.CLEAR
+var _weather_timer := 45.0
+var _weather_blend := 1.0
+var _target_weather: int = Weather.CLEAR
+var _rain: GPUParticles3D
+var _lightning_t := 0.0
+var _rng := RandomNumberGenerator.new()
 
 func setup(world: Node, settings_node: Node = null) -> void:
 	host = world
 	settings = settings_node
+	_rng.randomize()
 	if settings:
 		day_cycle_speed = 0.012 * float(settings.day_speed)
 	sun_light = world.get_node_or_null("DirectionalLight3D") as DirectionalLight3D
@@ -39,16 +58,19 @@ func setup(world: Node, settings_node: Node = null) -> void:
 	var we = world.get_node_or_null("WorldEnvironment") as WorldEnvironment
 	if we:
 		world_env = we.environment
+	_setup_rain()
 	_build_ui()
+	_pick_next_weather(true)
 	_update_day_night(0.0)
 
 func is_night() -> bool:
-	var angle := time_of_day * TAU - PI * 0.5
-	return sin(angle) < 0.15
+	return day_factor() < 0.18
 
 func day_factor() -> float:
 	var angle := time_of_day * TAU - PI * 0.5
-	return clampf(sin(angle) * 0.5 + 0.5, 0.0, 1.0)
+	var raw := sin(angle)
+	var f := clampf(raw * 0.5 + 0.5, 0.0, 1.0)
+	return smoothstep(0.0, 1.0, f)
 
 func _phase_name() -> String:
 	var h := time_of_day * 24.0
@@ -67,6 +89,133 @@ func _phase_name() -> String:
 	if h < 22.0:
 		return "Evening"
 	return "Night"
+
+func _setup_rain() -> void:
+	_rain = GPUParticles3D.new()
+	_rain.name = "RainParticles"
+	_rain.amount = 900
+	_rain.lifetime = 1.1
+	_rain.explosiveness = 0.0
+	_rain.randomness = 0.4
+	_rain.visibility_aabb = AABB(Vector3(-40, -10, -40), Vector3(80, 50, 80))
+	_rain.emitting = false
+	var mat := ParticleProcessMaterial.new()
+	mat.direction = Vector3(0.12, -1.0, 0.05)
+	mat.spread = 8.0
+	mat.initial_velocity_min = 12.0
+	mat.initial_velocity_max = 18.0
+	mat.gravity = Vector3(0, -20, 0)
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	mat.emission_box_extents = Vector3(28, 0.5, 28)
+	_rain.process_material = mat
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.04, 0.35, 0.04)
+	var draw := StandardMaterial3D.new()
+	draw.albedo_color = Color(0.65, 0.75, 0.95, 0.55)
+	draw.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	draw.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh.material = draw
+	_rain.draw_pass_1 = mesh
+	host.add_child(_rain)
+
+func _pick_next_weather(immediate: bool = false) -> void:
+	var night := is_night()
+	var roll := _rng.randf()
+	var next := Weather.CLEAR
+	if night:
+		if roll < 0.35:
+			next = Weather.CLEAR
+		elif roll < 0.55:
+			next = Weather.CLOUDY
+		elif roll < 0.75:
+			next = Weather.FOG
+		elif roll < 0.9:
+			next = Weather.RAIN
+		else:
+			next = Weather.STORM
+	else:
+		if roll < 0.40:
+			next = Weather.CLEAR
+		elif roll < 0.62:
+			next = Weather.CLOUDY
+		elif roll < 0.80:
+			next = Weather.RAIN
+		elif roll < 0.90:
+			next = Weather.FOG
+		else:
+			next = Weather.STORM
+	_target_weather = next
+	_weather_timer = _rng.randf_range(35.0, 90.0)
+	if immediate:
+		weather = next
+		_weather_blend = 1.0
+	else:
+		_weather_blend = 0.0
+		weather = next
+		if host and host.has_method("_show_toast"):
+			host._show_toast("Weather: %s" % WEATHER_NAMES[weather], 2.2)
+
+func _update_weather(delta: float) -> void:
+	_weather_timer -= delta
+	_weather_blend = minf(1.0, _weather_blend + delta * 0.35)
+	if _weather_timer <= 0.0:
+		_pick_next_weather(false)
+	var player = host.get_node_or_null("Player") as Node3D
+	if _rain and player:
+		_rain.global_position = player.global_position + Vector3(0, 18, 0)
+	var raining := weather == Weather.RAIN or weather == Weather.STORM
+	if _rain:
+		_rain.emitting = raining
+		_rain.amount = 1400 if weather == Weather.STORM else 900
+	_lightning_t = maxf(0.0, _lightning_t - delta)
+	if weather == Weather.STORM and _rng.randf() < delta * 0.12:
+		_lightning_t = 0.18
+		if _dmg_flash:
+			_dmg_flash.color = Color(0.85, 0.9, 1.0, 0.45)
+			var tw := host.create_tween()
+			tw.tween_property(_dmg_flash, "color:a", 0.0, 0.25)
+
+func _weather_sun_mult() -> float:
+	match weather:
+		Weather.CLEAR:
+			return 1.0
+		Weather.CLOUDY:
+			return 0.55
+		Weather.RAIN:
+			return 0.35
+		Weather.STORM:
+			return 0.22
+		Weather.FOG:
+			return 0.4
+	return 1.0
+
+func _weather_fog_add() -> float:
+	match weather:
+		Weather.CLEAR:
+			return 0.0
+		Weather.CLOUDY:
+			return 0.001
+		Weather.RAIN:
+			return 0.0025
+		Weather.STORM:
+			return 0.0035
+		Weather.FOG:
+			return 0.006
+	return 0.0
+
+func _weather_sky_tint() -> Color:
+	match weather:
+		Weather.CLEAR:
+			return Color(1, 1, 1)
+		Weather.CLOUDY:
+			return Color(0.75, 0.78, 0.82)
+		Weather.RAIN:
+			return Color(0.55, 0.6, 0.68)
+		Weather.STORM:
+			return Color(0.35, 0.38, 0.45)
+		Weather.FOG:
+			return Color(0.7, 0.72, 0.75)
+	return Color(1, 1, 1)
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -98,6 +247,10 @@ func _build_ui() -> void:
 	time_label.add_theme_font_size_override("font_size", 14)
 	time_label.add_theme_color_override("font_color", Color("#c8e0f0"))
 	top_h.add_child(time_label)
+	weather_label = Label.new()
+	weather_label.add_theme_font_size_override("font_size", 13)
+	weather_label.add_theme_color_override("font_color", Color("#a8d0e8"))
+	top_h.add_child(weather_label)
 	phase_detail = Label.new()
 	phase_detail.add_theme_font_size_override("font_size", 12)
 	phase_detail.add_theme_color_override("font_color", Color("#9ab0c0"))
@@ -117,7 +270,7 @@ func _build_ui() -> void:
 	v.add_theme_constant_override("separation", 6)
 	panel.add_child(v)
 	var day_l := Label.new()
-	day_l.text = "DAY / NIGHT CYCLE"
+	day_l.text = "DAY / NIGHT / WEATHER"
 	day_l.add_theme_font_size_override("font_size", 11)
 	day_l.add_theme_color_override("font_color", Color("#a0c0d0"))
 	v.add_child(day_l)
@@ -177,7 +330,7 @@ func _build_ui() -> void:
 	night_label.add_theme_color_override("font_color", Color("#e8d0ff"))
 	night_banner.add_child(night_label)
 	hint_label = Label.new()
-	hint_label.text = "WASD move · Mouse look · LMB dig/attack · RMB place · E eat · F depot · B bag"
+	hint_label.text = "WASD · dig/place · E eat · F depot · weather changes over time"
 	hint_label.add_theme_font_size_override("font_size", 11)
 	hint_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
 	_ui_root.add_child(hint_label)
@@ -201,6 +354,7 @@ func _layout_ui() -> void:
 func tick(delta: float) -> void:
 	_invuln = maxf(0.0, _invuln - delta)
 	_update_day_night(delta)
+	_update_weather(delta)
 	_update_survival(delta)
 
 func _update_day_night(delta: float) -> void:
@@ -212,38 +366,45 @@ func _update_day_night(delta: float) -> void:
 	var angle := time_of_day * TAU - PI * 0.5
 	var factor := day_factor()
 	var night := is_night()
+	var wmult := lerpf(1.0, _weather_sun_mult(), _weather_blend)
+	var wtint := Color(1, 1, 1).lerp(_weather_sky_tint(), _weather_blend)
 	if sun_light:
-		sun_light.rotation = Vector3(-angle, 0.55, 0.12)
-		var day_col := Color(1.0, 0.96, 0.88)
-		var dusk_col := Color(1.0, 0.55, 0.28)
-		var night_col := Color(0.35, 0.42, 0.75)
+		sun_light.rotation = Vector3(-angle, 0.55 + sin(time_of_day * TAU) * 0.15, 0.08)
+		var day_col := Color(1.0, 0.97, 0.9)
+		var dusk_col := Color(1.0, 0.52, 0.25)
+		var night_col := Color(0.32, 0.4, 0.72)
 		var sun_col := day_col
-		if factor < 0.35:
-			sun_col = night_col.lerp(dusk_col, clampf(factor / 0.35, 0.0, 1.0))
-		elif factor < 0.55:
-			sun_col = dusk_col.lerp(day_col, clampf((factor - 0.35) / 0.2, 0.0, 1.0))
+		if factor < 0.28:
+			sun_col = night_col.lerp(dusk_col, clampf(factor / 0.28, 0.0, 1.0))
+		elif factor < 0.5:
+			sun_col = dusk_col.lerp(day_col, clampf((factor - 0.28) / 0.22, 0.0, 1.0))
 		else:
 			sun_col = day_col
-		sun_light.light_color = sun_col
-		sun_light.light_energy = lerpf(0.06, 1.2, factor * factor)
+		sun_light.light_color = sun_col * wtint
+		var energy := lerpf(0.05, 1.25, factor * factor)
+		if _lightning_t > 0.0:
+			energy = maxf(energy, 2.2)
+		sun_light.light_energy = energy * wmult
 		sun_light.visible = true
 	if world_env:
-		var sky_day := Color(0.52, 0.72, 0.95)
-		var sky_dusk := Color(0.85, 0.45, 0.28)
-		var sky_night := Color(0.05, 0.07, 0.16)
+		var sky_day := Color(0.48, 0.7, 0.95)
+		var sky_dusk := Color(0.9, 0.42, 0.25)
+		var sky_night := Color(0.04, 0.05, 0.12)
 		var sky := sky_day
-		if factor < 0.3:
-			sky = sky_night.lerp(sky_dusk, clampf(factor / 0.3, 0.0, 1.0))
-		elif factor < 0.5:
-			sky = sky_dusk.lerp(sky_day, clampf((factor - 0.3) / 0.2, 0.0, 1.0))
+		if factor < 0.25:
+			sky = sky_night.lerp(sky_dusk, clampf(factor / 0.25, 0.0, 1.0))
+		elif factor < 0.48:
+			sky = sky_dusk.lerp(sky_day, clampf((factor - 0.25) / 0.23, 0.0, 1.0))
 		else:
 			sky = sky_day
+		sky = sky * wtint
 		world_env.background_color = sky
-		world_env.ambient_light_color = sky.lerp(Color(0.75, 0.8, 0.9), factor)
-		world_env.ambient_light_energy = lerpf(0.18, 0.62, factor)
+		world_env.ambient_light_color = sky.lerp(Color(0.78, 0.82, 0.9), factor * 0.7)
+		world_env.ambient_light_energy = lerpf(0.15, 0.58, factor) * lerpf(1.0, 0.7, 1.0 - wmult)
 		world_env.fog_enabled = true
 		world_env.fog_light_color = sky
-		world_env.fog_density = lerpf(0.0045, 0.002, factor)
+		var base_fog := lerpf(0.0048, 0.0018, factor)
+		world_env.fog_density = base_fog + _weather_fog_add() * _weather_blend
 	var hour := int(time_of_day * 24.0) % 24
 	var minute := int(fmod(time_of_day * 24.0, 1.0) * 60.0)
 	var phase := _phase_name()
@@ -251,8 +412,10 @@ func _update_day_night(delta: float) -> void:
 		time_label.text = "%s  %02d:%02d" % [phase, hour, minute]
 	if phase_icon:
 		phase_icon.text = "C" if night else ("~" if factor < 0.45 else "*")
+	if weather_label:
+		weather_label.text = "· %s" % WEATHER_NAMES.get(weather, "Clear")
 	if phase_detail:
-		phase_detail.text = "day cycle %.0f%% · light %.0f%%" % [time_of_day * 100.0, factor * 100.0]
+		phase_detail.text = "cycle %.0f%% · light %.0f%%" % [time_of_day * 100.0, factor * 100.0 * wmult]
 	if clock_bar:
 		clock_bar.value = time_of_day * 100.0
 	if night_banner:
@@ -291,7 +454,7 @@ func apply_damage(amount: float) -> void:
 	if health_bar:
 		health_bar.value = health
 	if _dmg_flash:
-		_dmg_flash.color.a = 0.4
+		_dmg_flash.color = Color(0.8, 0.05, 0.05, 0.4)
 		var tw := host.create_tween()
 		tw.tween_property(_dmg_flash, "color:a", 0.0, 0.4)
 	if health <= 0.0:
