@@ -1,13 +1,13 @@
 extends CharacterBody3D
 ## Third-person voxel player — dig, place, combat, touch controls.
 
-const SPEED := 7.4
+const SPEED := 6.2
 const SPRINT_MULT := 1.45
-const ACCEL := 32.0
-const DECEL := 40.0
+const ACCEL := 24.0
+const DECEL := 30.0
 const AIR_ACCEL := 14.0
 const AIR_DRAG := 0.35
-const JUMP_VELOCITY := 8.6
+const JUMP_VELOCITY := 9.2
 const JUMP_CUT_MULT := 0.45
 const FALL_GRAVITY_MULT := 1.35
 const MAX_FALL_SPEED := 28.0
@@ -16,7 +16,7 @@ const REACH := 7.0
 const CAMERA_SENSITIVITY := 0.0022
 const TOUCH_LOOK_SENSITIVITY := 0.0036
 const TOUCH_LOOK_SMOOTH := 0.28
-const TOUCH_JOY_RADIUS := 92.0
+const TOUCH_JOY_RADIUS := 104.0
 const TOUCH_JOY_DEADZONE := 0.08
 const TOUCH_MOVE_SMOOTH := 14.0
 const CAMERA_DISTANCE := 4.2
@@ -82,8 +82,8 @@ var _look_sens_mult := 1.0
 
 func _ready() -> void:
 	add_to_group("player")
-	floor_snap_length = 0.55
-	floor_max_angle = deg_to_rad(55.0)
+	floor_snap_length = 0.8
+	floor_max_angle = deg_to_rad(62.0)
 	floor_constant_speed = true
 	floor_block_on_wall = true
 	floor_stop_on_slope = false
@@ -285,6 +285,7 @@ func _input(event: InputEvent) -> void:
 			var delta := drag.position - joystick_origin
 			if delta.length() > TOUCH_JOY_RADIUS:
 				delta = delta.normalized() * TOUCH_JOY_RADIUS
+			# Screen Y grows downward; invert it so dragging the stick upward means forward.
 			var raw := Vector2(delta.x / TOUCH_JOY_RADIUS, delta.y / TOUCH_JOY_RADIUS)
 			if raw.length() < TOUCH_JOY_DEADZONE:
 				_touch_move_target = Vector2.ZERO
@@ -377,9 +378,17 @@ func _physics_process(delta: float) -> void:
 		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
 	) + touch_move
 	input_dir = input_dir.limit_length(1.0)
-	var basis := Basis(Vector3.UP, yaw)
-	var direction := basis * Vector3(input_dir.x, 0.0, input_dir.y)
-	if direction.length() > 0.001: direction = direction.normalized()
+	# Drive relative to the camera's actual horizontal view direction.
+	# This keeps joystick/WASD directions intuitive after the player rotates the camera.
+	var forward := -camera.global_transform.basis.z
+	forward.y = 0.0
+	forward = forward.normalized()
+	var right := camera.global_transform.basis.x
+	right.y = 0.0
+	right = right.normalized()
+	var direction := right * input_dir.x + (-forward) * input_dir.y
+	if direction.length() > 0.001:
+		direction = direction.normalized()
 	var wish := direction
 	if is_on_floor() and get_floor_normal().y > 0.4 and direction.length() > 0.01:
 		var n := get_floor_normal()
