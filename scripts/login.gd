@@ -2,6 +2,7 @@ extends Control
 ## Blockraft login / guest entry screen.
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
+const REGISTER_SCENE := "res://scenes/register.tscn"
 const PROFILE_PATH := "user://profile.cfg"
 
 var _user_edit: LineEdit
@@ -119,8 +120,8 @@ func _build_ui() -> void:
 	pl.add_theme_color_override("font_color", Color("#c8e0d0"))
 	v.add_child(pl)
 	_pass_edit = LineEdit.new()
-	_pass_edit.placeholder_text = "••••••••"
 	_pass_edit.secret = true
+	_pass_edit.placeholder_text = "••••••••"
 	_pass_edit.custom_minimum_size = Vector2(0, 40)
 	_pass_edit.max_length = 32
 	v.add_child(_pass_edit)
@@ -136,8 +137,8 @@ func _build_ui() -> void:
 	var guest_btn := _make_btn("Continue as Guest", false)
 	guest_btn.pressed.connect(_on_guest)
 	v.add_child(guest_btn)
-	var reg_btn := _make_btn("Create Local Profile", false)
-	reg_btn.pressed.connect(_on_register)
+	var reg_btn := _make_btn("Create New Account", false)
+	reg_btn.pressed.connect(_on_go_register)
 	v.add_child(reg_btn)
 	var note := Label.new()
 	note.text = "Profiles are stored on this device only.\nOnline multiplayer coming later."
@@ -203,12 +204,6 @@ func _check_password(username: String, password: String) -> bool:
 	var h := str(password.hash())
 	return stored == h or (stored == "" and password == "")
 
-func _create_profile(username: String, password: String) -> void:
-	var cfg := ConfigFile.new()
-	cfg.load(PROFILE_PATH)
-	cfg.set_value("users", username.to_lower(), str(password.hash()) if password != "" else "")
-	cfg.save(PROFILE_PATH)
-
 func _on_login() -> void:
 	if _click:
 		_click.play()
@@ -218,7 +213,7 @@ func _on_login() -> void:
 		_status.text = "Username must be at least 2 characters"
 		return
 	if not _profile_exists(u):
-		_status.text = "No profile found — use Create Local Profile"
+		_status.text = "No profile found — Create New Account"
 		return
 	if not _check_password(u, p):
 		_status.text = "Wrong password"
@@ -227,21 +222,14 @@ func _on_login() -> void:
 	_save_session(u, false)
 	call_deferred("_go_menu")
 
-func _on_register() -> void:
+func _on_go_register() -> void:
 	if _click:
 		_click.play()
-	var u := _user_edit.text.strip_edges()
-	var p := _pass_edit.text
-	if u.length() < 2:
-		_status.text = "Username must be at least 2 characters"
+	var packed := load(REGISTER_SCENE) as PackedScene
+	if packed == null:
+		_status.text = "Failed to open register page"
 		return
-	if _profile_exists(u):
-		_status.text = "Username already exists — Login instead"
-		return
-	_create_profile(u, p)
-	_save_session(u, false)
-	_status.text = "Profile created — entering menu"
-	call_deferred("_go_menu")
+	get_tree().change_scene_to_packed(packed)
 
 func _on_guest() -> void:
 	if _click:
