@@ -1,5 +1,5 @@
 extends CharacterBody3D
-## Third-person voxel player — movement, dig, place, combat.
+## Third-person voxel player — detailed body, dig, place, combat.
 
 const SPEED := 7.4
 const SPRINT_MULT := 1.45
@@ -11,7 +11,6 @@ const JUMP_VELOCITY := 8.6
 const JUMP_CUT_MULT := 0.45
 const FALL_GRAVITY_MULT := 1.35
 const MAX_FALL_SPEED := 28.0
-const SLOPE_BOOST := 1.08
 const LAND_HARD_SPEED := 12.0
 const REACH := 7.0
 const CAMERA_SENSITIVITY := 0.0022
@@ -68,9 +67,6 @@ var pickaxe_node: Node3D
 var pickaxe_swing_t := 0.0
 var walk_phase := 0.0
 var footstep_player: AudioStreamPlayer3D
-var footstep_stream: AudioStreamWAV
-var _last_step_sign := 0
-var _step_cooldown := 0.0
 var _was_on_floor := true
 var _land_squash := 0.0
 var _jump_stretch := 0.0
@@ -144,36 +140,54 @@ func _build_character_body() -> void:
 	leg_l_pivot.position = Vector3(-0.17, 0.85, 0.0)
 	body_root.add_child(leg_l_pivot)
 	_box(leg_l_pivot, Vector3(0.0, -0.36, 0.0), Vector3(0.30, 0.72, 0.28), MAT_BLUE)
-	_box(leg_l_pivot, Vector3(0.0, -0.78, 0.08), Vector3(0.32, 0.18, 0.40), MAT_BOOT)
+	_box(leg_l_pivot, Vector3(0.0, -0.78, 0.10), Vector3(0.34, 0.18, 0.42), MAT_BOOT)
 	leg_r_pivot = Node3D.new()
 	leg_r_pivot.position = Vector3(0.17, 0.85, 0.0)
 	body_root.add_child(leg_r_pivot)
 	_box(leg_r_pivot, Vector3(0.0, -0.36, 0.0), Vector3(0.30, 0.72, 0.28), MAT_BLUE)
-	_box(leg_r_pivot, Vector3(0.0, -0.78, 0.08), Vector3(0.32, 0.18, 0.40), MAT_BOOT)
+	_box(leg_r_pivot, Vector3(0.0, -0.78, 0.10), Vector3(0.34, 0.18, 0.42), MAT_BOOT)
 	torso_node = Node3D.new()
 	torso_node.position = Vector3(0.0, 1.12, 0.0)
 	body_root.add_child(torso_node)
 	_box(torso_node, Vector3(0.0, 0.0, 0.0), Vector3(0.78, 0.72, 0.42), MAT_TEAL)
-	_box(torso_node, Vector3(0.0, 0.06, -0.36), Vector3(0.62, 0.68, 0.28), MAT_PACK)
+	_box(torso_node, Vector3(0.0, -0.28, 0.0), Vector3(0.80, 0.14, 0.44), Color("#1a3a50"))
+	_box(torso_node, Vector3(0.0, -0.28, 0.22), Vector3(0.16, 0.16, 0.08), Color("#d4a020"))
+	_box(torso_node, Vector3(0.0, 0.08, -0.38), Vector3(0.62, 0.68, 0.30), MAT_PACK)
+	_box(torso_node, Vector3(0.0, 0.32, -0.42), Vector3(0.58, 0.18, 0.12), MAT_PACK_FLAP)
+	_box(torso_node, Vector3(0.0, -0.10, -0.42), Vector3(0.20, 0.12, 0.08), Color("#5a3218"))
 	arm_l_pivot = Node3D.new()
 	arm_l_pivot.position = Vector3(-0.52, 1.40, 0.0)
 	body_root.add_child(arm_l_pivot)
 	_box(arm_l_pivot, Vector3(0.0, -0.32, 0.0), Vector3(0.26, 0.64, 0.26), MAT_SKIN)
+	_box(arm_l_pivot, Vector3(0.0, -0.62, 0.0), Vector3(0.22, 0.12, 0.22), Color("#e0a880"))
 	arm_r_pivot = Node3D.new()
 	arm_r_pivot.position = Vector3(0.52, 1.40, 0.0)
 	body_root.add_child(arm_r_pivot)
 	_box(arm_r_pivot, Vector3(0.0, -0.32, 0.0), Vector3(0.26, 0.64, 0.26), MAT_SKIN)
+	_box(arm_r_pivot, Vector3(0.0, -0.62, 0.0), Vector3(0.22, 0.12, 0.22), Color("#e0a880"))
 	head_node = Node3D.new()
 	head_node.position = Vector3(0.0, 1.78, 0.0)
 	body_root.add_child(head_node)
 	_box(head_node, Vector3(0.0, 0.0, 0.0), Vector3(0.56, 0.56, 0.54), MAT_SKIN)
-	_box(head_node, Vector3(0.0, 0.30, -0.02), Vector3(0.60, 0.20, 0.58), MAT_HAIR)
+	_box(head_node, Vector3(0.0, 0.30, -0.02), Vector3(0.62, 0.22, 0.60), MAT_HAIR)
+	_box(head_node, Vector3(0.0, 0.12, -0.28), Vector3(0.58, 0.28, 0.12), MAT_HAIR)
+	_box(head_node, Vector3(-0.12, 0.06, 0.26), Vector3(0.14, 0.12, 0.06), Color("#ffffff"))
+	_box(head_node, Vector3(0.12, 0.06, 0.26), Vector3(0.14, 0.12, 0.06), Color("#ffffff"))
+	_box(head_node, Vector3(-0.12, 0.05, 0.30), Vector3(0.07, 0.07, 0.05), Color("#1a1a28"))
+	_box(head_node, Vector3(0.12, 0.05, 0.30), Vector3(0.07, 0.07, 0.05), Color("#1a1a28"))
+	_box(head_node, Vector3(-0.12, 0.16, 0.27), Vector3(0.16, 0.04, 0.04), MAT_HAIR)
+	_box(head_node, Vector3(0.12, 0.16, 0.27), Vector3(0.16, 0.04, 0.04), MAT_HAIR)
+	_box(head_node, Vector3(0.0, -0.02, 0.28), Vector3(0.08, 0.08, 0.08), Color("#e0a080"))
+	_box(head_node, Vector3(0.0, -0.14, 0.27), Vector3(0.18, 0.05, 0.05), Color("#c06060"))
+	_box(head_node, Vector3(-0.32, 0.02, 0.0), Vector3(0.08, 0.14, 0.10), MAT_SKIN)
+	_box(head_node, Vector3(0.32, 0.02, 0.0), Vector3(0.08, 0.14, 0.10), MAT_SKIN)
 	pickaxe_node = Node3D.new()
 	pickaxe_node.position = Vector3(0.12, -0.55, 0.15)
 	pickaxe_node.rotation_degrees = Vector3(10.0, 0.0, -25.0)
 	arm_r_pivot.add_child(pickaxe_node)
 	_box(pickaxe_node, Vector3(0.0, 0.0, 0.0), Vector3(0.07, 0.90, 0.07), MAT_HANDLE)
 	_box(pickaxe_node, Vector3(0.0, 0.52, 0.0), Vector3(0.52, 0.14, 0.13), MAT_DIAMOND, 0.25)
+	_box(pickaxe_node, Vector3(0.28, 0.52, 0.0), Vector3(0.12, 0.22, 0.10), MAT_DIAMOND, 0.25)
 
 func _build_third_person_camera() -> void:
 	camera = Camera3D.new()
@@ -218,9 +232,6 @@ func _build_touch_controls() -> void:
 	_joy_base_ui.size = Vector2(TOUCH_JOY_RADIUS * 2.0, TOUCH_JOY_RADIUS * 2.0)
 	_joy_base_ui.visible = false
 	_touch_root.add_child(_joy_base_ui)
-	_joy_knob_ui = Panel.new()
-	_joy_knob_ui.size = Vector2(64, 64)
-	_joy_base_ui.add_child(_joy_knob_ui)
 	_action_column = VBoxContainer.new()
 	_action_column.add_theme_constant_override("separation", 14)
 	_touch_root.add_child(_action_column)
