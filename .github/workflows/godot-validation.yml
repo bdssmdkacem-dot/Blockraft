@@ -35,6 +35,18 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends xvfb
+      - name: Capture rendered gameplay world at 1280x720
+        run: timeout 60s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_gameplay_world.gd
+      - name: Verify gameplay world screenshot was generated
+        run: test -s gameplay_world_capture.png
+      - name: Upload rendered gameplay world screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockraft-gameplay-world-capture
+          path: gameplay_world_capture.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Capture rendered main menu at 1280x720
         run: timeout 45s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_main_menu.gd
       - name: Verify screenshot was generated

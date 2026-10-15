@@ -74,9 +74,9 @@ func _ready() -> void:
 func _initialize_world_async() -> void:
 	# Yield once so the gameplay scene can render immediately after Play is pressed.
 	await get_tree().process_frame
-	_generate_world()
 	var restored_snapshot := _load_world_snapshot()
 	if not restored_snapshot:
+		_generate_world()
 		if blocks.size() < 2000:
 			_generate_world()
 		_force_solid_spawn_island()
@@ -106,7 +106,8 @@ func _initialize_world_async() -> void:
 
 func _spawn_guaranteed_floor() -> void:
 	var floor_y := 2.0
-	var size := Vector3(80.0, 4.0, 80.0)
+	# Temporary spawn pad only. A world-sized floor hid rivers, lakes, and low terrain.
+	var size := Vector3(12.0, 4.0, 12.0)
 	var mi := MeshInstance3D.new()
 	mi.name = "GuaranteedFloorMesh"
 	var box := BoxMesh.new()
@@ -121,7 +122,7 @@ func _spawn_guaranteed_floor() -> void:
 	var mi2 := MeshInstance3D.new()
 	mi2.name = "GuaranteedDirtMesh"
 	var box2 := BoxMesh.new()
-	box2.size = Vector3(80.0, 6.0, 80.0)
+	box2.size = Vector3(12.0, 6.0, 12.0)
 	mi2.mesh = box2
 	mi2.position = Vector3(0.0, floor_y - 5.0, 0.0)
 	var mat2 := StandardMaterial3D.new()
@@ -145,7 +146,7 @@ func _spawn_guaranteed_floor() -> void:
 	body2.collision_layer = 1
 	var col2 := CollisionShape3D.new()
 	var shape2 := BoxShape3D.new()
-	shape2.size = Vector3(80.0, 6.0, 80.0)
+	shape2.size = Vector3(12.0, 6.0, 12.0)
 	col2.shape = shape2
 	body2.add_child(col2)
 	add_child(body2)

@@ -40,6 +40,13 @@ func _run_checks() -> void:
     if animals.is_empty():
         _fail("generated world has no animal assets", 18)
         return
+    var block_kinds: Dictionary = {}
+    for value in scene.blocks.values():
+        block_kinds[str(value)] = true
+    for required_kind in ["grass", "dirt", "stone", "water", "wood", "leaves", "coal", "iron", "gold", "crystal", "chest"]:
+        if not block_kinds.has(required_kind):
+            _fail("full map is missing block/asset kind: %s" % required_kind, 19)
+            return
 
     var player := scene.get_node_or_null("Player") as CharacterBody3D
     if player == null:
