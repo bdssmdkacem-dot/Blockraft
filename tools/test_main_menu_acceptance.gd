@@ -80,33 +80,41 @@ func _run_checks() -> void:
 			_fail("feature card blocks neither input nor accessibility", 7)
 			return
 
-	if scene.has_method("_on_menu_action"):
-		scene._on_menu_action("settings")
-		await process_frame
-		var dialog := scene.find_child("MenuDialog", true, false)
-		if dialog == null:
-			_fail("Settings action did not open MenuDialog", 12)
-			return
-		if scene.has_method("_on_dialog_action"):
-			scene._on_dialog_action("close")
-			await process_frame
-		scene._on_menu_action("help")
-		await process_frame
-		dialog = scene.find_child("MenuDialog", true, false)
-		if dialog == null:
-			_fail("How to Play action did not open MenuDialog", 11)
-			return
-		if scene.has_method("_on_dialog_action"):
-			scene._on_dialog_action("close")
-			await process_frame
+	scene._on_menu_action("settings")
+	await process_frame
+	var settings_panel := scene.find_child("SettingsPanel", true, false)
+	if settings_panel == null:
+		_fail("Settings action did not open SettingsPanel", 12)
+		return
+	if is_instance_valid(scene.dialog_layer):
+		scene.dialog_layer.queue_free()
+		scene.dialog_layer = null
+	await process_frame
+	scene._on_menu_action("help")
+	await process_frame
+	var dialog := scene.find_child("MenuDialog", true, false)
+	if dialog == null:
+		_fail("How to Play action did not open MenuDialog", 11)
+		return
+	if is_instance_valid(scene.dialog_layer):
+		scene.dialog_layer.queue_free()
+		scene.dialog_layer = null
+	await process_frame
 
-	if scene.has_method("_start_game"):
-		scene._start_game()
+	var play_button := scene.find_child("PlayButton", true, false) as Button
+	if play_button == null:
+		_fail("PlayButton was not found for end-to-end interaction test", 30)
+		return
+	play_button.emit_signal("pressed")
+	var transitioned := false
+	for attempt in range(120):
 		await process_frame
-		await process_frame
-		if current_scene == null or str(current_scene.scene_file_path) != "res://scenes/main.tscn":
-			_fail("Play did not transition to scenes/main.tscn", 13)
-			return
+		if current_scene != null and str(current_scene.scene_file_path) == "res://scenes/main.tscn":
+			transitioned = true
+			break
+	if not transitioned:
+		_fail("Play button signal did not transition to scenes/main.tscn", 13)
+		return
 
 	print("MENU_ACCEPTANCE_PASS: 3D world, six feature cards, primary actions, dialogs, and gameplay transition verified")
 	quit(0)
