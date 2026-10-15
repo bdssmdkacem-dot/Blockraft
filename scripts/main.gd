@@ -617,12 +617,18 @@ func _notification(what: int) -> void:
 			save_world(what != NOTIFICATION_EXIT_TREE)
 
 func save_world(show_feedback: bool = false) -> void:
+	# Compact positional arrays reduce save size and JSON overhead for the large voxel map.
+	# Format per block: [x, y, z, kind]. The loader still accepts older dictionary entries.
 	var serialized: Array = []
+	serialized.resize(blocks.size())
+	var index := 0
 	for p in blocks:
-		serialized.append({"x": p.x, "y": p.y, "z": p.z, "kind": blocks[p]})
+		serialized[index] = [p.x, p.y, p.z, str(blocks[p])]
+		index += 1
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
 		file.store_string(JSON.stringify({"version": SAVE_VERSION, "blocks": serialized, "saved_at": Time.get_datetime_string_from_system()}))
+		file.close()
 		_save_dirty = false
 		_autosave_timer = AUTO_SAVE_INTERVAL
 		if show_feedback: _show_toast("World saved", 1.2)
@@ -645,12 +651,17 @@ func _load_world_snapshot() -> bool:
 		return false
 	var restored: Dictionary = {}
 	for entry in entries:
-		if typeof(entry) != TYPE_DICTIONARY:
-			continue
-		if not entry.has("x") or not entry.has("y") or not entry.has("z") or not entry.has("kind"):
-			continue
-		var pos := Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))
-		restored[pos] = str(entry["kind"])
+		if typeof(entry) == TYPE_ARRAY:
+			if entry.size() < 4:
+				continue
+			var array_pos := Vector3i(int(entry[0]), int(entry[1]), int(entry[2]))
+			restored[array_pos] = str(entry[3])
+		elif typeof(entry) == TYPE_DICTIONARY:
+			# Backward compatibility for snapshots written before compact-array saves.
+			if not entry.has("x") or not entry.has("y") or not entry.has("z") or not entry.has("kind"):
+				continue
+			var dict_pos := Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))
+			restored[dict_pos] = str(entry["kind"])
 	if restored.size() < 2000:
 		push_warning("Blockraft: saved world contains too few valid blocks; generating a fresh world")
 		return false
