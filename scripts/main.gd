@@ -51,6 +51,7 @@ func _ready() -> void:
 	mining_fx.name = "MiningFX"
 	add_child(mining_fx)
 	_setup_materials()
+	_setup_environment()
 	_generate_world()
 	_load_world_snapshot()
 	if blocks.size() < 500:
@@ -66,6 +67,7 @@ func _ready() -> void:
 		if not loaded_chunks.has(ck):
 			_load_chunk(ck)
 	_snap_player_to_surface()
+	_ensure_spawn_visible()
 	flora_fauna = load("res://scripts/flora_fauna.gd").new()
 	flora_fauna.name = "FloraFauna"
 	add_child(flora_fauna)
@@ -85,6 +87,31 @@ func _process(delta: float) -> void:
 			_load_chunk(ck)
 			built += 1
 	_tick_autosave(delta)
+	_check_fall_respawn()
+
+func _setup_environment() -> void:
+	var we := WorldEnvironment.new()
+	we.name = "WorldEnvironment"
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.55, 0.72, 0.92)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.72, 0.78, 0.88)
+	env.ambient_light_energy = 0.55
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.65, 0.75, 0.88)
+	env.fog_density = 0.0025
+	env.fog_aerial_perspective = 0.4
+	we.environment = env
+	add_child(we)
+	var fill := DirectionalLight3D.new()
+	fill.name = "FillLight"
+	fill.light_color = Color(0.55, 0.65, 0.9)
+	fill.light_energy = 0.25
+	fill.shadow_enabled = false
+	fill.rotation_degrees = Vector3(-30, 140, 0)
+	add_child(fill)
 
 func _setup_materials() -> void:
 	var colors := {
@@ -117,6 +144,29 @@ func _setup_materials() -> void:
 		elif key == "leaves":
 			mat.roughness = 0.85
 		block_materials[key] = mat
+
+func _ensure_spawn_visible() -> void:
+	for x in range(-12, 13):
+		for z in range(-12, 13):
+			for y in range(MIN_Y, 20):
+				var pos := Vector3i(x, y, z)
+				if not blocks.has(pos):
+					continue
+				if _find_block_node(pos) != null:
+					continue
+				var ck := _chunk_key_from_world(x, z)
+				if not loaded_chunks.has(ck):
+					_load_chunk(ck)
+				if loaded_chunks.has(ck) and _find_block_node(pos) == null:
+					_spawn_block_in(loaded_chunks[ck], pos, str(blocks[pos]))
+
+func _check_fall_respawn() -> void:
+	if player == null:
+		return
+	if player.global_position.y < float(MIN_Y) - 8.0:
+		_snap_player_to_surface()
+		player.velocity = Vector3.ZERO
+		_show_toast("You fell — returned to surface", 2.0)
 
 func _ensure_spawn_pad() -> void:
 	for x in range(-4, 5):
@@ -298,6 +348,8 @@ func _is_exposed(pos: Vector3i) -> bool:
 	return false
 
 func _load_chunk(ck: Vector2i) -> void:
+	if loaded_chunks.has(ck):
+		return
 	var root := Node3D.new()
 	root.name = "Chunk_%d_%d" % [ck.x, ck.y]
 	chunk_root.add_child(root)
