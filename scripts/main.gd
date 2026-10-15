@@ -328,6 +328,40 @@ func _generate_world() -> void:
 					path = true
 			info["path"] = path
 			heights[key] = info
+
+	# Smooth only the designated walkable path corridor. Water channels and high
+	# mountain terrain are never modified by this pass.
+	for _path_pass in range(2):
+		var path_updates: Dictionary = {}
+		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+				var key := Vector2i(x, z)
+				var info: Dictionary = heights[key]
+				if not bool(info.get("path", false)) or bool(info["river"]):
+					continue
+				var original := float(info["hf"])
+				var total := original * 2.0
+				var weight := 2.0
+				for ox in [-1, 0, 1]:
+					for oz in [-1, 0, 1]:
+						if ox == 0 and oz == 0:
+							continue
+						var neighbor_key := Vector2i(x + ox, z + oz)
+						if not heights.has(neighbor_key):
+							continue
+						var neighbor: Dictionary = heights[neighbor_key]
+						if not bool(neighbor.get("path", false)) or bool(neighbor["river"]):
+							continue
+						var neighbor_weight := 1.0 if ox == 0 or oz == 0 else 0.6
+						total += float(neighbor["hf"]) * neighbor_weight
+						weight += neighbor_weight
+				path_updates[key] = clampf(lerpf(original, total / weight, 0.65), 3.0, 6.0)
+		for key in path_updates:
+			var path_info: Dictionary = heights[key]
+			path_info["hf"] = float(path_updates[key])
+			path_info["h"] = clampi(int(round(float(path_updates[key]))), 3, 6)
+			heights[key] = path_info
+
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var info: Dictionary = heights[Vector2i(x, z)]
