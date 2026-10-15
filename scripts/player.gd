@@ -1,5 +1,5 @@
 extends CharacterBody3D
-## Third-person voxel player — detailed body, dig, place, combat.
+## Third-person voxel player — dig, place, combat, touch controls.
 
 const SPEED := 7.4
 const SPRINT_MULT := 1.45
@@ -182,12 +182,12 @@ func _build_character_body() -> void:
 	_box(head_node, Vector3(-0.32, 0.02, 0.0), Vector3(0.08, 0.14, 0.10), MAT_SKIN)
 	_box(head_node, Vector3(0.32, 0.02, 0.0), Vector3(0.08, 0.14, 0.10), MAT_SKIN)
 	pickaxe_node = Node3D.new()
-	pickaxe_node.position = Vector3(0.12, -0.55, 0.15)
-	pickaxe_node.rotation_degrees = Vector3(10.0, 0.0, -25.0)
+	pickaxe_node.position = Vector3(0.06, -0.52, 0.08)
+	pickaxe_node.rotation_degrees = Vector3(95.0, 0.0, -12.0)
 	arm_r_pivot.add_child(pickaxe_node)
-	_box(pickaxe_node, Vector3(0.0, 0.0, 0.0), Vector3(0.07, 0.90, 0.07), MAT_HANDLE)
-	_box(pickaxe_node, Vector3(0.0, 0.52, 0.0), Vector3(0.52, 0.14, 0.13), MAT_DIAMOND, 0.25)
-	_box(pickaxe_node, Vector3(0.28, 0.52, 0.0), Vector3(0.12, 0.22, 0.10), MAT_DIAMOND, 0.25)
+	_box(pickaxe_node, Vector3(0.0, 0.0, 0.0), Vector3(0.07, 0.85, 0.07), MAT_HANDLE)
+	_box(pickaxe_node, Vector3(0.0, 0.48, 0.0), Vector3(0.48, 0.14, 0.12), MAT_DIAMOND, 0.25)
+	_box(pickaxe_node, Vector3(0.0, 0.48, 0.18), Vector3(0.14, 0.12, 0.16), MAT_DIAMOND, 0.25)
 
 func _build_third_person_camera() -> void:
 	camera = Camera3D.new()
@@ -411,9 +411,11 @@ func _physics_process(delta: float) -> void:
 		if arm_l_pivot: arm_l_pivot.rotation.x = -swing * 0.75
 		if arm_r_pivot and pickaxe_swing_t <= 0.0: arm_r_pivot.rotation.x = swing * 0.75
 	if pickaxe_node and pickaxe_swing_t > 0.0:
-		pickaxe_swing_t = maxf(0.0, pickaxe_swing_t - delta * 5.0)
+		pickaxe_swing_t = maxf(0.0, pickaxe_swing_t - delta * 5.5)
 		var st := 1.0 - pickaxe_swing_t
-		if arm_r_pivot: arm_r_pivot.rotation.x = -sin(st * PI) * 1.1
+		if arm_r_pivot:
+			arm_r_pivot.rotation.x = sin(st * PI) * 1.35
+			arm_r_pivot.rotation.z = -sin(st * PI) * 0.25
 
 func _interact(place: bool) -> void:
 	pickaxe_swing_t = 1.0
