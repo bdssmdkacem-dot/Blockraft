@@ -9,6 +9,7 @@ func _fail(message: String, code: int) -> void:
 
 func _run_checks() -> void:
     root.size = Vector2i(1280, 720)
+    print("GAMEPLAY_ACCEPTANCE: loading gameplay scene")
     var packed := load("res://scenes/main.tscn") as PackedScene
     if packed == null:
         _fail("main.tscn failed to load", 2)
@@ -23,6 +24,7 @@ func _run_checks() -> void:
     while waited < 120 and (not scene.world_initialized or scene.loaded_chunks.size() < 5):
         await process_frame
         waited += 1
+    print("GAMEPLAY_ACCEPTANCE: world wait finished frames=", waited, " blocks=", scene.blocks.size(), " chunks=", scene.loaded_chunks.size())
     if not scene.world_initialized:
         _fail("full world initialization did not finish", 14)
         return
@@ -73,7 +75,9 @@ func _run_checks() -> void:
         _fail("mining a placed block did not remove it from the world model", 9)
         return
 
+    print("GAMEPLAY_ACCEPTANCE: testing save blocks=", scene.blocks.size())
     scene.save_world()
+    print("GAMEPLAY_ACCEPTANCE: save_world returned")
     var save_path := "user://world_blocks.json"
     if not FileAccess.file_exists(save_path):
         _fail("world save file was not created", 10)
@@ -90,7 +94,8 @@ func _run_checks() -> void:
     if not snapshot_text.contains("blocks") or not snapshot_text.contains("[") :
         _fail("world save does not contain a blocks array", 12)
         return
-    if snapshot_text.contains("[0,24,0,"):
+    var probe_record := "[%d,%d,%d," % [probe.x, probe.y, probe.z]
+    if snapshot_text.contains(probe_record):
         _fail("deleted block was still present in the saved snapshot", 13)
         return
 
