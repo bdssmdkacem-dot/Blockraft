@@ -19,8 +19,27 @@ func _run_checks() -> void:
         return
     root.add_child(scene)
     current_scene = scene
-    await process_frame
-    await process_frame
+    var waited := 0
+    while waited < 120 and (not scene.world_initialized or scene.loaded_chunks.size() < 5):
+        await process_frame
+        waited += 1
+    if not scene.world_initialized:
+        _fail("full world initialization did not finish", 14)
+        return
+    if scene.loaded_chunks.size() < 5:
+        _fail("nearby world chunks did not stream in", 15)
+        return
+    if scene.blocks.size() < 20000:
+        _fail("generated map is incomplete: %d blocks" % scene.blocks.size(), 16)
+        return
+    var fauna := scene.get_node_or_null("FloraFauna")
+    if fauna == null:
+        _fail("flora/fauna system was not restored", 17)
+        return
+    var animals := scene.find_children("Animal_*", "CharacterBody3D", true, false)
+    if animals.is_empty():
+        _fail("generated world has no animal assets", 18)
+        return
 
     var player := scene.get_node_or_null("Player") as CharacterBody3D
     if player == null:
@@ -47,6 +66,7 @@ func _run_checks() -> void:
         _fail("mining a placed block did not remove it from the world model", 9)
         return
 
+    scene.save_world()
     var save_path := "user://world_blocks.json"
     if not FileAccess.file_exists(save_path):
         _fail("world save file was not created", 10)
