@@ -31,6 +31,8 @@ jobs:
         run: godot --headless --path . --script res://tools/test_gameplay_acceptance.gd
       - name: Verify reference-aligned asset prototypes
         run: godot --headless --path . --script res://tools/test_reference_assets.gd
+      - name: Verify animal size and visible geometry
+        run: godot --headless --path . --script res://tools/test_animal_readability.gd
       - name: Install virtual display for rendered capture
         run: |
           apt-get update
