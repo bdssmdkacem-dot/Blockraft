@@ -537,20 +537,70 @@ func _is_exposed(pos: Vector3i) -> bool:
 
 func _load_chunk(ck: Vector2i) -> void:
 	if loaded_chunks.has(ck): return
+	var build_started := Time.get_ticks_msec()
 	var root := Node3D.new()
 	root.name = "Chunk_%d_%d" % [ck.x, ck.y]
 	chunk_root.add_child(root)
 	loaded_chunks[ck] = root
 	var x0 := ck.x * CHUNK_SIZE
 	var z0 := ck.y * CHUNK_SIZE
+	var render_groups: Dictionary = {}
+	var block_count := 0
 	for x in range(x0, x0 + CHUNK_SIZE):
 		for z in range(z0, z0 + CHUNK_SIZE):
 			for y in range(MIN_Y, 28):
 				var pos := Vector3i(x, y, z)
 				if not blocks.has(pos): continue
 				var kind := str(blocks[pos])
-				if _is_exposed(pos) or kind in ["chest", "water"] or (kind in ["coal", "iron", "gold", "crystal"] and _is_exposed(pos)):
-					_spawn_block_in(root, pos, kind)
+				if not (_is_exposed(pos) or kind in ["chest", "water"]):
+					continue
+				_spawn_block_collision(root, pos, kind)
+				if not render_groups.has(kind):
+					render_groups[kind] = []
+				render_groups[kind].append(Transform3D(Basis.IDENTITY, Vector3(float(x) + 0.5, float(y) + 0.5, float(z) + 0.5)))
+				block_count += 1
+	_build_chunk_multimeshes(root, render_groups)
+	if OS.is_debug_build():
+		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
+
+func _spawn_block_collision(parent: Node, pos: Vector3i, kind: String) -> void:
+	var body := StaticBody3D.new()
+	body.position = Vector3(float(pos.x) + 0.5, float(pos.y) + 0.5, float(pos.z) + 0.5)
+	body.collision_layer = 1
+	body.collision_mask = 0
+	body.set_meta("block_position", pos)
+	body.set_meta("block_kind", kind)
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3.ONE
+	collision.shape = shape
+	body.add_child(collision)
+	parent.add_child(body)
+
+func _build_chunk_multimeshes(parent: Node3D, render_groups: Dictionary) -> void:
+	for kind_variant in render_groups.keys():
+		var kind := str(kind_variant)
+		var transforms: Array = render_groups[kind_variant]
+		if transforms.is_empty(): continue
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = block_mesh
+		mm.instance_count = transforms.size()
+		for i in range(transforms.size()):
+			mm.set_instance_transform(i, transforms[i])
+		var mi := MultiMeshInstance3D.new()
+		mi.name = "Batch_" + kind
+		mi.multimesh = mm
+		mi.material_override = block_materials.get(kind, block_materials["stone"])
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		parent.add_child(mi)
+
+func _rebuild_chunk(ck: Vector2i) -> void:
+	if not loaded_chunks.has(ck): return
+	var old_root: Node = loaded_chunks[ck]
+	loaded_chunks.erase(ck)
+	if is_instance_valid(old_root): old_root.queue_free()
+	_load_chunk(ck)
 
 func _spawn_block_in(parent: Node, pos: Vector3i, kind: String) -> void:
 	var body := StaticBody3D.new()
@@ -594,9 +644,12 @@ func remove_block(pos: Vector3i) -> void:
 	if mining_fx and mining_fx.has_method("play_break"):
 		mining_fx.play_break(Vector3(pos), kind)
 	blocks.erase(pos)
-	var node := _find_block_node(pos)
-	if node: node.queue_free()
-	_reveal_neighbors(pos)
+	_rebuild_chunk(_chunk_key_from_world(pos.x, pos.z))
+	# A boundary edit can expose faces in the neighboring chunk.
+	for d in [Vector3i(1,0,0), Vector3i(-1,0,0), Vector3i(0,0,1), Vector3i(0,0,-1)]:
+		var neighbor_ck := _chunk_key_from_world(pos.x + d.x, pos.z + d.z)
+		if neighbor_ck != _chunk_key_from_world(pos.x, pos.z):
+			_rebuild_chunk(neighbor_ck)
 	mark_world_dirty()
 
 func place_block(pos: Vector3i, kind: String = "dirt") -> void:
@@ -604,7 +657,7 @@ func place_block(pos: Vector3i, kind: String = "dirt") -> void:
 	if player and player.global_position.distance_to(Vector3(pos) + Vector3(0.5, 0.5, 0.5)) < 1.8: return
 	blocks[pos] = kind
 	var ck := _chunk_key_from_world(pos.x, pos.z)
-	if loaded_chunks.has(ck): _spawn_block_in(loaded_chunks[ck], pos, kind)
+	_rebuild_chunk(ck)
 	if mining_fx and mining_fx.has_method("play_place"):
 		mining_fx.play_place(Vector3(pos), kind)
 	mark_world_dirty()
