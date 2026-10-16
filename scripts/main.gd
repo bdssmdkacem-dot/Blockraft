@@ -583,7 +583,7 @@ func _find_block_node(pos: Vector3i) -> Node:
 
 func _reveal_neighbors(pos: Vector3i) -> void:
 	for d in [Vector3i(1,0,0), Vector3i(-1,0,0), Vector3i(0,1,0), Vector3i(0,-1,0), Vector3i(0,0,1), Vector3i(0,0,-1)]:
-		var n := pos + d
+		var n: Vector3i = pos + d
 		if not blocks.has(n) or _find_block_node(n) != null: continue
 		var ck := _chunk_key_from_world(n.x, n.z)
 		if loaded_chunks.has(ck):
