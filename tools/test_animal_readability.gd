@@ -20,7 +20,10 @@ func _run_checks() -> void:
 		await process_frame
 		await process_frame
 
-		var collision := animal.get_node_or_null("CollisionShape3D") as CollisionShape3D
+		# Child names can be auto-adjusted by Godot; assert the actual node type
+		# rather than relying on the default name CollisionShape3D.
+		var colliders := animal.find_children("*", "CollisionShape3D", true, false)
+		var collision: CollisionShape3D = colliders[0] as CollisionShape3D if not colliders.is_empty() else null
 		if collision == null or not (collision.shape is CapsuleShape3D):
 			_fail("animal %d has no capsule collision" % kind, 3)
 			return
