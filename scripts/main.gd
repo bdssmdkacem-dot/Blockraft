@@ -449,6 +449,8 @@ func _force_solid_spawn_island() -> void:
 						blocks[pos] = "grass"
 
 func _ensure_spawn_pad() -> void:
+	# Always repair the spawn surface, including restored saves. A save can be
+	# structurally valid while its spawn columns are missing or obstructed.
 	for x in range(-6, 7):
 		for z in range(-6, 7):
 			var top := MIN_Y
@@ -458,6 +460,14 @@ func _ensure_spawn_pad() -> void:
 			if top < 3:
 				for y in range(MIN_Y, 4):
 					blocks[Vector3i(x, y, z)] = "dirt" if y < 3 else "grass"
+	# Reserve a clear, level landing area so trees/old edits cannot leave the
+	# player trapped inside terrain or looking out into the sky.
+	for x in range(-3, 4):
+		for z in range(-3, 4):
+			for y in range(5, 12):
+				blocks.erase(Vector3i(x, y, z))
+			blocks[Vector3i(x, 3, z)] = "dirt"
+			blocks[Vector3i(x, 4, z)] = "grass"
 
 func _snap_player_to_surface() -> void:
 	if player == null: return
