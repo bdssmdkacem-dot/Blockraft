@@ -6,22 +6,22 @@ enum State { WANDER, CHASE, ATTACK, FLEE, HURT }
 
 const KIND_DATA := {
 	Kind.FOX: {
-		"scale": 0.85, "speed": 4.4, "hp": 18.0, "dmg": 6.0,
+		"scale": 1.25, "speed": 4.0, "hp": 18.0, "dmg": 6.0,
 		"aggro": 10.0, "hit_range": 1.8, "attack_cd": 0.85,
 		"color_body": Color("#c46828"), "color_spot": Color("#f0e8e0")
 	},
 	Kind.CHICKEN: {
-		"scale": 0.65, "speed": 5.2, "hp": 14.0, "dmg": 5.0,
+		"scale": 1.00, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
 		"aggro": 11.0, "hit_range": 2.0, "attack_cd": 0.65,
 		"color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")
 	},
 	Kind.COW: {
-		"scale": 1.15, "speed": 2.8, "hp": 32.0, "dmg": 8.0,
+		"scale": 1.45, "speed": 2.6, "hp": 32.0, "dmg": 8.0,
 		"aggro": 7.0, "hit_range": 2.1, "attack_cd": 1.1,
 		"color_body": Color("#f8f6f0"), "color_spot": Color("#2c2c2c")
 	},
 	Kind.SHEEP: {
-		"scale": 0.95, "speed": 3.2, "hp": 16.0, "dmg": 0.0,
+		"scale": 1.30, "speed": 3.0, "hp": 16.0, "dmg": 0.0,
 		"aggro": 0.0, "hit_range": 0.0, "attack_cd": 1.0,
 		"color_body": Color("#f5f5f5"), "color_spot": Color("#e8e4dc")
 	},
@@ -203,9 +203,13 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.40 * s, 0.34 * s, 0.48 * s), body_c)
 			_box(_body_root, Vector3(0, 0.52 * s, 0.18 * s), Vector3(0.28 * s, 0.26 * s, 0.28 * s), body_c)
 			_box(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.10 * s, 0.08 * s, 0.18 * s), spot_c)
-			_box(_body_root, Vector3(0, 0.62 * s, 0.12 * s), Vector3(0.08 * s, 0.16 * s, 0.08 * s), spot_c)
-			_box(_body_root, Vector3(-0.12 * s, 0.12 * s, 0), Vector3(0.08 * s, 0.22 * s, 0.08 * s), Color("#e8c040"))
-			_box(_body_root, Vector3(0.12 * s, 0.12 * s, 0), Vector3(0.08 * s, 0.22 * s, 0.08 * s), Color("#e8c040"))
+			# Oversized comb, bright beak and readable eyes give the chicken a clear mobile silhouette.
+			_box(_body_root, Vector3(0, 0.72 * s, 0.17 * s), Vector3(0.13 * s, 0.18 * s, 0.10 * s), Color("#c9342b"))
+			_box(_body_root, Vector3(0, 0.49 * s, 0.34 * s), Vector3(0.16 * s, 0.10 * s, 0.20 * s), Color("#f4a51c"))
+			_box(_body_root, Vector3(-0.105 * s, 0.57 * s, 0.29 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
+			_box(_body_root, Vector3(0.105 * s, 0.57 * s, 0.29 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
+			_box(_body_root, Vector3(-0.12 * s, 0.12 * s, 0), Vector3(0.09 * s, 0.22 * s, 0.09 * s), Color("#e8c040"))
+			_box(_body_root, Vector3(0.12 * s, 0.12 * s, 0), Vector3(0.09 * s, 0.22 * s, 0.09 * s), Color("#e8c040"))
 		Kind.FOX:
 			_box(_body_root, Vector3(0, 0.35 * s, 0), Vector3(0.42 * s, 0.32 * s, 0.70 * s), body_c)
 			_box(_body_root, Vector3(0, 0.48 * s, 0.32 * s), Vector3(0.30 * s, 0.28 * s, 0.30 * s), body_c)
@@ -213,6 +217,12 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0, 0.38 * s, -0.58 * s), Vector3(0.12 * s, 0.12 * s, 0.12 * s), spot_c)
 			_box(_body_root, Vector3(-0.12 * s, 0.12 * s, 0.15 * s), Vector3(0.10 * s, 0.24 * s, 0.10 * s), body_c)
 			_box(_body_root, Vector3(0.12 * s, 0.12 * s, 0.15 * s), Vector3(0.10 * s, 0.24 * s, 0.10 * s), body_c)
+			# Fox ears, pale muzzle and dark eyes make it distinct from livestock.
+			_box(_body_root, Vector3(-0.12 * s, 0.70 * s, 0.29 * s), Vector3(0.11 * s, 0.22 * s, 0.10 * s), body_c)
+			_box(_body_root, Vector3(0.12 * s, 0.70 * s, 0.29 * s), Vector3(0.11 * s, 0.22 * s, 0.10 * s), body_c)
+			_box(_body_root, Vector3(0, 0.38 * s, 0.49 * s), Vector3(0.20 * s, 0.14 * s, 0.22 * s), spot_c)
+			_box(_body_root, Vector3(-0.09 * s, 0.52 * s, 0.46 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
+			_box(_body_root, Vector3(0.09 * s, 0.52 * s, 0.46 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
 		Kind.COW:
 			_box(_body_root, Vector3(0, 0.55 * s, 0), Vector3(0.55 * s, 0.45 * s, 0.85 * s), body_c)
 			_box(_body_root, Vector3(0.12 * s, 0.55 * s, 0.1 * s), Vector3(0.22 * s, 0.35 * s, 0.30 * s), spot_c)
@@ -221,6 +231,14 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0.18 * s, 0.20 * s, 0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(-0.18 * s, 0.20 * s, -0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.18 * s, 0.20 * s, -0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
+			# Cow face, pink muzzle, eyes, ears and short horns.
+			_box(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.28 * s, 0.18 * s, 0.12 * s), Color("#e9a5a0"))
+			_box(_body_root, Vector3(-0.105 * s, 0.69 * s, 0.63 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
+			_box(_body_root, Vector3(0.105 * s, 0.69 * s, 0.63 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
+			_box(_body_root, Vector3(-0.23 * s, 0.73 * s, 0.43 * s), Vector3(0.18 * s, 0.09 * s, 0.16 * s), body_c)
+			_box(_body_root, Vector3(0.23 * s, 0.73 * s, 0.43 * s), Vector3(0.18 * s, 0.09 * s, 0.16 * s), body_c)
+			_box(_body_root, Vector3(-0.12 * s, 0.83 * s, 0.47 * s), Vector3(0.07 * s, 0.17 * s, 0.07 * s), Color("#d8c9a0"))
+			_box(_body_root, Vector3(0.12 * s, 0.83 * s, 0.47 * s), Vector3(0.07 * s, 0.17 * s, 0.07 * s), Color("#d8c9a0"))
 		Kind.SHEEP:
 			_box(_body_root, Vector3(0, 0.42 * s, 0), Vector3(0.50 * s, 0.42 * s, 0.65 * s), body_c)
 			_box(_body_root, Vector3(0, 0.55 * s, 0.38 * s), Vector3(0.28 * s, 0.26 * s, 0.28 * s), Color("#2a2a2a"))
@@ -228,6 +246,15 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0.14 * s, 0.16 * s, 0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
 			_box(_body_root, Vector3(-0.14 * s, 0.16 * s, -0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
 			_box(_body_root, Vector3(0.14 * s, 0.16 * s, -0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
+			# Layered wool lobes soften the sheep silhouette; dark face contrasts with fleece.
+			for wool_pos in [
+				Vector3(-0.20, 0.55, 0.0), Vector3(0.20, 0.55, 0.0),
+				Vector3(-0.15, 0.65, -0.20), Vector3(0.15, 0.65, -0.20),
+				Vector3(0.0, 0.68, 0.12), Vector3(0.0, 0.35, -0.30)
+			]:
+				_box(_body_root, wool_pos * s, Vector3(0.24 * s, 0.22 * s, 0.24 * s), Color("#fffdf7"))
+			_box(_body_root, Vector3(-0.08 * s, 0.60 * s, 0.54 * s), Vector3(0.045 * s, 0.05 * s, 0.035 * s), Color("#f5f0e8"))
+			_box(_body_root, Vector3(0.08 * s, 0.60 * s, 0.54 * s), Vector3(0.045 * s, 0.05 * s, 0.035 * s), Color("#f5f0e8"))
 
 func _pick_new_direction() -> void:
 	var a := randf() * TAU
