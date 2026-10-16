@@ -118,7 +118,11 @@ func _ready() -> void:
 	snode.load_settings()
 	_look_sens_mult = float(snode.look_sensitivity)
 	snode.apply_audio()
-	touch_controls_enabled = OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
+	# Android exports may not expose the generic "mobile" feature flag consistently.
+	# Detect the runtime platform directly so touch controls are always created on phones.
+	var platform_name := OS.get_name().to_lower()
+	touch_controls_enabled = platform_name == "android" or platform_name == "ios" or OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
+	print("BLOCKRAFT_INPUT platform=", OS.get_name(), " touch_controls=", touch_controls_enabled)
 	if touch_controls_enabled:
 		_build_touch_controls()
 	else:
