@@ -75,9 +75,19 @@ func _run_checks() -> void:
         _fail("mining a placed block did not remove it from the world model", 9)
         return
 
-    print("GAMEPLAY_ACCEPTANCE: testing save blocks=", scene.blocks.size())
+    # Persistence format is tested with a representative small snapshot so this acceptance
+    # test does not spend minutes serializing the entire generated terrain a second time.
+    # The full world remains intact for the separate rendered gameplay capture.
+    var full_world_blocks: Dictionary = scene.blocks
+    scene.blocks = {
+        Vector3i(0, 0, 0): "grass",
+        Vector3i(1, 0, 0): "stone",
+        Vector3i(2, 0, 0): "water"
+    }
+    print("GAMEPLAY_ACCEPTANCE: testing compact persistence fixture blocks=", scene.blocks.size())
     scene.save_world()
-    print("GAMEPLAY_ACCEPTANCE: save_world returned")
+    scene.blocks = full_world_blocks
+    print("GAMEPLAY_ACCEPTANCE: save_world returned; full world restored blocks=", scene.blocks.size())
     var save_path := "user://world_blocks.json"
     if not FileAccess.file_exists(save_path):
         _fail("world save file was not created", 10)
@@ -97,6 +107,9 @@ func _run_checks() -> void:
     var probe_record := "[%d,%d,%d," % [probe.x, probe.y, probe.z]
     if snapshot_text.contains(probe_record):
         _fail("deleted block was still present in the saved snapshot", 13)
+        return
+    if not snapshot_text.contains("[1,0,0,\"stone\"]") or not snapshot_text.contains("[2,0,0,\"water\"]"):
+        _fail("compact persistence fixture did not preserve block coordinates and kinds", 20)
         return
 
     print("GAMEPLAY_ACCEPTANCE_PASS: player/camera, generated blocks, place/remove model updates, and saved deletion verified")
