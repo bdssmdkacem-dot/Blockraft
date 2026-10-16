@@ -545,7 +545,9 @@ func _load_chunk(ck: Vector2i) -> void:
 	var x0 := ck.x * CHUNK_SIZE
 	var z0 := ck.y * CHUNK_SIZE
 	var render_groups: Dictionary = {}
+	var collision_faces := PackedVector3Array()
 	var block_count := 0
+	var collision_face_count := 0
 	for x in range(x0, x0 + CHUNK_SIZE):
 		for z in range(z0, z0 + CHUNK_SIZE):
 			for y in range(MIN_Y, 28):
@@ -554,28 +556,63 @@ func _load_chunk(ck: Vector2i) -> void:
 				var kind := str(blocks[pos])
 				if not (_is_exposed(pos) or kind in ["chest", "water"]):
 					continue
-				_spawn_block_collision(root, pos, kind)
+				if kind != "water":
+					collision_face_count += _append_exposed_collision_faces(collision_faces, pos)
 				if not render_groups.has(kind):
 					render_groups[kind] = []
 				render_groups[kind].append(Transform3D(Basis.IDENTITY, Vector3(float(x) + 0.5, float(y) + 0.5, float(z) + 0.5)))
 				block_count += 1
 	_build_chunk_multimeshes(root, render_groups)
+	if not collision_faces.is_empty():
+		var body := StaticBody3D.new()
+		body.name = "ChunkCollision"
+		body.collision_layer = 1
+		body.collision_mask = 0
+		body.set_meta("chunk_key", ck)
+		var collision := CollisionShape3D.new()
+		collision.name = "ChunkCollisionShape"
+		var shape := ConcavePolygonShape3D.new()
+		shape.set_faces(collision_faces)
+		collision.shape = shape
+		body.add_child(collision)
+		root.add_child(body)
 	if OS.is_debug_build():
-		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
+		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " collision_faces=", collision_face_count, " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
 
-func _spawn_block_collision(parent: Node, pos: Vector3i, kind: String) -> void:
-	var body := StaticBody3D.new()
-	body.position = Vector3(float(pos.x) + 0.5, float(pos.y) + 0.5, float(pos.z) + 0.5)
-	body.collision_layer = 1
-	body.collision_mask = 0
-	body.set_meta("block_position", pos)
-	body.set_meta("block_kind", kind)
-	var collision := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = Vector3.ONE
-	collision.shape = shape
-	body.add_child(collision)
-	parent.add_child(body)
+func _append_exposed_collision_faces(faces: PackedVector3Array, pos: Vector3i) -> int:
+	var x := float(pos.x)
+	var y := float(pos.y)
+	var z := float(pos.z)
+	var count := 0
+	# Build only boundary faces. One concave shape replaces hundreds of per-block
+	# StaticBody3D + BoxShape3D pairs while preserving exact voxel hit locations.
+	if not blocks.has(pos + Vector3i(1, 0, 0)) or str(blocks.get(pos + Vector3i(1, 0, 0), "")) == "water":
+		_append_collision_quad(faces, Vector3(x + 1, y, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y, z + 1))
+		count += 1
+	if not blocks.has(pos + Vector3i(-1, 0, 0)) or str(blocks.get(pos + Vector3i(-1, 0, 0), "")) == "water":
+		_append_collision_quad(faces, Vector3(x, y, z), Vector3(x, y, z + 1), Vector3(x, y + 1, z + 1), Vector3(x, y + 1, z))
+		count += 1
+	if not blocks.has(pos + Vector3i(0, 1, 0)) or str(blocks.get(pos + Vector3i(0, 1, 0), "")) == "water":
+		_append_collision_quad(faces, Vector3(x, y + 1, z), Vector3(x, y + 1, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y + 1, z))
+		count += 1
+	if not blocks.has(pos + Vector3i(0, -1, 0)) or str(blocks.get(pos + Vector3i(0, -1, 0), "")) == "water":
+		_append_collision_quad(faces, Vector3(x, y, z), Vector3(x + 1, y, z), Vector3(x + 1, y, z + 1), Vector3(x, y, z + 1))
+		count += 1
+	if not blocks.has(pos + Vector3i(0, 0, 1)) or str(blocks.get(pos + Vector3i(0, 0, 1), "")) == "water":
+		_append_collision_quad(faces, Vector3(x, y, z + 1), Vector3(x + 1, y, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x, y + 1, z + 1))
+		count += 1
+	if not blocks.has(pos + Vector3i(0, 0, -1)) or str(blocks.get(pos + Vector3i(0, 0, -1), "")) == "water":
+		_append_collision_quad(faces, Vector3(x, y, z), Vector3(x, y + 1, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y, z))
+		count += 1
+	return count
+
+func _append_collision_quad(faces: PackedVector3Array, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
+	faces.append(a)
+	faces.append(b)
+	faces.append(c)
+	faces.append(a)
+	faces.append(c)
+	faces.append(d)
 
 func _build_chunk_multimeshes(parent: Node3D, render_groups: Dictionary) -> void:
 	for kind_variant in render_groups.keys():
