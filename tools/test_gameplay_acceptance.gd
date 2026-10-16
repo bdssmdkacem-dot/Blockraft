@@ -31,6 +31,61 @@ func _run_checks() -> void:
     if scene.loaded_chunks.size() < 5:
         _fail("nearby world chunks did not stream in", 15)
         return
+
+    # Chunk rendering should use a handful of draw batches and one static collision
+    # shape, not hundreds of physics bodies for individual voxel blocks.
+    var collision_chunk: Node = null
+    var collision_body: StaticBody3D = null
+    var collision_key := Vector2i.ZERO
+    for key_variant in scene.loaded_chunks.keys():
+        var key: Vector2i = key_variant
+        var chunk: Node = scene.loaded_chunks[key]
+        if chunk.get_child_count() > 10:
+            _fail("chunk %s has too many direct nodes: %d" % [str(key), chunk.get_child_count()], 21)
+            return
+        var static_bodies := 0
+        for child in chunk.get_children():
+            if child is StaticBody3D and child.has_meta("chunk_key"):
+                static_bodies += 1
+                collision_chunk = chunk
+                collision_body = child as StaticBody3D
+                collision_key = key
+        if static_bodies > 1:
+            _fail("chunk %s has more than one batched collision body" % str(key), 22)
+            return
+    if collision_body == null:
+        _fail("no batched chunk collision body was generated", 23)
+        return
+    var chunk_shape := collision_body.get_node_or_null("ChunkCollisionShape") as CollisionShape3D
+    if chunk_shape == null or not (chunk_shape.shape is ConcavePolygonShape3D):
+        _fail("chunk collision is not using one concave static shape", 24)
+        return
+
+    var player_for_collision := scene.get_node_or_null("Player")
+    var resolved_sample := false
+    for pos_variant in scene.blocks.keys():
+        var block_pos: Vector3i = pos_variant
+        var key_for_block: Vector2i = scene._chunk_key_from_world(block_pos.x, block_pos.z)
+        if key_for_block != collision_key or str(scene.blocks[block_pos]) == "water":
+            continue
+        for direction in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+            var neighbor: Vector3i = block_pos + direction
+            if scene.blocks.has(neighbor) and str(scene.blocks[neighbor]) != "water":
+                continue
+            var normal := Vector3(direction)
+            var hit_point := Vector3(block_pos) + Vector3(0.5, 0.5, 0.5) + normal * 0.5
+            var resolved: Vector3i = player_for_collision._resolve_block_hit(collision_body, {"position": hit_point, "normal": normal})
+            if resolved != block_pos:
+                _fail("batched collision hit resolved to %s instead of %s" % [str(resolved), str(block_pos)], 25)
+                return
+            resolved_sample = true
+            break
+        if resolved_sample:
+            break
+    if not resolved_sample:
+        _fail("could not find a solid exposed voxel for batched collision mapping", 26)
+        return
+    print("CHUNK_COLLISION_ACCEPTANCE_PASS: chunks use <=10 nodes, one static concave collision body, and voxel hit mapping works")
     if scene.blocks.size() < 20000:
         _fail("generated map is incomplete: %d blocks" % scene.blocks.size(), 16)
         return
