@@ -523,6 +523,27 @@ func _block_hardness(kind: String) -> float:
 		_:
 			return 0.4
 
+func _resolve_block_hit(collider: Object, hit: Dictionary) -> Vector3i:
+	if collider == null:
+		return Vector3i(99999, 99999, 99999)
+	if collider.has_meta("block_position"):
+		return collider.get_meta("block_position") as Vector3i
+	if not collider.has_meta("chunk_key"):
+		return Vector3i(99999, 99999, 99999)
+	var world = get_parent()
+	if world == null:
+		return Vector3i(99999, 99999, 99999)
+	var point: Vector3 = hit.get("position", Vector3.ZERO)
+	var normal: Vector3 = hit.get("normal", Vector3.ZERO)
+	# Concave chunk surfaces are aligned to voxel boundaries. Move a tiny amount
+	# inward along the hit normal to recover the block cell without floating-edge errors.
+	var inside := point - normal * 0.01
+	var pos := Vector3i(floori(inside.x), floori(inside.y), floori(inside.z))
+	var world_blocks: Dictionary = world.get("blocks")
+	if world_blocks.has(pos):
+		return pos
+	return Vector3i(99999, 99999, 99999)
+
 func _tick_mining(delta: float) -> void:
 	var world = get_parent()
 	if world == null:
@@ -548,11 +569,12 @@ func _tick_mining(delta: float) -> void:
 				if world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
 					world.mining_fx.play_hit(hit.get("position", global_position))
 		return
-	if not collider.has_meta("block_position"):
+	var pos := _resolve_block_hit(collider, hit)
+	if pos.x == 99999:
 		_mine_progress = 0.0
 		return
-	var pos: Vector3i = collider.get_meta("block_position")
-	var kind := str(collider.get_meta("block_kind")) if collider.has_meta("block_kind") else "dirt"
+	var world_blocks: Dictionary = world.get("blocks")
+	var kind := str(world_blocks.get(pos, collider.get_meta("block_kind") if collider.has_meta("block_kind") else "dirt"))
 	if pos != _mine_pos:
 		_mine_pos = pos
 		_mine_progress = 0.0
@@ -591,9 +613,9 @@ func _interact(place: bool) -> void:
 			if world and world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
 				world.mining_fx.play_hit(hit.get("position", global_position))
 		return
-	if not collider.has_meta("block_position"):
+	var pos := _resolve_block_hit(collider, hit)
+	if pos.x == 99999:
 		return
-	var pos: Vector3i = collider.get_meta("block_position")
 	if place:
 		var normal: Vector3 = hit.get("normal")
 		var target := pos + Vector3i(roundi(normal.x), roundi(normal.y), roundi(normal.z))
