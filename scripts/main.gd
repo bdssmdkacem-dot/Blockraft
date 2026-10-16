@@ -4,7 +4,7 @@ extends Node3D
 const WORLD_RADIUS := 56
 const MIN_Y := -6
 const CHUNK_SIZE := 16
-const VIEW_CHUNKS := 4
+const VIEW_CHUNKS := 3
 const MAX_CHUNK_BUILDS_PER_FRAME := 1
 const SAVE_PATH := "user://world_blocks.json"
 const SAVE_VERSION := 14
@@ -543,14 +543,13 @@ func _load_chunk(ck: Vector2i) -> void:
 	loaded_chunks[ck] = root
 	var x0 := ck.x * CHUNK_SIZE
 	var z0 := ck.y * CHUNK_SIZE
-	var near_spawn: bool = abs(ck.x) <= 2 and abs(ck.y) <= 2
 	for x in range(x0, x0 + CHUNK_SIZE):
 		for z in range(z0, z0 + CHUNK_SIZE):
 			for y in range(MIN_Y, 28):
 				var pos := Vector3i(x, y, z)
 				if not blocks.has(pos): continue
 				var kind := str(blocks[pos])
-				if near_spawn or kind in ["coal", "iron", "gold", "crystal", "chest", "water"] or _is_exposed(pos):
+				if _is_exposed(pos) or kind in ["chest", "water"] or (kind in ["coal", "iron", "gold", "crystal"] and _is_exposed(pos)):
 					_spawn_block_in(root, pos, kind)
 
 func _spawn_block_in(parent: Node, pos: Vector3i, kind: String) -> void:
