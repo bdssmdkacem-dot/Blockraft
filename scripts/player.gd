@@ -237,24 +237,57 @@ func _build_touch_controls() -> void:
 	_touch_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_touch_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_touch_root)
+
+	# Visible virtual joystick: users must not have to guess where to touch.
+	_joy_base_ui = Control.new()
+	_joy_base_ui.name = "MoveJoystickBase"
+	_joy_base_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_joy_base_ui.custom_minimum_size = Vector2(144, 144)
+	_touch_root.add_child(_joy_base_ui)
+	var base_panel := Panel.new()
+	base_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	base_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var base_style := StyleBoxFlat.new()
+	base_style.bg_color = Color(0.05, 0.08, 0.10, 0.48)
+	base_style.border_color = Color(0.82, 0.91, 0.95, 0.8)
+	base_style.set_border_width_all(3)
+	base_style.set_corner_radius_all(72)
+	base_panel.add_theme_stylebox_override("panel", base_style)
+	_joy_base_ui.add_child(base_panel)
+	_joy_knob_ui = Control.new()
+	_joy_knob_ui.name = "MoveJoystickKnob"
+	_joy_knob_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_joy_knob_ui.custom_minimum_size = Vector2(58, 58)
+	_joy_base_ui.add_child(_joy_knob_ui)
+	var knob_panel := Panel.new()
+	knob_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	knob_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var knob_style := StyleBoxFlat.new()
+	knob_style.bg_color = Color(0.45, 0.78, 0.88, 0.88)
+	knob_style.border_color = Color(1, 1, 1, 0.95)
+	knob_style.set_border_width_all(2)
+	knob_style.set_corner_radius_all(29)
+	knob_panel.add_theme_stylebox_override("panel", knob_style)
+	_joy_knob_ui.add_child(knob_panel)
+
 	_action_column = VBoxContainer.new()
-	_action_column.add_theme_constant_override("separation", 14)
+	_action_column.add_theme_constant_override("separation", 10)
 	_touch_root.add_child(_action_column)
 	var jump := Button.new()
 	jump.text = "JUMP"
-	jump.custom_minimum_size = Vector2(150, 68)
+	jump.custom_minimum_size = Vector2(116, 58)
 	jump.button_down.connect(func(): touch_jump_pressed = true; jump_buffer = 0.18)
 	jump.button_up.connect(func(): touch_jump_pressed = false)
 	_action_column.add_child(jump)
 	var mine := Button.new()
 	mine.text = "MINE"
-	mine.custom_minimum_size = Vector2(150, 64)
+	mine.custom_minimum_size = Vector2(116, 58)
 	mine.button_down.connect(func(): _mine_held = true)
 	mine.button_up.connect(func(): _mine_held = false)
 	_action_column.add_child(mine)
 	var place := Button.new()
 	place.text = "PLACE"
-	place.custom_minimum_size = Vector2(150, 64)
+	place.custom_minimum_size = Vector2(116, 58)
 	place.pressed.connect(_interact.bind(true))
 	_action_column.add_child(place)
 	_layout_touch()
@@ -263,7 +296,16 @@ func _build_touch_controls() -> void:
 func _layout_touch() -> void:
 	if _action_column == null: return
 	var vs := get_viewport().get_visible_rect().size
-	_action_column.position = Vector2(vs.x - 190.0, vs.y - 270.0)
+	if _joy_base_ui:
+		_joy_base_ui.position = Vector2(28.0, vs.y - 174.0)
+	if _joy_knob_ui:
+		_joy_knob_ui.position = Vector2(43.0, 43.0)
+	_action_column.position = Vector2(vs.x - 142.0, vs.y - 205.0)
+
+func _update_joystick_visual() -> void:
+	if _joy_knob_ui == null: return
+	var offset := _touch_move_target * 43.0
+	_joy_knob_ui.position = Vector2(43.0, 43.0) + offset
 
 func _input(event: InputEvent) -> void:
 	if not touch_controls_enabled: return
@@ -271,17 +313,21 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
-			if touch.position.x < vs.x * 0.5:
+			var joy_rect := Rect2(Vector2(0.0, vs.y - 205.0), Vector2(205.0, 205.0))
+			if joy_rect.has_point(touch.position) and not joystick_active:
 				joystick_active = true
 				joystick_touch_index = touch.index
-				joystick_origin = touch.position
-			else:
+				joystick_origin = Vector2(100.0, vs.y - 102.0)
+				_touch_move_target = Vector2.ZERO
+				_update_joystick_visual()
+			elif touch.position.x >= vs.x * 0.48:
 				look_touch_index = touch.index
 		else:
 			if touch.index == joystick_touch_index:
 				joystick_active = false
 				joystick_touch_index = -1
 				_touch_move_target = Vector2.ZERO
+				_update_joystick_visual()
 			if touch.index == look_touch_index:
 				look_touch_index = -1
 	elif event is InputEventScreenDrag:
@@ -296,6 +342,7 @@ func _input(event: InputEvent) -> void:
 			else:
 				var len_v := raw.length()
 				_touch_move_target = raw.normalized() * clampf((len_v - TOUCH_JOY_DEADZONE) / (1.0 - TOUCH_JOY_DEADZONE), 0.0, 1.0)
+			_update_joystick_visual()
 		elif drag.index == look_touch_index or (look_touch_index < 0 and drag.position.x >= vs.x * 0.5):
 			_look_accum += drag.relative
 			var look := _look_accum * TOUCH_LOOK_SMOOTH
