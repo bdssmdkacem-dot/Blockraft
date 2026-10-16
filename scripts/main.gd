@@ -85,7 +85,12 @@ func _initialize_world_async() -> void:
 		player.global_position = Vector3(0.5, 10.0, 0.5)
 		player.velocity = Vector3.ZERO
 	_snap_player_to_surface()
-	_update_chunks(true)
+	# Build only the spawn chunk synchronously. Building every visible chunk
+	# in one frame can stall Android rendering and leave the player staring at
+	# the blue environment before any terrain is presented.
+	_load_chunk(_chunk_key_from_world(int(floor(player.global_position.x)) if player else 0, int(floor(player.global_position.z)) if player else 0))
+	_last_player_chunk = Vector2i(9999, 9999)
+	_update_chunks(false)
 	flora_fauna = load("res://scripts/flora_fauna.gd").new()
 	flora_fauna.name = "FloraFauna"
 	add_child(flora_fauna)
