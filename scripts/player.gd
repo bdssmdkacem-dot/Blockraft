@@ -247,6 +247,7 @@ func _build_touch_controls() -> void:
 	_joy_base_ui.name = "MoveJoystickBase"
 	_joy_base_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_joy_base_ui.custom_minimum_size = Vector2(144, 144)
+	_joy_base_ui.size = Vector2(144, 144)
 	_touch_root.add_child(_joy_base_ui)
 	var base_panel := Panel.new()
 	base_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -262,6 +263,7 @@ func _build_touch_controls() -> void:
 	_joy_knob_ui.name = "MoveJoystickKnob"
 	_joy_knob_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_joy_knob_ui.custom_minimum_size = Vector2(58, 58)
+	_joy_knob_ui.size = Vector2(58, 58)
 	_joy_base_ui.add_child(_joy_knob_ui)
 	var knob_panel := Panel.new()
 	knob_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -276,6 +278,8 @@ func _build_touch_controls() -> void:
 
 	_action_column = VBoxContainer.new()
 	_action_column.add_theme_constant_override("separation", 10)
+	_action_column.custom_minimum_size = Vector2(116, 194)
+	_action_column.size = Vector2(116, 194)
 	_touch_root.add_child(_action_column)
 	var jump := Button.new()
 	jump.text = "JUMP"
@@ -301,9 +305,12 @@ func _layout_touch() -> void:
 	if _action_column == null: return
 	var vs := get_viewport().get_visible_rect().size
 	if _joy_base_ui:
+		_joy_base_ui.size = Vector2(144.0, 144.0)
 		_joy_base_ui.position = Vector2(28.0, vs.y - 174.0)
 	if _joy_knob_ui:
+		_joy_knob_ui.size = Vector2(58.0, 58.0)
 		_joy_knob_ui.position = Vector2(43.0, 43.0)
+	_action_column.size = Vector2(116.0, 194.0)
 	_action_column.position = Vector2(vs.x - 142.0, vs.y - 205.0)
 
 func _update_joystick_visual() -> void:
