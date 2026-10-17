@@ -1,0 +1,97 @@
+ector3(0.0, 1.35, 0.0)
+	yaw = lerp_angle(yaw, _yaw_target, 1.0 - exp(-LOOK_SMOOTH * delta))
+	pitch = lerpf(pitch, _pitch_target, 1.0 - exp(-LOOK_SMOOTH * delta))
+	pitch = clampf(pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+	var basis := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch)
+	var desired := pivot + basis * Vector3(0.0, 0.0, CAMERA_DISTANCE)
+	var dist := CAMERA_DISTANCE
+	if is_inside_tree() and get_world_3d():
+		var query := PhysicsRayQueryParameters3D.create(pivot, desired)
+		query.exclude = [self]
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		if hit: dist = clampf(pivot.distance_to(hit.position) - 0.25, 1.2, CAMERA_DISTANCE)
+	var target_cam := pivot + basis * Vector3(0.0, 0.0, dist)
+	if not _cam_ready:
+		_cam_pos = target_cam
+		_cam_ready = true
+	else:
+		_cam_pos = _cam_pos.lerp(target_cam, 1.0 - exp(-CAM_FOLLOW * delta))
+	camera.global_position = _cam_pos
+	camera.look_at(pivot, Vector3.UP)
+
+func _build_touch_controls() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	add_child(layer)
+	_touch_root = Control.new()
+	_touch_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_touch_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_touch_root)
+	_action_column = VBoxContainer.new()
+	_action_column.add_theme_constant_override("separation", 14)
+	_touch_root.add_child(_action_column)
+	var jump := Button.new()
+	jump.text = "JUMP"
+	jump.custom_minimum_size = Vector2(150, 68)
+	jump.button_down.connect(func(): touch_jump_pressed = true; jump_buffer = 0.18)
+	jump.button_up.connect(func(): touch_jump_pressed = false)
+	_action_column.add_child(jump)
+	var mine := Button.new()
+	mine.text = "MINE"
+	mine.custom_minimum_size = Vector2(150, 64)
+	mine.button_down.connect(func(): _mine_held = true)
+	mine.button_up.connect(func(): _mine_held = false)
+	_action_column.add_child(mine)
+	var place := Button.new()
+	place.text = "PLACE"
+	place.custom_minimum_size = Vector2(150, 64)
+	place.pressed.connect(_interact.bind(true))
+	_action_column.add_child(place)
+	_layout_touch()
+	get_viewport().size_changed.connect(_layout_touch)
+
+func _layout_touch() -> void:
+	if _action_column == null: return
+	var vs := get_viewport().get_visible_rect().size
+	_action_column.position = Vector2(vs.x - 190.0, vs.y - 270.0)
+
+func _input(event: InputEvent) -> void:
+	if not touch_controls_enabled: return
+	var vs := get_viewport().get_visible_rect().size
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			if touch.position.x < vs.x * 0.5:
+				joystick_active = true
+				joystick_touch_index = touch.index
+				joystick_origin = touch.position
+			else:
+				look_touch_index = touch.index
+		else:
+			if touch.index == joystick_touch_index:
+				joystick_active = false
+				joystick_touch_index = -1
+				_touch_move_target = Vector2.ZERO
+			if touch.index == look_touch_index:
+				look_touch_index = -1
+	elif event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		if drag.index == joystick_touch_index and joystick_active:
+			var delta := drag.position - joystick_origin
+			if delta.length() > TOUCH_JOY_RADIUS:
+				delta = delta.normalized() * TOUCH_JOY_RADIUS
+			var raw := Vector2(delta.x / TOUCH_JOY_RADIUS, delta.y / TOUCH_JOY_RADIUS)
+			if raw.length() < TOUCH_JOY_DEADZONE:
+				_touch_move_target = Vector2.ZERO
+			else:
+				var len_v := raw.length()
+				_touch_move_target = raw.normalized() * clampf((len_v - TOUCH_JOY_DEADZONE) / (1.0 - TOUCH_JOY_DEADZONE), 0.0, 1.0)
+		elif drag.index == look_touch_index or (look_touch_index < 0 and drag.position.x >= vs.x * 0.5):
+			_look_accum += drag.relative
+			var look := _look_accum * TOUCH_LOOK_SMOOTH
+			_look_accum *= (1.0 - TOUCH_LOOK_SMOOTH)
+			_yaw_target -= look.x * TOUCH_LOOK_SENSITIVITY * _look_sens_mult
+			_pitch_target = clampf(_pitch_target - look.y * TOUCH_LOOK_SENSITIVITY * _look_sens_mult, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEv
