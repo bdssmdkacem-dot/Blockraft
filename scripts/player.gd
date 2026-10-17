@@ -56,6 +56,7 @@ var joystick_active := false
 var joystick_origin := Vector2.ZERO
 var joystick_touch_index := -1
 var look_touch_index := -1
+var _touch_roles: Dictionary = {}
 var _look_accum := Vector2.ZERO
 var _joy_base_ui: Control = null
 var _joy_knob_ui: Control = null
@@ -277,26 +278,28 @@ func _build_touch_controls() -> void:
 	_joy_knob_ui.add_child(knob_panel)
 
 	_action_column = VBoxContainer.new()
+	_action_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_action_column.add_theme_constant_override("separation", 10)
 	_action_column.custom_minimum_size = Vector2(116, 194)
 	_action_column.size = Vector2(116, 194)
 	_touch_root.add_child(_action_column)
 	var jump := Button.new()
 	jump.text = "JUMP"
+	jump.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	jump.focus_mode = Control.FOCUS_NONE
 	jump.custom_minimum_size = Vector2(116, 58)
-	jump.button_down.connect(func(): touch_jump_pressed = true; jump_buffer = 0.18)
-	jump.button_up.connect(func(): touch_jump_pressed = false)
 	_action_column.add_child(jump)
 	var mine := Button.new()
 	mine.text = "MINE"
+	mine.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mine.focus_mode = Control.FOCUS_NONE
 	mine.custom_minimum_size = Vector2(116, 58)
-	mine.button_down.connect(func(): _mine_held = true)
-	mine.button_up.connect(func(): _mine_held = false)
 	_action_column.add_child(mine)
 	var place := Button.new()
 	place.text = "PLACE"
+	place.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	place.focus_mode = Control.FOCUS_NONE
 	place.custom_minimum_size = Vector2(116, 58)
-	place.pressed.connect(_interact.bind(true))
 	_action_column.add_child(place)
 	_layout_touch()
 	get_viewport().size_changed.connect(_layout_touch)
@@ -318,32 +321,88 @@ func _update_joystick_visual() -> void:
 	var offset := _touch_move_target * 43.0
 	_joy_knob_ui.position = Vector2(43.0, 43.0) + offset
 
+func _touch_action_role(position: Vector2, viewport_size: Vector2) -> String:
+	# Match touch coordinates to the exact rectangles used by _layout_touch().
+	# Handle actions first so they can never be mistaken for movement or camera input.
+	var action_origin := Vector2(viewport_size.x - 142.0, viewport_size.y - 205.0)
+	if Rect2(action_origin, Vector2(116.0, 58.0)).has_point(position):
+		return "jump"
+	if Rect2(action_origin + Vector2(0.0, 68.0), Vector2(116.0, 58.0)).has_point(position):
+		return "mine"
+	if Rect2(action_origin + Vector2(0.0, 136.0), Vector2(116.0, 58.0)).has_point(position):
+		return "place"
+	return ""
+
+func _end_touch(index: int) -> void:
+	var role := str(_touch_roles.get(index, ""))
+	_touch_roles.erase(index)
+	match role:
+		"move":
+			joystick_active = false
+			joystick_touch_index = -1
+			_touch_move_target = Vector2.ZERO
+			_update_joystick_visual()
+			_layout_touch()
+		"jump":
+			touch_jump_pressed = false
+		"mine":
+			_mine_held = false
+		"look":
+			if look_touch_index == index:
+				look_touch_index = -1
+
 func _input(event: InputEvent) -> void:
-	if not touch_controls_enabled: return
+	if not touch_controls_enabled:
+		return
 	var vs := get_viewport().get_visible_rect().size
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
-			var joy_rect := Rect2(Vector2(0.0, vs.y - 205.0), Vector2(205.0, 205.0))
-			if joy_rect.has_point(touch.position) and not joystick_active:
+			if _touch_roles.has(touch.index):
+				return
+			var action_role := _touch_action_role(touch.position, vs)
+			if not action_role.is_empty():
+				_touch_roles[touch.index] = action_role
+				match action_role:
+					"jump":
+					touch_jump_pressed = true
+					jump_buffer = 0.18
+				"mine":
+					_mine_held = true
+				"place":
+					_interact(true)
+				print("BLOCKRAFT_TOUCH index=", touch.index, " role=", action_role)
+				return
+			# Left-side touches become a floating joystick, so movement does not
+			# depend on a finger landing inside a small fixed bottom-left rectangle.
+			if touch.position.x < vs.x * 0.52:
+				if joystick_active:
+					_touch_roles[touch.index] = "blocked"
+					return
+				_touch_roles[touch.index] = "move"
 				joystick_active = true
 				joystick_touch_index = touch.index
-				joystick_origin = Vector2(100.0, vs.y - 102.0)
+				joystick_origin = touch.position
 				_touch_move_target = Vector2.ZERO
+				if _joy_base_ui:
+					var base_pos := touch.position - Vector2(72.0, 72.0)
+					base_pos.x = clampf(base_pos.x, 8.0, maxf(8.0, vs.x * 0.52 - 152.0))
+					base_pos.y = clampf(base_pos.y, 8.0, maxf(8.0, vs.y - 152.0))
+					_joy_base_ui.position = base_pos
+				if _joy_knob_ui:
+					_joy_knob_ui.position = Vector2(43.0, 43.0)
 				_update_joystick_visual()
-			elif touch.position.x >= vs.x * 0.48:
+				print("BLOCKRAFT_TOUCH index=", touch.index, " role=move pos=", touch.position)
+			else:
+				_touch_roles[touch.index] = "look"
 				look_touch_index = touch.index
+				print("BLOCKRAFT_TOUCH index=", touch.index, " role=look")
 		else:
-			if touch.index == joystick_touch_index:
-				joystick_active = false
-				joystick_touch_index = -1
-				_touch_move_target = Vector2.ZERO
-				_update_joystick_visual()
-			if touch.index == look_touch_index:
-				look_touch_index = -1
+			_end_touch(touch.index)
 	elif event is InputEventScreenDrag:
 		var drag := event as InputEventScreenDrag
-		if drag.index == joystick_touch_index and joystick_active:
+		var role := str(_touch_roles.get(drag.index, ""))
+		if role == "move" and drag.index == joystick_touch_index and joystick_active:
 			var delta := drag.position - joystick_origin
 			if delta.length() > TOUCH_JOY_RADIUS:
 				delta = delta.normalized() * TOUCH_JOY_RADIUS
@@ -354,7 +413,7 @@ func _input(event: InputEvent) -> void:
 				var len_v := raw.length()
 				_touch_move_target = raw.normalized() * clampf((len_v - TOUCH_JOY_DEADZONE) / (1.0 - TOUCH_JOY_DEADZONE), 0.0, 1.0)
 			_update_joystick_visual()
-		elif drag.index == look_touch_index or (look_touch_index < 0 and drag.position.x >= vs.x * 0.5):
+		elif role == "look":
 			_look_accum += drag.relative
 			var look := _look_accum * TOUCH_LOOK_SMOOTH
 			_look_accum *= (1.0 - TOUCH_LOOK_SMOOTH)
