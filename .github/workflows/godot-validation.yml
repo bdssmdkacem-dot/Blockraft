@@ -28,7 +28,7 @@ jobs:
       - name: Verify main menu structure, interactions, and responsive layout
         run: godot --headless --path . --script res://tools/test_main_menu_acceptance.gd
       - name: Verify raw Android touch movement and action controls
-        run: godot --headless --path . --script res://tools/test_touch_controls.gd
+        run: timeout 60s godot --headless --path . --script res://tools/test_touch_controls.gd
       - name: Verify gameplay world interactions and persistence
         run: godot --headless --path . --script res://tools/test_gameplay_acceptance.gd
       - name: Verify reference-aligned asset prototypes
