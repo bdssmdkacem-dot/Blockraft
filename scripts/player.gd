@@ -1,22 +1,18 @@
 extends CharacterBody3D
-## Assembles player from scripts/rp0..rp5.txt
-const _N := 6
+const _N := 12
 func _ready() -> void:
 	if has_meta("ok"):
 		return
 	set_meta("ok", true)
 	var src := ""
 	for i in range(_N):
-		var path := "res://scripts/rp%d.txt" % i
+		var path := "res://scripts/s%d.txt" % i
 		if not FileAccess.file_exists(path):
 			push_error("Missing " + path)
 			return
 		var f := FileAccess.open(path, FileAccess.READ)
 		src += f.get_as_text()
 		f.close()
-	if not src.begins_with("extends"):
-		push_error("Bad player source")
-		return
 	var g := GDScript.new()
 	g.source_code = src
 	if g.reload() != OK:
