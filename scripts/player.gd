@@ -358,12 +358,12 @@ func _input(event: InputEvent) -> void:
 				_touch_roles[touch.index] = action_role
 				match action_role:
 					"jump":
-					touch_jump_pressed = true
-					jump_buffer = 0.18
+						touch_jump_pressed = true
+						jump_buffer = 0.18
 					"mine":
-					_mine_held = true
+						_mine_held = true
 					"place":
-					_interact(true)
+						_interact(true)
 				print("BLOCKRAFT_TOUCH index=", touch.index, " role=", action_role)
 				return
 			if touch.position.x < vs.x * 0.52:
