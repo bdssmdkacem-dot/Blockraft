@@ -56,6 +56,7 @@ var joystick_active := false
 var joystick_origin := Vector2.ZERO
 var joystick_touch_index := -1
 var look_touch_index := -1
+var _touch_roles: Dictionary = {}
 var _look_accum := Vector2.ZERO
 var _joy_base_ui: Control = null
 var _joy_knob_ui: Control = null
@@ -118,7 +119,9 @@ func _ready() -> void:
 	snode.load_settings()
 	_look_sens_mult = float(snode.look_sensitivity)
 	snode.apply_audio()
-	touch_controls_enabled = OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
+	var platform_name := OS.get_name().to_lower()
+	touch_controls_enabled = platform_name == "android" or platform_name == "ios" or OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
+	print("BLOCKRAFT_INPUT platform=", platform_name, " touch_controls=", touch_controls_enabled)
 	if touch_controls_enabled:
 		_build_touch_controls()
 	else:
@@ -237,56 +240,152 @@ func _build_touch_controls() -> void:
 	_touch_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_touch_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_touch_root)
+
+	_joy_base_ui = Control.new()
+	_joy_base_ui.name = "VirtualJoystickBase"
+	_joy_base_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_joy_base_ui.size = Vector2(144.0, 144.0)
+	_joy_base_ui.custom_minimum_size = _joy_base_ui.size
+	var base_panel := Panel.new()
+	base_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	base_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var base_style := StyleBoxFlat.new()
+	base_style.bg_color = Color(0.08, 0.12, 0.16, 0.42)
+	base_style.border_color = Color(0.72, 0.86, 0.9, 0.72)
+	base_style.set_border_width_all(2)
+	base_style.set_corner_radius_all(72)
+	base_panel.add_theme_stylebox_override("panel", base_style)
+	_joy_base_ui.add_child(base_panel)
+	_touch_root.add_child(_joy_base_ui)
+
+	_joy_knob_ui = Control.new()
+	_joy_knob_ui.name = "VirtualJoystickKnob"
+	_joy_knob_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_joy_knob_ui.size = Vector2(58.0, 58.0)
+	_joy_knob_ui.custom_minimum_size = _joy_knob_ui.size
+	var knob_panel := Panel.new()
+	knob_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	knob_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var knob_style := StyleBoxFlat.new()
+	knob_style.bg_color = Color(0.45, 0.78, 0.86, 0.82)
+	knob_style.border_color = Color(0.92, 0.98, 1.0, 0.95)
+	knob_style.set_border_width_all(2)
+	knob_style.set_corner_radius_all(29)
+	knob_panel.add_theme_stylebox_override("panel", knob_style)
+	_joy_knob_ui.add_child(knob_panel)
+	_touch_root.add_child(_joy_knob_ui)
+
 	_action_column = VBoxContainer.new()
-	_action_column.add_theme_constant_override("separation", 14)
+	_action_column.name = "TouchActionColumn"
+	_action_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_action_column.add_theme_constant_override("separation", 10)
+	_action_column.custom_minimum_size = Vector2(116.0, 194.0)
+	_action_column.size = Vector2(116.0, 194.0)
 	_touch_root.add_child(_action_column)
-	var jump := Button.new()
-	jump.text = "JUMP"
-	jump.custom_minimum_size = Vector2(150, 68)
-	jump.button_down.connect(func(): touch_jump_pressed = true; jump_buffer = 0.18)
-	jump.button_up.connect(func(): touch_jump_pressed = false)
-	_action_column.add_child(jump)
-	var mine := Button.new()
-	mine.text = "MINE"
-	mine.custom_minimum_size = Vector2(150, 64)
-	mine.button_down.connect(func(): _mine_held = true)
-	mine.button_up.connect(func(): _mine_held = false)
-	_action_column.add_child(mine)
-	var place := Button.new()
-	place.text = "PLACE"
-	place.custom_minimum_size = Vector2(150, 64)
-	place.pressed.connect(_interact.bind(true))
-	_action_column.add_child(place)
+	for label in ["JUMP", "MINE", "PLACE"]:
+		var button := Button.new()
+		button.text = label
+		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.focus_mode = Control.FOCUS_NONE
+		button.custom_minimum_size = Vector2(116.0, 58.0)
+		_action_column.add_child(button)
 	_layout_touch()
 	get_viewport().size_changed.connect(_layout_touch)
 
 func _layout_touch() -> void:
-	if _action_column == null: return
+	if _action_column == null:
+		return
 	var vs := get_viewport().get_visible_rect().size
-	_action_column.position = Vector2(vs.x - 190.0, vs.y - 270.0)
+	if _joy_base_ui:
+		_joy_base_ui.size = Vector2(144.0, 144.0)
+		_joy_base_ui.position = Vector2(28.0, vs.y - 174.0)
+	if _joy_knob_ui:
+		_joy_knob_ui.size = Vector2(58.0, 58.0)
+		_joy_knob_ui.position = Vector2(71.0, vs.y - 131.0) + _touch_move_target * 43.0
+	_action_column.custom_minimum_size = Vector2(116.0, 194.0)
+	_action_column.size = Vector2(116.0, 194.0)
+	_action_column.position = Vector2(vs.x - 142.0, vs.y - 205.0)
+
+func _update_joystick_visual() -> void:
+	if _joy_base_ui == null or _joy_knob_ui == null:
+		return
+	var vs := get_viewport().get_visible_rect().size
+	if joystick_active:
+		_joy_base_ui.position = joystick_origin - Vector2(72.0, 72.0)
+		_joy_knob_ui.position = joystick_origin - Vector2(29.0, 29.0) + _touch_move_target * 43.0
+	else:
+		_joy_base_ui.position = Vector2(28.0, vs.y - 174.0)
+		_joy_knob_ui.position = _joy_base_ui.position + Vector2(43.0, 43.0)
+
+func _touch_action_role(position: Vector2, viewport_size: Vector2) -> String:
+	var origin := Vector2(viewport_size.x - 142.0, viewport_size.y - 205.0)
+	if Rect2(origin, Vector2(116.0, 58.0)).has_point(position):
+		return "jump"
+	if Rect2(origin + Vector2(0.0, 68.0), Vector2(116.0, 58.0)).has_point(position):
+		return "mine"
+	if Rect2(origin + Vector2(0.0, 136.0), Vector2(116.0, 58.0)).has_point(position):
+		return "place"
+	return ""
+
+func _end_touch(index: int) -> void:
+	var role := str(_touch_roles.get(index, ""))
+	_touch_roles.erase(index)
+	match role:
+		"move":
+			joystick_active = false
+			joystick_touch_index = -1
+			_touch_move_target = Vector2.ZERO
+			_update_joystick_visual()
+		"jump":
+			touch_jump_pressed = false
+		"mine":
+			_mine_held = false
+		"look":
+			if look_touch_index == index:
+				look_touch_index = -1
 
 func _input(event: InputEvent) -> void:
-	if not touch_controls_enabled: return
+	if not touch_controls_enabled:
+		return
 	var vs := get_viewport().get_visible_rect().size
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
-			if touch.position.x < vs.x * 0.5:
+			if _touch_roles.has(touch.index):
+				return
+			var action_role := _touch_action_role(touch.position, vs)
+			if not action_role.is_empty():
+				_touch_roles[touch.index] = action_role
+				match action_role:
+					"jump":
+					touch_jump_pressed = true
+					jump_buffer = 0.18
+					"mine":
+					_mine_held = true
+					"place":
+					_interact(true)
+				print("BLOCKRAFT_TOUCH index=", touch.index, " role=", action_role)
+				return
+			if touch.position.x < vs.x * 0.52:
+				if joystick_active:
+					_touch_roles[touch.index] = "blocked"
+					return
+				_touch_roles[touch.index] = "move"
 				joystick_active = true
 				joystick_touch_index = touch.index
 				joystick_origin = touch.position
+				_touch_move_target = Vector2.ZERO
+				_update_joystick_visual()
+				print("BLOCKRAFT_TOUCH index=", touch.index, " role=move pos=", touch.position)
 			else:
+				_touch_roles[touch.index] = "look"
 				look_touch_index = touch.index
 		else:
-			if touch.index == joystick_touch_index:
-				joystick_active = false
-				joystick_touch_index = -1
-				_touch_move_target = Vector2.ZERO
-			if touch.index == look_touch_index:
-				look_touch_index = -1
+			_end_touch(touch.index)
 	elif event is InputEventScreenDrag:
 		var drag := event as InputEventScreenDrag
-		if drag.index == joystick_touch_index and joystick_active:
+		var role := str(_touch_roles.get(drag.index, ""))
+		if role == "move" and drag.index == joystick_touch_index and joystick_active:
 			var delta := drag.position - joystick_origin
 			if delta.length() > TOUCH_JOY_RADIUS:
 				delta = delta.normalized() * TOUCH_JOY_RADIUS
@@ -296,7 +395,8 @@ func _input(event: InputEvent) -> void:
 			else:
 				var len_v := raw.length()
 				_touch_move_target = raw.normalized() * clampf((len_v - TOUCH_JOY_DEADZONE) / (1.0 - TOUCH_JOY_DEADZONE), 0.0, 1.0)
-		elif drag.index == look_touch_index or (look_touch_index < 0 and drag.position.x >= vs.x * 0.5):
+			_update_joystick_visual()
+		elif role == "look":
 			_look_accum += drag.relative
 			var look := _look_accum * TOUCH_LOOK_SMOOTH
 			_look_accum *= (1.0 - TOUCH_LOOK_SMOOTH)
