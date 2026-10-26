@@ -108,6 +108,11 @@ jobs:
           ANDROID_SDK_ROOT: /usr/lib/android-sdk
         run: godot --headless --path . --editor --quit
 
+      - name: Test deterministic spawn and fall recovery
+        env:
+          HOME: /root
+        run: godot --headless --path . --script res://tests/spawn_safety_test.gd
+
       - name: Export Android APK
         env:
           HOME: /root
