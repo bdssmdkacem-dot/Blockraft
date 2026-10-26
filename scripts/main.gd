@@ -580,6 +580,11 @@ func _load_chunk(ck: Vector2i) -> void:
 		collision.name = "ChunkCollisionShape"
 		var shape := ConcavePolygonShape3D.new()
 		shape.set_faces(collision_faces)
+		# Exposed voxel faces meet the CharacterBody from either side during
+		# spawn settling, chunk rebuilds, and slopes. Two-sided collision avoids
+		# a winding-dependent hole in the concave chunk surface that let the
+		# player fall through the spawn floor.
+		shape.set_backface_collision_enabled(true)
 		collision.shape = shape
 		body.add_child(collision)
 		root.add_child(body)
