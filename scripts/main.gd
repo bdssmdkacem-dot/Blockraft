@@ -9,6 +9,14 @@ const MAX_CHUNK_BUILDS_PER_FRAME := 1
 const SAVE_PATH := "user://world_blocks.json"
 const SAVE_VERSION := 14
 const AUTO_SAVE_INTERVAL := 8.0
+# Spawn is anchored to the reserved, flat 7x7 pad: block (0, 4, 0) has its
+# top face at y=5. Keep old saves and player edits from creating an overhead
+# obstruction above the spawn point.
+const SPAWN_X := 0.5
+const SPAWN_Z := 0.5
+const SPAWN_SURFACE_Y := 5.0
+const SPAWN_CLEAR_MAX_Y := 80
+const SPAWN_CONTACT_EPSILON := 0.04
 
 var blocks: Dictionary = {}
 var block_mesh := BoxMesh.new()
@@ -82,26 +90,29 @@ func _initialize_world_async() -> void:
 	_ensure_spawn_pad()
 	_spawn_depot()
 	if player:
-		player.global_position = Vector3(0.5, 10.0, 0.5)
 		player.velocity = Vector3.ZERO
+
+	# Install collision for the actual spawn pad before positioning the player.
+	# Never select an arbitrary nearby surface: old saves may contain floating
+	# blocks or structures, which must not become the spawn point.
+	var spawn_chunk := _chunk_key_from_world(0, 0)
+	_load_chunk(spawn_chunk)
 	_snap_player_to_surface()
-	# Build only the spawn chunk synchronously. Building every visible chunk
-	# in one frame can stall Android rendering and leave the player staring at
-	# the blue environment before any terrain is presented.
-	_load_chunk(_chunk_key_from_world(int(floor(player.global_position.x)) if player else 0, int(floor(player.global_position.z)) if player else 0))
 	_last_player_chunk = Vector2i(9999, 9999)
 	_update_chunks(false)
+
 	flora_fauna = load("res://scripts/flora_fauna.gd").new()
 	flora_fauna.name = "FloraFauna"
 	add_child(flora_fauna)
 	flora_fauna.setup(self, blocks)
 	if player:
 		player.velocity = Vector3.ZERO
-		if player.global_position.y < 1.0 or player.global_position.y > 30.0:
-			player.global_position = Vector3(0.0, 5.0, 0.0)
+		# A defensive final assertion prevents the old arbitrary-height fallback.
+		if absf(player.global_position.x - SPAWN_X) > 0.01 or absf(player.global_position.z - SPAWN_Z) > 0.01 or absf(player.global_position.y - (SPAWN_SURFACE_Y + SPAWN_CONTACT_EPSILON)) > 0.1:
+			_snap_player_to_surface()
 	world_initialized = true
 	_show_toast("Explore · dig · F=depot · B=upgrade bag · E=eat", 5.0)
-	print("Blockraft world ready blocks=", blocks.size(), " chunks=", loaded_chunks.size())
+	print("Blockraft world ready blocks=", blocks.size(), " chunks=", loaded_chunks.size(), " spawn=", player.global_position if player else Vector3.ZERO)
 
 func _spawn_guaranteed_floor() -> void:
 	var floor_y := 2.0
@@ -469,29 +480,25 @@ func _ensure_spawn_pad() -> void:
 	# player trapped inside terrain or looking out into the sky.
 	for x in range(-3, 4):
 		for z in range(-3, 4):
-			for y in range(5, 12):
+			# Clear the full buildable height, not just a few blocks. Otherwise a
+			# saved roof/tree/platform can make the spawn selection land in mid-air.
+			for y in range(5, SPAWN_CLEAR_MAX_Y + 1):
 				blocks.erase(Vector3i(x, y, z))
 			blocks[Vector3i(x, 3, z)] = "dirt"
 			blocks[Vector3i(x, 4, z)] = "grass"
 
 func _snap_player_to_surface() -> void:
-	if player == null: return
-	var best_pos := Vector3(0.0, 5.0, 0.0)
-	var found := false
-	for x in range(-6, 7):
-		for z in range(-6, 7):
-			for y in range(30, MIN_Y - 1, -1):
-				var pos := Vector3i(x, y, z)
-				if not blocks.has(pos): continue
-				if str(blocks[pos]) == "water": continue
-				if blocks.has(Vector3i(x, y + 1, z)): continue
-				var cand := Vector3(float(x) + 0.5, float(y) + 1.35, float(z) + 0.5)
-				if not found or Vector2(cand.x, cand.z).length() < Vector2(best_pos.x, best_pos.z).length():
-					best_pos = cand
-					found = true
-				break
-	player.global_position = best_pos if found else Vector3(0.0, 5.0, 0.0)
+	if player == null:
+		return
+	# _ensure_spawn_pad() guarantees a solid grass block at (0, 4, 0), whose
+	# top is y=5.0. Place the character capsule just above that known surface;
+	# do not search for the nearest surface, which can be a floating structure.
+	var ground := Vector3i(0, 4, 0)
+	if not blocks.has(ground) or str(blocks.get(ground, "")) == "water":
+		blocks[ground] = "grass"
+	player.global_position = Vector3(SPAWN_X, SPAWN_SURFACE_Y + SPAWN_CONTACT_EPSILON, SPAWN_Z)
 	player.velocity = Vector3.ZERO
+	print("BLOCKRAFT_SPAWN_SAFE position=", player.global_position, " ground=", str(blocks.get(ground, "missing")))
 
 func _chunk_key_from_world(wx: int, wz: int) -> Vector2i:
 	return Vector2i(int(floor(float(wx) / float(CHUNK_SIZE))), int(floor(float(wz) / float(CHUNK_SIZE))))
@@ -708,12 +715,29 @@ func _tick_autosave(delta: float) -> void:
 	_autosave_timer -= delta
 	if _autosave_timer <= 0.0: save_world()
 
+func _respawn_at_safe_pad() -> void:
+	if player == null:
+		return
+	# Repair terrain and rebuild its collision together, so recovery cannot
+	# teleport the player onto a surface that exists only in the block dictionary.
+	_ensure_spawn_pad()
+	var spawn_chunk := _chunk_key_from_world(0, 0)
+	if loaded_chunks.has(spawn_chunk):
+		_rebuild_chunk(spawn_chunk)
+	else:
+		_load_chunk(spawn_chunk)
+	_snap_player_to_surface()
+	_last_player_chunk = Vector2i(9999, 9999)
+	_update_chunks(false)
+	mark_world_dirty()
+	print("BLOCKRAFT_RESPAWN_SAFE position=", player.global_position)
+
 func _check_fall_respawn() -> void:
-	if player == null: return
+	if player == null:
+		return
 	if player.global_position.y < float(MIN_Y) - 8.0:
-		player.global_position = Vector3(0.0, 5.0, 0.0)
-		player.velocity = Vector3.ZERO
-		_show_toast("You fell — returned to surface", 2.0)
+		_respawn_at_safe_pad()
+		_show_toast("You fell — safe spawn restored", 2.0)
 
 func _notification(what: int) -> void:
 	if what in [NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_GO_BACK_REQUEST, NOTIFICATION_EXIT_TREE]:
