@@ -54,6 +54,21 @@ func _run_spawn_safety_test() -> void:
 		_fail("Player is not grounded after spawn; position=" + str(player.global_position))
 		return
 
+	# Emulate a stale saved floating block. The reserved pad repair must clear it
+	# at the old problematic height (not only immediately over the player's head).
+	blocks[Vector3i(0, 20, 0)] = "stone"
+	game.call("_ensure_spawn_pad")
+	if blocks.has(Vector3i(0, 20, 0)):
+		_fail("Spawn repair left a stale block overhead at y=20")
+		return
+	for y in range(5, 81):
+		if blocks.has(Vector3i(0, y, 0)):
+			_fail("Spawn column remains obstructed at y=" + str(y))
+			return
+	game.call("_rebuild_chunk", Vector2i.ZERO)
+	for _frame in range(3):
+		await physics_frame
+
 	# Simulate the failure path and require a collision-backed recovery.
 	blocks.erase(Vector3i(0, 4, 0))
 	player.global_position = Vector3(SPAWN_POSITION.x, -20.0, SPAWN_POSITION.z)
