@@ -140,6 +140,11 @@ func _run_checks() -> void:
         Vector3i(2, 0, 0): "water"
     }
     print("GAMEPLAY_ACCEPTANCE: testing compact persistence fixture blocks=", scene.blocks.size())
+    var inventory_before: Dictionary = scene.inventory.export_state()
+    scene.inventory.slots[1]["count"] = 7
+    scene.inventory.storage["stone"] = 11
+    scene.inventory.backpack_tier = "iron"
+    scene.inventory.selected = 2
     scene.save_world()
     scene.blocks = full_world_blocks
     print("GAMEPLAY_ACCEPTANCE: save_world returned; full world restored blocks=", scene.blocks.size())
@@ -153,6 +158,24 @@ func _run_checks() -> void:
         return
     var snapshot_text := file.get_as_text()
     file.close()
+    var snapshot = JSON.parse_string(snapshot_text)
+    if typeof(snapshot) != TYPE_DICTIONARY or typeof(snapshot.get("inventory", null)) != TYPE_DICTIONARY:
+        _fail("world save did not include the inventory snapshot", 27)
+        return
+    var saved_inventory: Dictionary = snapshot["inventory"]
+    if str(saved_inventory.get("backpack_tier", "")) != "iron" or int(saved_inventory.get("selected", -1)) != 2:
+        _fail("inventory tier or selected slot was not persisted", 28)
+        return
+    if int(saved_inventory["slots"][1].get("count", -1)) != 7 or int(saved_inventory.get("storage", {}).get("stone", -1)) != 11:
+        _fail("inventory slot counts or depot storage were not persisted", 29)
+        return
+    if not scene.inventory.import_state(saved_inventory):
+        _fail("inventory snapshot could not be restored", 30)
+        return
+    if scene.inventory.backpack_tier != "iron" or scene.inventory.selected != 2 or int(scene.inventory.slots[1]["count"]) != 7 or scene.inventory.storage_count("stone") != 11:
+        _fail("restored inventory state did not match saved values", 31)
+        return
+    scene.inventory.import_state(inventory_before)
     # Avoid reparsing the entire large world snapshot in the acceptance test.
     # The game loader parses it on startup; here verify the saved envelope and
     # that the exact compact record for the removed probe is absent.
