@@ -252,3 +252,73 @@ func storage_summary(max_kinds: int = 6) -> String:
 		if n >= max_kinds:
 			break
 	return "Depot: " + ", ".join(parts)
+
+
+## Compact, JSON-safe inventory snapshot. Colors are reconstructed from item IDs.
+func export_state() -> Dictionary:
+	var saved_slots: Array = []
+	for slot in slots:
+		saved_slots.append({
+			"id": str(slot.get("id", "")),
+			"count": maxi(0, int(slot.get("count", 0))),
+			"is_tool": bool(slot.get("is_tool", false))
+		})
+	var saved_storage: Dictionary = {}
+	for key in storage:
+		var amount := maxi(0, int(storage[key]))
+		if amount > 0:
+			saved_storage[str(key)] = amount
+	return {
+		"slots": saved_slots,
+		"selected": clampi(selected, 0, SLOT_COUNT - 1),
+		"backpack_tier": backpack_tier,
+		"storage": saved_storage
+	}
+
+func import_state(data: Variant) -> bool:
+	if typeof(data) != TYPE_DICTIONARY:
+		return false
+	var incoming_slots: Variant = data.get("slots", [])
+	if typeof(incoming_slots) != TYPE_ARRAY or incoming_slots.size() != SLOT_COUNT:
+		return false
+	var restored_slots: Array = []
+	for entry in incoming_slots:
+		if typeof(entry) != TYPE_DICTIONARY:
+			return false
+		var item_id := str(entry.get("id", ""))
+		var count := int(entry.get("count", 0))
+		if count < 0 or count > 1000000:
+			return false
+		var is_tool := bool(entry.get("is_tool", false))
+		if is_tool and item_id != "pickaxe":
+			return false
+		if item_id == "" and count != 0:
+			return false
+		restored_slots.append({
+			"id": item_id,
+			"count": count,
+			"color": Color("6af0f5") if is_tool else _color_for(item_id),
+			"is_tool": is_tool
+		})
+	var tier := str(data.get("backpack_tier", "leather"))
+	if not BACKPACKS.has(tier):
+		return false
+	var incoming_storage: Variant = data.get("storage", {})
+	if typeof(incoming_storage) != TYPE_DICTIONARY:
+		return false
+	var restored_storage: Dictionary = {}
+	for key in incoming_storage:
+		var amount := int(incoming_storage[key])
+		if amount < 0 or amount > 10000000:
+			return false
+		if amount > 0:
+			restored_storage[str(key)] = amount
+	slots = restored_slots
+	selected = clampi(int(data.get("selected", 0)), 0, SLOT_COUNT - 1)
+	backpack_tier = tier
+	storage = restored_storage
+	selection_changed.emit(selected)
+	counts_changed.emit()
+	storage_changed.emit()
+	backpack_changed.emit(backpack_tier)
+	return true
