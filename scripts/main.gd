@@ -7,7 +7,8 @@ const CHUNK_SIZE := 16
 const VIEW_CHUNKS := 3
 const MAX_CHUNK_BUILDS_PER_FRAME := 1
 const SAVE_PATH := "user://world_blocks.json"
-const SAVE_VERSION := 14
+const SAVE_VERSION := 15
+const PREVIOUS_SAVE_VERSION := 14
 const AUTO_SAVE_INTERVAL := 8.0
 # Spawn is anchored to the reserved, flat 7x7 pad: block (0, 4, 0) has its
 # top face at y=5. Keep old saves and player edits from creating an overhead
@@ -750,57 +751,105 @@ func _notification(what: int) -> void:
 			save_world(what != NOTIFICATION_EXIT_TREE)
 
 func save_world(show_feedback: bool = false) -> void:
-	# Compact positional arrays reduce save size and JSON overhead for the large voxel map.
-	# Format per block: [x, y, z, kind]. The loader still accepts older dictionary entries.
+	# Write and validate a complete snapshot before replacing the last known-good save.
 	var serialized: Array = []
 	serialized.resize(blocks.size())
 	var index := 0
 	for p in blocks:
 		serialized[index] = [p.x, p.y, p.z, str(blocks[p])]
 		index += 1
-	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if file:
-		file.store_string(JSON.stringify({"version": SAVE_VERSION, "blocks": serialized, "saved_at": Time.get_datetime_string_from_system()}))
-		file.close()
-		_save_dirty = false
-		_autosave_timer = AUTO_SAVE_INTERVAL
-		if show_feedback: _show_toast("World saved", 1.2)
+	var payload := {
+		"version": SAVE_VERSION,
+		"blocks": serialized,
+		"inventory": inventory.export_state() if inventory and inventory.has_method("export_state") else {},
+		"saved_at": Time.get_datetime_string_from_system()
+	}
+	var encoded := JSON.stringify(payload)
+	var temp_path := SAVE_PATH + ".tmp"
+	var backup_path := SAVE_PATH + ".bak"
+	var file := FileAccess.open(temp_path, FileAccess.WRITE)
+	if file == null:
+		push_error("Blockraft: could not open temporary save; error=" + str(FileAccess.get_open_error()))
+		return
+	file.store_string(encoded)
+	file.flush()
+	var write_error := file.get_error()
+	file.close()
+	if write_error != OK:
+		push_error("Blockraft: temporary save write failed; error=" + str(write_error))
+		return
+	var verify_file := FileAccess.open(temp_path, FileAccess.READ)
+	if verify_file == null:
+		push_error("Blockraft: temporary save could not be reopened")
+		return
+	var verified = JSON.parse_string(verify_file.get_as_text())
+	verify_file.close()
+	if typeof(verified) != TYPE_DICTIONARY or typeof(verified.get("blocks", null)) != TYPE_ARRAY or verified["blocks"].size() != blocks.size():
+		push_error("Blockraft: temporary save validation failed; previous save preserved")
+		return
+	var absolute_save := ProjectSettings.globalize_path(SAVE_PATH)
+	var absolute_temp := ProjectSettings.globalize_path(temp_path)
+	var absolute_backup := ProjectSettings.globalize_path(backup_path)
+	if FileAccess.file_exists(SAVE_PATH + ".bak"):
+		DirAccess.remove_absolute(absolute_backup)
+	if FileAccess.file_exists(SAVE_PATH):
+		var backup_error := DirAccess.rename_absolute(absolute_save, absolute_backup)
+		if backup_error != OK:
+			push_error("Blockraft: could not preserve previous save; error=" + str(backup_error))
+			return
+	var replace_error := DirAccess.rename_absolute(absolute_temp, absolute_save)
+	if replace_error != OK:
+		if FileAccess.file_exists(SAVE_PATH + ".bak"):
+			DirAccess.rename_absolute(absolute_backup, absolute_save)
+		push_error("Blockraft: could not commit new save; error=" + str(replace_error))
+		return
+	_save_dirty = false
+	_autosave_timer = AUTO_SAVE_INTERVAL
+	if show_feedback:
+		_show_toast("World saved", 1.2)
 
 func _load_world_snapshot() -> bool:
-	if not FileAccess.file_exists(SAVE_PATH):
-		return false
-	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if file == null:
-		push_warning("Blockraft: could not open saved world; generating a fresh world")
-		return false
-	var parsed = JSON.parse_string(file.get_as_text())
-	file.close()
-	if typeof(parsed) != TYPE_DICTIONARY or int(parsed.get("version", -1)) != SAVE_VERSION:
-		push_warning("Blockraft: saved world version is incompatible; generating a fresh world")
-		return false
-	var entries = parsed.get("blocks", [])
-	if typeof(entries) != TYPE_ARRAY or entries.size() < 2000:
-		push_warning("Blockraft: saved world snapshot is incomplete; generating a fresh world")
-		return false
-	var restored: Dictionary = {}
-	for entry in entries:
-		if typeof(entry) == TYPE_ARRAY:
-			if entry.size() < 4:
-				continue
-			var array_pos := Vector3i(int(entry[0]), int(entry[1]), int(entry[2]))
-			restored[array_pos] = str(entry[3])
-		elif typeof(entry) == TYPE_DICTIONARY:
-			# Backward compatibility for snapshots written before compact-array saves.
-			if not entry.has("x") or not entry.has("y") or not entry.has("z") or not entry.has("kind"):
-				continue
-			var dict_pos := Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))
-			restored[dict_pos] = str(entry["kind"])
-	if restored.size() < 2000:
-		push_warning("Blockraft: saved world contains too few valid blocks; generating a fresh world")
-		return false
-	blocks = restored
-	print("Blockraft: restored saved world blocks=", blocks.size())
-	return true
+	var candidates := [SAVE_PATH, SAVE_PATH + ".bak"]
+	for candidate in candidates:
+		if not FileAccess.file_exists(candidate):
+			continue
+		var file := FileAccess.open(candidate, FileAccess.READ)
+		if file == null:
+			push_warning("Blockraft: could not open save candidate " + candidate)
+			continue
+		var parsed = JSON.parse_string(file.get_as_text())
+		file.close()
+		if typeof(parsed) != TYPE_DICTIONARY:
+			push_warning("Blockraft: invalid save JSON in " + candidate)
+			continue
+		var version := int(parsed.get("version", -1))
+		if version != SAVE_VERSION and version != PREVIOUS_SAVE_VERSION:
+			push_warning("Blockraft: unsupported save version in " + candidate)
+			continue
+		var entries = parsed.get("blocks", [])
+		if typeof(entries) != TYPE_ARRAY or entries.size() < 2000:
+			push_warning("Blockraft: incomplete block snapshot in " + candidate)
+			continue
+		var restored: Dictionary = {}
+		for entry in entries:
+			if typeof(entry) == TYPE_ARRAY:
+				if entry.size() < 4:
+					continue
+				restored[Vector3i(int(entry[0]), int(entry[1]), int(entry[2]))] = str(entry[3])
+			elif typeof(entry) == TYPE_DICTIONARY:
+				if not entry.has("x") or not entry.has("y") or not entry.has("z") or not entry.has("kind"):
+					continue
+				restored[Vector3i(int(entry["x"]), int(entry["y"]), int(entry["z"]))] = str(entry["kind"])
+		if restored.size() < 2000:
+			push_warning("Blockraft: too few valid blocks in " + candidate)
+			continue
+		blocks = restored
+		if version >= SAVE_VERSION and inventory and inventory.has_method("import_state"):
+			if not inventory.import_state(parsed.get("inventory", {})):
+				push_warning("Blockraft: inventory snapshot invalid; starting with default inventory")
+		print("Blockraft: restored save candidate=", candidate, " blocks=", blocks.size(), " version=", version)
+		return true
+	return false
 
 func _setup_ui() -> void:
 	var layer := CanvasLayer.new()
