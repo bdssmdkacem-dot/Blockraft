@@ -13,7 +13,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     container:
       image: barichello/godot-ci:4.4.1
     steps:
@@ -25,6 +25,9 @@ jobs:
         run: godot --headless --path . --quit-after 3
       - name: Launch gameplay scene headlessly
         run: godot --headless --path . res://scenes/main.tscn --quit-after 5
+      - name: Test deterministic spawn and fall recovery
+        timeout-minutes: 5
+        run: godot --headless --path . --script res://tests/spawn_safety_test.gd
       - name: Verify main menu structure, interactions, and responsive layout
         run: godot --headless --path . --script res://tools/test_main_menu_acceptance.gd
       - name: Verify raw Android touch movement and action controls
