@@ -425,8 +425,8 @@ func _generate_world() -> void:
 			if not is_river and river_d < 4.2 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5:
-				var tree_chance := 0.045 if sin(float(x) * 0.17) * cos(float(z) * 0.19) > 0.35 else 0.018
-				if river_d < 8.0: tree_chance *= 0.4
+				var tree_chance := 0.030 if sin(float(x) * 0.17) * cos(float(z) * 0.19) > 0.35 else 0.012
+				if river_d < 8.0: tree_chance *= 0.55
 				if rng.randf() < tree_chance:
 					_make_tree(x, height + 1, z, rng)
 			if not is_river and not steep and height >= 3 and abs(x) > 10 and abs(z) > 10 and rng.randf() < 0.0024:
@@ -440,13 +440,21 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 	var trunk := 4 + r.randi_range(0, 3)
 	for dy in range(trunk):
 		blocks[Vector3i(x, y + dy, z)] = "wood"
+	# A tapered, broken canopy keeps sight lines open while retaining a full
+	# voxel-tree silhouette. Sparse outer leaves avoid solid green walls.
 	var canopy_y := y + trunk - 1
-	for dx in range(-3, 4):
-		for dz in range(-3, 4):
-			for dy in range(-1, 4):
-				var dist: int = abs(dx) + abs(dz) + abs(dy)
-				if dist > 6: continue
-				if dist > 4 and r.randf() < 0.45: continue
+	var radius := 2 if r.randf() < 0.7 else 3
+	for dy in range(-1, 4):
+		var layer_radius := maxi(1, radius - (1 if dy == 3 else 0))
+		for dx in range(-radius, radius + 1):
+			for dz in range(-radius, radius + 1):
+				var dist := abs(dx) + abs(dz)
+				if dist > layer_radius * 2 + 1:
+					continue
+				if dist > layer_radius + 1 and r.randf() < 0.55:
+					continue
+				if dy == -1 and dist > 1:
+					continue
 				var p := Vector3i(x + dx, canopy_y + dy, z + dz)
 				if not blocks.has(p):
 					blocks[p] = "leaves"
