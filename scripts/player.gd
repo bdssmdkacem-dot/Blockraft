@@ -623,6 +623,39 @@ func _block_hardness(kind: String) -> float:
 		_:
 			return 0.4
 
+## Resolve a ray hit against either a legacy per-block body or a batched
+## chunk collider. Batched chunk bodies expose their voxel surface but do not
+## carry per-block metadata, so sample just inside the hit face and map it back
+## to the authoritative world block dictionary.
+func _resolve_hit_block(hit: Dictionary, world: Node) -> Dictionary:
+	var collider = hit.get("collider")
+	if collider == null or world == null:
+		return {}
+	var world_blocks: Variant = world.get("blocks")
+	if typeof(world_blocks) != TYPE_DICTIONARY:
+		return {}
+	if collider.has_meta("block_position"):
+		var legacy_pos: Vector3i = collider.get_meta("block_position")
+		if not world_blocks.has(legacy_pos):
+			return {}
+		return {
+			"position": legacy_pos,
+			"kind": str(world_blocks[legacy_pos])
+		}
+	if not collider.has_meta("chunk_key"):
+		return {}
+	var normal: Vector3 = hit.get("normal", Vector3.ZERO)
+	if normal.length_squared() < 0.25:
+		return {}
+	var sample: Vector3 = hit.get("position", Vector3.ZERO) - normal.normalized() * 0.02
+	var voxel := Vector3i(floori(sample.x), floori(sample.y), floori(sample.z))
+	if not world_blocks.has(voxel):
+		return {}
+	return {
+		"position": voxel,
+		"kind": str(world_blocks[voxel])
+	}
+
 func _tick_mining(delta: float) -> void:
 	var world = get_parent()
 	if world == null:
@@ -648,11 +681,12 @@ func _tick_mining(delta: float) -> void:
 				if world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
 					world.mining_fx.play_hit(hit.get("position", global_position))
 		return
-	if not collider.has_meta("block_position"):
+	var block_hit := _resolve_hit_block(hit, world)
+	if block_hit.is_empty():
 		_mine_progress = 0.0
 		return
-	var pos: Vector3i = collider.get_meta("block_position")
-	var kind := str(collider.get_meta("block_kind")) if collider.has_meta("block_kind") else "dirt"
+	var pos: Vector3i = block_hit["position"]
+	var kind := str(block_hit["kind"])
 	if pos != _mine_pos:
 		_mine_pos = pos
 		_mine_progress = 0.0
@@ -691,9 +725,10 @@ func _interact(place: bool) -> void:
 			if world and world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
 				world.mining_fx.play_hit(hit.get("position", global_position))
 		return
-	if not collider.has_meta("block_position"):
+	var block_hit := _resolve_hit_block(hit, world)
+	if block_hit.is_empty():
 		return
-	var pos: Vector3i = collider.get_meta("block_position")
+	var pos: Vector3i = block_hit["position"]
 	if place:
 		var normal: Vector3 = hit.get("normal")
 		var target := pos + Vector3i(roundi(normal.x), roundi(normal.y), roundi(normal.z))
