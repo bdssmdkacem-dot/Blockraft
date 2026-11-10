@@ -127,15 +127,21 @@ func _run_checks() -> void:
         return
 
     # Verify the real mining path uses the resolved hit to remove the voxel.
-    player.camera.global_position = Vector3(0.5, 28.0, 0.5)
-    player.camera.look_at(Vector3(0.5, 24.5, 0.5), Vector3.FORWARD)
+    player.set_physics_process(false)
     player.set("_mine_held", true)
-    for _step in range(5):
+    for step in range(5):
+        # Keep the test camera aimed at the probe while the physics server
+        # advances between ray queries; the live follow-camera must not steer
+        # this deterministic mining fixture away from its target.
+        player.camera.global_position = Vector3(0.5, 28.0, 0.5)
+        player.camera.look_at(Vector3(0.5, 24.5, 0.5), Vector3.FORWARD)
         player.call("_tick_mining", 0.2)
-        await physics_frame
+        print("CHUNK_MINE_STEP index=", step, " progress=", player.get("_mine_progress"), " target=", player.get("_mine_pos"), " block_present=", scene.blocks.has(probe))
         if not scene.blocks.has(probe):
             break
+        await physics_frame
     player.set("_mine_held", false)
+    player.set_physics_process(true)
     if scene.blocks.has(probe):
         _fail("mining through the batched chunk collider did not remove the targeted voxel", 35)
         return
