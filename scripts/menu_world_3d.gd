@@ -108,8 +108,8 @@ func _setup_camera() -> void:
 	# Pull the panorama camera back and above the near forest canopy. This
 	# keeps the protagonist in the left foreground while revealing the river,
 	# village, gatehouse and floating islands behind the menu UI.
-	camera.position = Vector3(-18.0, 7.2, 24.0)
-	camera.rotation_degrees = Vector3(-14.0, -32.0, 0.0)
+	camera.position = Vector3(-20.0, 8.0, 27.0)
+	camera.rotation_degrees = Vector3(-15.0, -34.0, 0.0)
 	camera.fov = 55.0
 	camera.near = 0.1
 	camera.far = 200.0
@@ -187,8 +187,8 @@ func _build_forests() -> void:
 	forest.name = "Forests"
 	add_child(forest)
 	for i in range(22):
-		var tx := -15.0 + float(i % 7) * 2.4 + sin(float(i) * 1.7) * 0.6
-		var tz := 1.5 + float(i / 7) * 2.8 + cos(float(i) * 1.3) * 0.5
+		var tx := -10.0 + float(i % 7) * 2.4 + sin(float(i) * 1.7) * 0.6
+		var tz := -3.5 + float(i / 7) * 3.0 + cos(float(i) * 1.3) * 0.5
 		var h := 1.8 + float(i % 4) * 0.35
 		_box(forest, Vector3(tx, h * 0.5, tz), Vector3(0.32, h, 0.32), MAT_WOOD)
 		_box(forest, Vector3(tx, h + 0.5, tz), Vector3(1.8, 1.2, 1.8), MAT_LEAF_DARK)
@@ -221,7 +221,8 @@ func _build_floating_islands() -> void:
 func _build_gatehouse_castle() -> void:
 	var root := Node3D.new()
 	root.name = "GatehouseCastle"
-	root.position = Vector3(14.0, 0.8, -16.0)
+	root.position = Vector3(24.0, 0.8, -18.0)
+	root.scale = Vector3(1.22, 1.22, 1.22)
 	add_child(root)
 	var stone := MAT_STONE_CASTLE
 	var light := Color("#a8b4ae")
@@ -317,11 +318,11 @@ func _build_protagonist() -> void:
 	var ledge := Node3D.new()
 	ledge.name = "HeroForegroundLedge"
 	add_child(ledge)
-	_box(ledge, Vector3(-15.0, 1.75, 12.0), Vector3(5.0, 1.5, 5.0), MAT_GRASS)
-	_box(ledge, Vector3(-15.0, 0.5, 12.0), Vector3(5.2, 1.0, 5.2), MAT_STONE)
+	_box(ledge, Vector3(-20.0, 1.75, 13.0), Vector3(5.0, 1.5, 5.0), MAT_GRASS)
+	_box(ledge, Vector3(-20.0, 0.5, 13.0), Vector3(5.2, 1.0, 5.2), MAT_STONE)
 	var hero := Node3D.new()
 	hero.name = "Protagonist"
-	hero.position = Vector3(-15.0, 2.5, 12.0)
+	hero.position = Vector3(-20.0, 2.5, 13.0)
 	hero.rotation_degrees = Vector3(0, 135, 0)
 	hero.scale = Vector3(1.28, 1.28, 1.28)
 	add_child(hero)
