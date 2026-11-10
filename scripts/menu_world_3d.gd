@@ -31,6 +31,7 @@ func _ready() -> void:
 	_build_forests()
 	_build_floating_islands()
 	_build_gatehouse_castle()
+	_build_castle_surface_details()
 	_build_landmark_details()
 	_build_protagonist()
 
@@ -282,9 +283,37 @@ func _build_landmark_details() -> void:
 	_box(details, Vector3(12, 0.3, 5), Vector3(1, 0.6, 1), MAT_STONE)
 	_box(details, Vector3(-5, 0.4, 8), Vector3(1.5, 0.8, 1.2), MAT_DIRT)
 
+func _build_castle_surface_details() -> void:
+	# Layered masonry, slit windows, banners and warm sconces break up the
+	# oversized flat wall planes and give the gatehouse a readable focal face.
+	var castle := get_node_or_null("GatehouseCastle") as Node3D
+	if castle == null:
+		return
+	var mortar := Color("#59645f")
+	var stone_a := Color("#a4aaa0")
+	var stone_b := Color("#737f7b")
+	var banner := Color("#b84f3c")
+	for row in range(5):
+		var y := 4.0 + float(row) * 1.15
+		for col in range(8):
+			var x := -5.1 + float(col) * 1.45 + (0.35 if row % 2 == 1 else 0.0)
+			if absf(x) < 1.5 and y < 6.0:
+				continue
+			_box(castle, Vector3(x, y, 4.28), Vector3(1.25, 0.055, 0.045), mortar)
+			if row % 2 == 0:
+				_box(castle, Vector3(x + 0.55, y + 0.35, 4.30), Vector3(0.055, 0.55, 0.055), stone_b)
+		for side_x in [-6.5, 6.5]:
+			_box(castle, Vector3(side_x, 8.7, 4.52), Vector3(0.12, 2.1, 0.12), MAT_WOOD)
+			_box(castle, Vector3(side_x + (0.62 if side_x < 0.0 else -0.62), 8.55, 4.52), Vector3(1.15, 1.35, 0.10), banner)
+			_box(castle, Vector3(side_x + (0.62 if side_x < 0.0 else -0.62), 7.82, 4.58), Vector3(0.72, 0.12, 0.06), Color("#e7c77c"))
+	for side_x in [-4.8, 4.8]:
+		_box(castle, Vector3(side_x, 5.6, 4.55), Vector3(0.22, 0.5, 0.16), Color("#f3bd68"), 0.25)
+		_box(castle, Vector3(side_x, 5.6, 4.64), Vector3(0.42, 0.18, 0.12), Color("#ffd98a"), 0.22)
+
+
 func _build_protagonist() -> void:
-	# A raised foreground ledge lifts the hero clear of the bottom feature cards
-	# and gives the composition a readable cliff-edge silhouette.
+	# Larger, layered hero silhouette based on the approved Blockraft character:
+	# teal tunic, blue trousers, backpack, face, boots and diamond pickaxe.
 	var ledge := Node3D.new()
 	ledge.name = "HeroForegroundLedge"
 	add_child(ledge)
@@ -294,38 +323,48 @@ func _build_protagonist() -> void:
 	hero.name = "Protagonist"
 	hero.position = Vector3(-15.0, 2.5, 12.0)
 	hero.rotation_degrees = Vector3(0, 135, 0)
+	hero.scale = Vector3(1.28, 1.28, 1.28)
 	add_child(hero)
-	_box(hero, Vector3(-0.17, 0.48, 0), Vector3(0.30, 0.72, 0.28), MAT_BLUE_PANTS)
-	_box(hero, Vector3(0.17, 0.48, 0), Vector3(0.30, 0.72, 0.28), MAT_BLUE_PANTS)
-	_box(hero, Vector3(-0.17, 0.10, 0.06), Vector3(0.32, 0.18, 0.40), Color("#1e1a18"))
-	_box(hero, Vector3(0.17, 0.10, 0.06), Vector3(0.32, 0.18, 0.40), Color("#1e1a18"))
-	_box(hero, Vector3(0, 1.12, 0), Vector3(0.78, 0.72, 0.42), MAT_TEAL)
-	_box(hero, Vector3(0, 1.12, 0.22), Vector3(0.50, 0.48, 0.06), Color("#249e90"))
-	_box(hero, Vector3(0, 0.78, 0), Vector3(0.82, 0.14, 0.44), Color("#1f8a7e"))
-	_box(hero, Vector3(-0.55, 1.08, 0), Vector3(0.26, 0.70, 0.26), MAT_SKIN)
-	_box(hero, Vector3(0.55, 1.08, 0), Vector3(0.26, 0.70, 0.26), MAT_SKIN)
-	_box(hero, Vector3(-0.55, 1.35, 0), Vector3(0.30, 0.12, 0.30), MAT_TEAL)
-	_box(hero, Vector3(0.55, 1.35, 0), Vector3(0.30, 0.12, 0.30), MAT_TEAL)
-	_box(hero, Vector3(0, 1.18, -0.36), Vector3(0.62, 0.68, 0.28), MAT_BROWN_PACK)
-	_box(hero, Vector3(0, 1.48, -0.38), Vector3(0.48, 0.14, 0.30), Color("#9a6230"))
-	_box(hero, Vector3(-0.28, 1.25, -0.22), Vector3(0.08, 0.35, 0.08), Color("#4a3010"))
-	_box(hero, Vector3(0.28, 1.25, -0.22), Vector3(0.08, 0.35, 0.08), Color("#4a3010"))
-	_box(hero, Vector3(0, 1.78, 0), Vector3(0.56, 0.56, 0.54), MAT_SKIN)
-	_box(hero, Vector3(0, 2.08, -0.02), Vector3(0.60, 0.20, 0.58), Color("#5a3218"))
-	_box(hero, Vector3(0, 1.92, -0.26), Vector3(0.58, 0.36, 0.16), Color("#5a3218"))
-	_box(hero, Vector3(-0.28, 1.95, 0.05), Vector3(0.14, 0.28, 0.40), Color("#5a3218"))
-	_box(hero, Vector3(0.28, 1.95, 0.05), Vector3(0.14, 0.28, 0.40), Color("#5a3218"))
-	_box(hero, Vector3(-0.12, 1.80, 0.28), Vector3(0.10, 0.10, 0.06), Color("#1a1410"))
-	_box(hero, Vector3(0.12, 1.80, 0.28), Vector3(0.10, 0.10, 0.06), Color("#1a1410"))
-	_box(hero, Vector3(-0.12, 1.82, 0.30), Vector3(0.04, 0.04, 0.04), Color("#ffffff"))
-	_box(hero, Vector3(0.12, 1.82, 0.30), Vector3(0.04, 0.04, 0.04), Color("#ffffff"))
-	_box(hero, Vector3(0, 1.68, 0.28), Vector3(0.14, 0.06, 0.05), Color("#d4887a"))
+	var skin := Color("#e9b58b")
+	var hair := Color("#75401f")
+	var teal := Color("#08b7ad")
+	var blue := Color("#0756a7")
+	var boot := Color("#343b43")
+	# Legs and boots are separated to keep the full character readable at menu scale.
+	for side in [-1.0, 1.0]:
+		_box(hero, Vector3(side * 0.23, 0.88, 0.0), Vector3(0.37, 0.76, 0.43), blue)
+		_box(hero, Vector3(side * 0.23, 0.38, 0.08), Vector3(0.40, 0.25, 0.53), boot)
+		_box(hero, Vector3(side * 0.23, 0.245, 0.10), Vector3(0.42, 0.06, 0.55), Color("#1f252c"))
+		_box(hero, Vector3(side * 0.59, 2.16, 0.0), Vector3(0.30, 0.65, 0.46), teal)
+		_box(hero, Vector3(side * 0.60, 1.68, 0.02), Vector3(0.24, 0.48, 0.30), skin)
+	_box(hero, Vector3(0.0, 2.05, 0.0), Vector3(0.92, 1.05, 0.48), teal)
+	_box(hero, Vector3(0.0, 1.53, 0.0), Vector3(0.94, 0.12, 0.50), Color("#174f9a"))
+	_box(hero, Vector3(0.0, 2.92, 0.0), Vector3(0.78, 0.78, 0.68), skin)
+	_box(hero, Vector3(0.0, 3.32, -0.01), Vector3(0.84, 0.25, 0.74), hair)
+	_box(hero, Vector3(0.0, 2.98, -0.31), Vector3(0.82, 0.58, 0.16), hair)
+	_box(hero, Vector3(0.0, 3.18, 0.355), Vector3(0.78, 0.16, 0.08), hair)
+	for eye_x in [-0.18, 0.18]:
+		_box(hero, Vector3(eye_x, 2.99, 0.353), Vector3(0.105, 0.12, 0.045), Color("#f8f5e9"))
+		_box(hero, Vector3(eye_x, 2.99, 0.382), Vector3(0.052, 0.08, 0.025), Color("#25344a"))
+	_box(hero, Vector3(0.0, 2.84, 0.39), Vector3(0.12, 0.13, 0.08), Color("#d99a72"))
+	# Backpack with lid, side pockets and straps.
+	_box(hero, Vector3(0.0, 2.06, -0.36), Vector3(0.62, 0.78, 0.30), MAT_BROWN_PACK)
+	_box(hero, Vector3(0.0, 2.43, -0.38), Vector3(0.67, 0.16, 0.34), Color("#b8783d"))
+	_box(hero, Vector3(0.0, 1.91, -0.54), Vector3(0.36, 0.29, 0.12), Color("#6c3d25"))
+	_box(hero, Vector3(0.0, 2.29, -0.565), Vector3(0.16, 0.09, 0.035), Color("#d9b35f"), 0.4)
+	for pocket_x in [-0.34, 0.34]:
+		_box(hero, Vector3(pocket_x, 1.98, -0.34), Vector3(0.14, 0.32, 0.26), Color("#754426"))
+	for strap_x in [-0.29, 0.29]:
+		_box(hero, Vector3(strap_x, 2.12, 0.25), Vector3(0.09, 0.72, 0.06), Color("#8a542e"))
+	# Diamond pickaxe held to the hero's right.
 	var pick := Node3D.new()
-	pick.position = Vector3(0.70, 0.95, 0.22)
-	pick.rotation_degrees = Vector3(18, 0, -32)
+	pick.name = "DiamondPickaxe"
+	pick.position = Vector3(0.88, 1.68, 0.12)
+	pick.rotation_degrees.z = -18.0
 	hero.add_child(pick)
-	_box(pick, Vector3(0, 0, 0), Vector3(0.07, 0.90, 0.07), MAT_WOOD)
-	_box(pick, Vector3(0, 0.52, 0), Vector3(0.52, 0.14, 0.13), MAT_DIAMOND, 0.25)
-	_box(pick, Vector3(-0.24, 0.38, 0), Vector3(0.14, 0.24, 0.12), MAT_DIAMOND, 0.25)
-	_box(pick, Vector3(0.24, 0.38, 0), Vector3(0.14, 0.24, 0.12), MAT_DIAMOND, 0.25)
-	_box(pick, Vector3(0, 0.58, 0), Vector3(0.18, 0.10, 0.16), Color("#a8ffff"), 0.2)
+	_box(pick, Vector3(0.0, -0.18, 0.0), Vector3(0.13, 1.02, 0.14), MAT_WOOD)
+	_box(pick, Vector3(0.0, 0.12, 0.01), Vector3(0.15, 0.12, 0.16), Color("#d1a05a"))
+	_box(pick, Vector3(-0.28, 0.43, 0.0), Vector3(0.48, 0.18, 0.20), MAT_DIAMOND, 0.25)
+	_box(pick, Vector3(0.28, 0.43, 0.0), Vector3(0.48, 0.18, 0.20), MAT_DIAMOND, 0.25)
+	_box(pick, Vector3(-0.49, 0.32, 0.0), Vector3(0.14, 0.22, 0.20), Color("#76f5ee"), 0.22)
+	_box(pick, Vector3(0.49, 0.32, 0.0), Vector3(0.14, 0.22, 0.20), Color("#76f5ee"), 0.22)
