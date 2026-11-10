@@ -66,7 +66,6 @@ func _run_checks() -> void:
         _fail("batched concave collision has no valid triangle faces", 25)
         return
     print("CHUNK_COLLISION_ACCEPTANCE_PASS: chunks use <=10 nodes, one static concave collision body, and valid exposed-face triangles")
-    print("CHUNK_COLLISION_ACCEPTANCE_PASS: chunks use <=10 nodes, one static concave collision body, and voxel hit mapping works")
     if scene.blocks.size() < 20000:
         _fail("generated map is incomplete: %d blocks" % scene.blocks.size(), 16)
         return
@@ -101,14 +100,55 @@ func _run_checks() -> void:
         _fail("generated world has no blocks", 7)
         return
 
+    # Exercise the actual batched chunk collider, not only the block dictionary.
+    # The spawn column is guaranteed clear, so this isolated block has an exposed
+    # top face and can be targeted with a deterministic downward physics ray.
     var probe := Vector3i(0, 24, 0)
-    scene.place_block(probe, "stone")
-    if not scene.blocks.has(probe):
+    scene.blocks[probe] = "stone"
+    scene.call("_rebuild_chunk", Vector2i.ZERO)
+    for _frame in range(3):
+        await physics_frame
+    var ray_query := PhysicsRayQueryParameters3D.create(
+        Vector3(0.5, 28.0, 0.5),
+        Vector3(0.5, 20.0, 0.5)
+    )
+    ray_query.collision_mask = 1
+    var ray_hit: Dictionary = scene.get_world_3d().direct_space_state.intersect_ray(ray_query)
+    if ray_hit.is_empty():
+        _fail("downward ray did not hit the batched chunk collider", 32)
+        return
+    var hit_collider = ray_hit.get("collider")
+    if hit_collider == null or not hit_collider.has_meta("chunk_key") or hit_collider.has_meta("block_position"):
+        _fail("ray did not hit the expected batched chunk collision body", 33)
+        return
+    var resolved_hit: Dictionary = player.call("_resolve_hit_block", ray_hit, scene)
+    if resolved_hit.get("position", Vector3i(99999, 99999, 99999)) != probe or str(resolved_hit.get("kind", "")) != "stone":
+        _fail("batched collider hit did not resolve to the correct voxel: %s" % str(resolved_hit), 34)
+        return
+
+    # Verify the real mining path uses the resolved hit to remove the voxel.
+    player.camera.global_position = Vector3(0.5, 28.0, 0.5)
+    player.camera.look_at(Vector3(0.5, 24.5, 0.5), Vector3.FORWARD)
+    player.set("_mine_held", true)
+    for _step in range(5):
+        player.call("_tick_mining", 0.2)
+        await physics_frame
+        if not scene.blocks.has(probe):
+            break
+    player.set("_mine_held", false)
+    if scene.blocks.has(probe):
+        _fail("mining through the batched chunk collider did not remove the targeted voxel", 35)
+        return
+    print("CHUNK_HIT_MAPPING_PASS: physics ray resolved and mined the expected voxel")
+
+    var placement_probe := Vector3i(1, 24, 0)
+    scene.place_block(placement_probe, "stone")
+    if not scene.blocks.has(placement_probe):
         _fail("placing a free block did not update the world model", 8)
         return
-    scene.remove_block(probe)
-    if scene.blocks.has(probe):
-        _fail("mining a placed block did not remove it from the world model", 9)
+    scene.remove_block(placement_probe)
+    if scene.blocks.has(placement_probe):
+        _fail("removing a placed block did not update the world model", 9)
         return
 
     # Persistence format is tested with a representative small snapshot so this acceptance
