@@ -43,6 +43,11 @@ var _save_dirty := false
 var _autosave_timer := 0.0
 var _last_save_time := 0.0
 var world_initialized := false
+# Runtime diagnostics consumed by the long-session acceptance test and debug HUD.
+var chunk_build_count := 0
+var chunk_build_ms_last := 0.0
+var chunk_build_ms_peak := 0.0
+var chunk_peak_loaded := 0
 
 func _ready() -> void:
 	player = get_node_or_null("Player") as CharacterBody3D
@@ -597,6 +602,10 @@ func _load_chunk(ck: Vector2i) -> void:
 		collision.shape = shape
 		body.add_child(collision)
 		root.add_child(body)
+	chunk_build_count += 1
+	chunk_build_ms_last = float(Time.get_ticks_msec() - build_started)
+	chunk_build_ms_peak = maxf(chunk_build_ms_peak, chunk_build_ms_last)
+	chunk_peak_loaded = maxi(chunk_peak_loaded, loaded_chunks.size())
 	if OS.is_debug_build():
 		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " collision_faces=", collision_face_count, " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
 
