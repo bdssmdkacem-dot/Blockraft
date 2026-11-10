@@ -288,11 +288,11 @@ func _build_protagonist() -> void:
 	var ledge := Node3D.new()
 	ledge.name = "HeroForegroundLedge"
 	add_child(ledge)
-	_box(ledge, Vector3(-15.0, 0.75, 12.0), Vector3(5.0, 1.5, 5.0), MAT_GRASS)
-	_box(ledge, Vector3(-15.0, -0.05, 12.0), Vector3(5.2, 0.18, 5.2), MAT_STONE)
+	_box(ledge, Vector3(-15.0, 1.75, 12.0), Vector3(5.0, 1.5, 5.0), MAT_GRASS)
+	_box(ledge, Vector3(-15.0, 0.5, 12.0), Vector3(5.2, 1.0, 5.2), MAT_STONE)
 	var hero := Node3D.new()
 	hero.name = "Protagonist"
-	hero.position = Vector3(-15.0, 1.5, 12.0)
+	hero.position = Vector3(-15.0, 2.5, 12.0)
 	hero.rotation_degrees = Vector3(0, 135, 0)
 	add_child(hero)
 	_box(hero, Vector3(-0.17, 0.48, 0), Vector3(0.30, 0.72, 0.28), MAT_BLUE_PANTS)
