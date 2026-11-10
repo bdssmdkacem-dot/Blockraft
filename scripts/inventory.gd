@@ -297,7 +297,7 @@ func import_state(data: Variant) -> bool:
 		restored_slots.append({
 			"id": item_id,
 			"count": count,
-			"color": Color("6af0f5") if is_tool else _color_for(item_id),
+			"color": Color("#6af0f5") if is_tool else _color_for(item_id),
 			"is_tool": is_tool
 		})
 	var tier := str(data.get("backpack_tier", "leather"))
