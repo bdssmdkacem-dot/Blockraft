@@ -34,6 +34,15 @@ jobs:
         run: timeout 60s godot --headless --path . --script res://tools/test_touch_controls.gd
       - name: Verify gameplay world interactions and persistence
         run: godot --headless --path . --script res://tools/test_gameplay_acceptance.gd
+      - name: Save world and inventory before simulated process restart
+        timeout-minutes: 3
+        run: timeout 120s godot --headless --path . --script res://tools/test_save_process_restart.gd -- --write
+      - name: Reopen world in a fresh process and verify backup recovery
+        timeout-minutes: 3
+        run: timeout 120s godot --headless --path . --script res://tools/test_save_process_restart.gd -- --verify
+      - name: Stress chunk streaming during extended navigation and sample memory
+        timeout-minutes: 5
+        run: timeout 300s godot --headless --path . --script res://tools/test_long_session_acceptance.gd
       - name: Verify reference-aligned asset prototypes
         run: godot --headless --path . --script res://tools/test_reference_assets.gd
       - name: Verify animal size and visible geometry
