@@ -85,6 +85,36 @@ func _run_checks() -> void:
             _fail("full map is missing block/asset kind: %s" % required_kind, 19)
             return
 
+    # Quantify generated landscape coverage and relief, not just material names.
+    var water_blocks := 0
+    var leaf_blocks := 0
+    var wood_blocks := 0
+    var column_heights: Dictionary = {}
+    for pos_variant in scene.blocks.keys():
+        var pos: Vector3i = pos_variant
+        var kind := str(scene.blocks[pos])
+        if kind == "water":
+            water_blocks += 1
+        elif kind == "leaves":
+            leaf_blocks += 1
+        elif kind == "wood":
+            wood_blocks += 1
+        if kind != "water":
+            var column := Vector2i(pos.x, pos.z)
+            column_heights[column] = maxi(int(column_heights.get(column, -999)), pos.y)
+    var lowest_surface := 999
+    var highest_surface := -999
+    for height_variant in column_heights.values():
+        lowest_surface = mini(lowest_surface, int(height_variant))
+        highest_surface = maxi(highest_surface, int(height_variant))
+    if water_blocks < 100 or leaf_blocks < 100 or wood_blocks < 20:
+        _fail("terrain lacks meaningful water/forest coverage: water=%d leaves=%d wood=%d" % [water_blocks, leaf_blocks, wood_blocks], 40)
+        return
+    if highest_surface - lowest_surface < 6:
+        _fail("generated terrain relief is too flat: range=%d" % (highest_surface - lowest_surface), 41)
+        return
+    print("TERRAIN_DIVERSITY_PASS: water=", water_blocks, " leaves=", leaf_blocks, " wood=", wood_blocks, " relief=", highest_surface - lowest_surface)
+
     var player := scene.get_node_or_null("Player") as CharacterBody3D
     if player == null:
         _fail("Player node is missing", 4)
