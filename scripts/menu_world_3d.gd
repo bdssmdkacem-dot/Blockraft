@@ -107,8 +107,8 @@ func _setup_camera() -> void:
 	# Pull the panorama camera back and above the near forest canopy. This
 	# keeps the protagonist in the left foreground while revealing the river,
 	# village, gatehouse and floating islands behind the menu UI.
-	camera.position = Vector3(-18.0, 12.0, 24.0)
-	camera.rotation_degrees = Vector3(-12.0, -32.0, 0.0)
+	camera.position = Vector3(-18.0, 8.0, 24.0)
+	camera.rotation_degrees = Vector3(-10.0, -32.0, 0.0)
 	camera.fov = 55.0
 	camera.near = 0.1
 	camera.far = 200.0
@@ -285,8 +285,10 @@ func _build_landmark_details() -> void:
 func _build_protagonist() -> void:
 	var hero := Node3D.new()
 	hero.name = "Protagonist"
-	hero.position = Vector3(-7.2, 1.8, 6.0)
-	hero.rotation_degrees = Vector3(0, 40, 0)
+	# Place the hero in the open left foreground, outside the dense near
+	# canopy, facing the valley so the camera reads the backpack silhouette.
+	hero.position = Vector3(-13.0, 1.8, 13.0)
+	hero.rotation_degrees = Vector3(0, 145, 0)
 	add_child(hero)
 	_box(hero, Vector3(-0.17, 0.48, 0), Vector3(0.30, 0.72, 0.28), MAT_BLUE_PANTS)
 	_box(hero, Vector3(0.17, 0.48, 0), Vector3(0.30, 0.72, 0.28), MAT_BLUE_PANTS)
