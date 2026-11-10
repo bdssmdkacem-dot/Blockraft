@@ -104,8 +104,11 @@ func _setup_lighting() -> void:
 func _setup_camera() -> void:
 	var camera := Camera3D.new()
 	camera.name = "MenuWorldCamera"
-	camera.position = Vector3(-6.5, 4.2, 11.5)
-	camera.rotation_degrees = Vector3(-12.0, -28.0, 0.0)
+	# Pull the panorama camera back and above the near forest canopy. This
+	# keeps the protagonist in the left foreground while revealing the river,
+	# village, gatehouse and floating islands behind the menu UI.
+	camera.position = Vector3(-18.0, 12.0, 24.0)
+	camera.rotation_degrees = Vector3(-12.0, -32.0, 0.0)
 	camera.fov = 55.0
 	camera.near = 0.1
 	camera.far = 200.0
