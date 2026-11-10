@@ -33,15 +33,16 @@ func _run_checks() -> void:
 			return
 
 		var meshes := animal.find_children("*", "MeshInstance3D", true, false)
-		if meshes.size() < 9:
+		var min_parts := [12, 14, 15, 15][kind]
+		if meshes.size() < min_parts:
 			_fail("animal %d has too few visible mesh parts: %d" % [kind, meshes.size()], 5)
 			return
 		var body := animal.get_child(0) as Node3D
-		if body == null or body.get_child_count() < 8:
+		if body == null or body.get_child_count() < min_parts:
 			_fail("animal %d lacks enough silhouette/detail pieces" % kind, 6)
 			return
 		animal.queue_free()
 		await process_frame
 
-	print("ANIMAL_READABILITY_ACCEPTANCE_PASS: four animal types have mobile-scale collision and layered visible geometry")
+	print("ANIMAL_READABILITY_ACCEPTANCE_PASS: four animal types have species-specific silhouettes, mobile-scale collision and layered visible geometry")
 	quit(0)
