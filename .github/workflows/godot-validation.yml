@@ -47,6 +47,18 @@ jobs:
         run: godot --headless --path . --script res://tools/test_reference_assets.gd
       - name: Verify animal size and visible geometry
         run: godot --headless --path . --script res://tools/test_animal_readability.gd
+      - name: Capture four-species animal visual gallery
+        run: timeout 45s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_animal_gallery.gd
+      - name: Verify animal gallery screenshot was generated
+        run: test -s animal_gallery_capture.png
+      - name: Upload animal visual gallery
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockraft-animal-gallery
+          path: animal_gallery_capture.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Install virtual display for rendered capture
         run: |
           apt-get update
