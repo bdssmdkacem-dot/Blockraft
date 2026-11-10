@@ -50,6 +50,18 @@ func _run_checks() -> void:
 		_fail("3D menu world is missing its floating island landmark", 28)
 		return
 
+	var hero := world.find_child("Protagonist", true, false) as Node3D
+	if hero == null:
+		_fail("menu protagonist is missing", 31)
+		return
+	if hero.get_child_count() < 24 or hero.find_child("DiamondPickaxe", true, false) == null:
+		_fail("menu protagonist silhouette is missing layered clothing, backpack or pickaxe detail", 32)
+		return
+	var castle := world.find_child("GatehouseCastle", true, false) as Node3D
+	if castle == null or castle.get_child_count() < 90:
+		_fail("menu castle lacks the layered facade and landmark detail pass", 33)
+		return
+
 	var strip := scene.find_child("FeatureStrip", true, false) as HBoxContainer
 	if strip == null:
 		_fail("FeatureStrip is missing", 4)
