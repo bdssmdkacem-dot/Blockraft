@@ -217,5 +217,35 @@ func _run_checks() -> void:
         _fail("compact persistence fixture did not preserve block coordinates and kinds", 20)
         return
 
-    print("GAMEPLAY_ACCEPTANCE_PASS: player/camera, generated blocks, place/remove model updates, and saved deletion verified")
+    # Exercise last-known-good recovery with a full-size valid world. The second
+    # save must preserve the first snapshot as .bak; corrupting the primary file
+    # must restore both the original spawn terrain and its inventory snapshot.
+    scene.blocks = full_world_blocks.duplicate(true)
+    scene.inventory.slots[1]["count"] = 9
+    scene.inventory.storage["stone"] = 17
+    scene.save_world()
+    scene.blocks[Vector3i(0, 4, 0)] = "stone"
+    scene.inventory.slots[1]["count"] = 3
+    scene.inventory.storage["stone"] = 2
+    scene.save_world()
+
+    var corrupt_file := FileAccess.open(save_path, FileAccess.WRITE)
+    if corrupt_file == null:
+        _fail("could not open primary save to simulate corruption", 36)
+        return
+    corrupt_file.store_string("{invalid-json")
+    corrupt_file.close()
+    scene.blocks.clear()
+    if not scene.call("_load_world_snapshot"):
+        _fail("corrupted primary save did not recover from the last-known-good backup", 37)
+        return
+    if str(scene.blocks.get(Vector3i(0, 4, 0), "")) != "grass":
+        _fail("backup recovery did not restore the original spawn terrain", 38)
+        return
+    if int(scene.inventory.slots[1].get("count", -1)) != 9 or scene.inventory.storage_count("stone") != 17:
+        _fail("backup recovery did not restore the matching inventory snapshot", 39)
+        return
+    print("SAVE_BACKUP_RECOVERY_PASS: corrupted primary restored previous world and inventory snapshot")
+
+    print("GAMEPLAY_ACCEPTANCE_PASS: player/camera, generated blocks, real chunk mining, place/remove, save deletion, and backup recovery verified")
     quit(0)
