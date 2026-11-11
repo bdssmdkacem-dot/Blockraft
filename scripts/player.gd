@@ -147,6 +147,9 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: 
 func _build_character_body() -> void:
 	body_root = Node3D.new()
 	body_root.name = "VoxelBody"
+	# The camera begins behind the avatar on +Z, so the default facing direction
+	# is -Z even before the first movement input arrives.
+	body_root.rotation.y = PI
 	add_child(body_root)
 	leg_l_pivot = Node3D.new()
 	leg_l_pivot.position = Vector3(-0.17, 0.85, 0.0)
@@ -594,7 +597,8 @@ func _physics_land(delta: float, direction: Vector3, want_jump: bool) -> void:
 
 func _update_body_anim(delta: float, direction: Vector3) -> void:
 	if body_root and direction.length() > 0.05 and (is_on_floor() or _in_water):
-		body_root.rotation.y = lerp_angle(body_root.rotation.y, atan2(-direction.x, -direction.z), 1.0 - exp(-12.0 * delta))
+		# The avatar mesh faces local +Z; rotate that axis toward the movement vector.
+		body_root.rotation.y = lerp_angle(body_root.rotation.y, atan2(direction.x, direction.z), 1.0 - exp(-12.0 * delta))
 		walk_phase += delta * (9.0 if _in_water else 12.0)
 		var swing := sin(walk_phase) * (0.35 if _in_water else 0.55)
 		if leg_l_pivot: leg_l_pivot.rotation.x = swing
