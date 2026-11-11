@@ -33,7 +33,7 @@ func _run_checks() -> void:
 			return
 
 		var meshes := animal.find_children("*", "MeshInstance3D", true, false)
-		var min_parts := [12, 14, 15, 15][kind]
+		var min_parts: int = int([12, 14, 15, 15][kind])
 		if meshes.size() < min_parts:
 			_fail("animal %d has too few visible mesh parts: %d" % [kind, meshes.size()], 5)
 			return

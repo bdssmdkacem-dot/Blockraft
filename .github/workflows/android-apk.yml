@@ -108,6 +108,11 @@ jobs:
           ANDROID_SDK_ROOT: /usr/lib/android-sdk
         run: godot --headless --path . --editor --quit
 
+      - name: Fail on any GDScript parse error
+        env:
+          HOME: /root
+        run: godot --headless --path . --script res://tests/script_parse_test.gd
+
       - name: Test deterministic spawn and fall recovery
         env:
           HOME: /root

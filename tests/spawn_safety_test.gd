@@ -24,7 +24,7 @@ func _run_spawn_safety_test() -> void:
 	var ready := false
 	for _frame in range(900):
 		await process_frame
-		if bool(game.get("world_initialized")):
+		if game.get("world_initialized") == true:
 			ready = true
 			break
 	if not ready:

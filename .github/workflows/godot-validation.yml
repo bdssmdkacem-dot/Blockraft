@@ -21,6 +21,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Import project and parse scripts
         run: godot --headless --path . --editor --quit
+      - name: Fail on any GDScript parse error
+        run: godot --headless --path . --script res://tests/script_parse_test.gd
       - name: Launch main menu scene headlessly
         run: godot --headless --path . --quit-after 3
       - name: Launch gameplay scene headlessly
@@ -52,7 +54,6 @@ jobs:
       - name: Verify animal gallery screenshot was generated
         run: test -s animal_gallery_capture.png
       - name: Upload animal visual gallery
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-animal-gallery
@@ -68,7 +69,6 @@ jobs:
       - name: Verify gameplay world screenshot was generated
         run: test -s gameplay_world_capture.png
       - name: Upload rendered gameplay world screenshot
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-gameplay-world-capture
@@ -80,7 +80,6 @@ jobs:
       - name: Verify screenshot was generated
         run: test -s main_menu_capture.png
       - name: Upload rendered menu screenshot
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-main-menu-capture
@@ -92,7 +91,6 @@ jobs:
       - name: Verify reference asset screenshot was generated
         run: test -s reference_assets_capture.png
       - name: Upload rendered reference asset screenshot
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-reference-assets-capture

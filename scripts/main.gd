@@ -453,7 +453,7 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 		var layer_radius := maxi(1, radius - (1 if dy == 3 else 0))
 		for dx in range(-radius, radius + 1):
 			for dz in range(-radius, radius + 1):
-				var dist := abs(dx) + abs(dz)
+				var dist: int = absi(dx) + absi(dz)
 				if dist > layer_radius * 2 + 1:
 					continue
 				if dist > layer_radius + 1 and r.randf() < 0.55:

@@ -47,7 +47,7 @@ func _run() -> void:
 	var object_peak := int(Performance.get_monitor(Performance.OBJECT_COUNT))
 	var frames := 0
 	var route_index := 0
-	var max_loaded := scene.loaded_chunks.size()
+	var max_loaded: int = scene.loaded_chunks.size()
 	var chunk_build_start := int(scene.chunk_build_count)
 	while frames < SESSION_FRAMES:
 		if frames % WAIT_PER_STOP == 0:

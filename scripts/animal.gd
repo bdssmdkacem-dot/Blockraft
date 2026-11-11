@@ -180,7 +180,7 @@ func _update_hp_bar() -> void:
 		else:
 			mat.albedo_color = Color(0.95, 0.2, 0.15)
 
-func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> void:
+func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.85) -> void:
 	var mi := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
@@ -188,7 +188,7 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> void:
 	mi.position = pos
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
-	mat.roughness = 0.85
+	mat.roughness = roughness
 	mi.material_override = mat
 	parent.add_child(mi)
 
