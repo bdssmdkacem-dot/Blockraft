@@ -71,5 +71,41 @@ func _run() -> void:
 	if int(inventory.slots[1].get("count", -1)) != 9 or int(inventory.storage_count("stone")) != 17:
 		_fail("fresh process did not restore the matching inventory backup", 8)
 		return
-	print("PROCESS_RESTART_RECOVERY_PASS: new Godot process restored world and inventory from last-known-good backup")
+
+	# Saving immediately after fallback recovery must not rotate the corrupt
+	# primary over the only known-good backup.
+	scene.save_world()
+	var primary := _read_snapshot(SAVE_PATH)
+	if primary.is_empty() or not _snapshot_has_marker(primary, "stone"):
+		_fail("saving after backup recovery did not write a valid restored primary snapshot", 9)
+		return
+	var backup := _read_snapshot(SAVE_PATH + ".bak")
+	if backup.is_empty() or not _snapshot_has_marker(backup, "stone"):
+		_fail("saving after recovery replaced the last-known-good backup with the corrupt primary", 10)
+		return
+	var backup_inventory: Dictionary = backup.get("inventory", {})
+	var backup_slots: Array = backup_inventory.get("slots", [])
+	var backup_storage: Dictionary = backup_inventory.get("storage", {})
+	if backup_slots.size() != 9 or int(backup_slots[1].get("count", -1)) != 9 or int(backup_storage.get("stone", -1)) != 17:
+		_fail("last-known-good backup did not preserve the matching hotbar and depot values", 11)
+		return
+	print("PROCESS_RESTART_RECOVERY_PASS: new process restored world/inventory and a post-recovery save preserved the last-known-good backup")
 	quit(0)
+
+func _read_snapshot(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {}
+	var parsed = JSON.parse_string(file.get_as_text())
+	file.close()
+	return parsed if typeof(parsed) == TYPE_DICTIONARY else {}
+
+func _snapshot_has_marker(snapshot: Dictionary, expected_kind: String) -> bool:
+	for entry in snapshot.get("blocks", []):
+		if typeof(entry) == TYPE_ARRAY and entry.size() >= 4:
+			var position := Vector3i(int(entry[0]), int(entry[1]), int(entry[2]))
+			if position == MARKER:
+				return str(entry[3]) == expected_kind
+	return false
