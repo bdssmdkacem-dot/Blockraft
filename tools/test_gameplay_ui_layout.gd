@@ -42,22 +42,20 @@ func _run() -> void:
 
 	for _frame in range(3):
 		await process_frame
-	if not _check_layout(game, survival, false):
+	if not _check_layout(game, survival, false, Vector2(1280.0, 720.0)):
 		return
 
-	root.size = Vector2i(360, 800)
-	game.call("_layout_hotbar")
-	survival.call("_layout_ui")
+	game.call("_layout_hotbar", Vector2(360.0, 800.0))
+	survival.call("_layout_ui", Vector2(360.0, 800.0))
 	for _frame in range(3):
 		await process_frame
-	if not _check_layout(game, survival, true):
+	if not _check_layout(game, survival, true, Vector2(360.0, 800.0)):
 		return
 
 	print("GAMEPLAY_UI_LAYOUT_PASS: desktop HUD clears survival panel; 360px layout keeps hotbar in bounds above touch actions and hides keyboard hint")
 	quit(0)
 
-func _check_layout(game: Node, survival: Node, compact: bool) -> bool:
-	var viewport_size := root.get_visible_rect().size
+func _check_layout(game: Node, survival: Node, compact: bool, viewport_size: Vector2) -> bool:
 	var bag := game.get("backpack_label") as Label
 	var upgrade := game.get("upgrade_btn") as Button
 	var status := game.get("status_label") as Label

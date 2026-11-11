@@ -344,8 +344,8 @@ func _build_ui() -> void:
 	_layout_ui()
 	host.get_viewport().size_changed.connect(_layout_ui)
 
-func _layout_ui() -> void:
-	var vs := host.get_viewport().get_visible_rect().size
+func _layout_ui(viewport_size: Vector2 = Vector2.ZERO) -> void:
+	var vs := viewport_size if viewport_size.x > 0.0 else host.get_viewport().get_visible_rect().size
 	var compact := vs.x < 700.0
 	if _top_bar:
 		_top_bar.custom_minimum_size = Vector2(vs.x, 36)

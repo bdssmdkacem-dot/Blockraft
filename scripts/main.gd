@@ -963,9 +963,9 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 	_layout_hotbar()
 	get_viewport().size_changed.connect(_layout_hotbar)
 
-func _layout_hotbar() -> void:
+func _layout_hotbar(viewport_size: Vector2 = Vector2.ZERO) -> void:
 	if hotbar_ui == null: return
-	var vs := get_viewport().get_visible_rect().size
+	var vs := viewport_size if viewport_size.x > 0.0 else get_viewport().get_visible_rect().size
 	var compact := vs.x < 700.0
 	var gap := 2 if compact else 6
 	var slot_size := 56.0
@@ -993,12 +993,12 @@ func _layout_hotbar() -> void:
 	if status_label:
 		status_label.position = Vector2(12.0, 250.0)
 		status_label.size = Vector2(maxf(0.0, vs.x - 24.0), 22.0)
-	_layout_backpack_ui()
+	_layout_backpack_ui(vs)
 
-func _layout_backpack_ui() -> void:
+func _layout_backpack_ui(viewport_size: Vector2 = Vector2.ZERO) -> void:
 	if backpack_label == null or upgrade_btn == null:
 		return
-	var vs := get_viewport().get_visible_rect().size
+	var vs := viewport_size if viewport_size.x > 0.0 else get_viewport().get_visible_rect().size
 	var compact := vs.x < 700.0
 	var label_width := minf(520.0, maxf(112.0, vs.x * (0.44 if compact else 0.42)))
 	var button_width := minf(156.0, maxf(112.0, vs.x * 0.42))
