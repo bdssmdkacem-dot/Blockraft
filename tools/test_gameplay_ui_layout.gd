@@ -64,7 +64,8 @@ func _check_layout(game: Node, survival: Node, compact: bool) -> bool:
 	var hotbar := game.get("hotbar_ui") as HBoxContainer
 	var panel := game.find_child("SurvivalStatusPanel", true, false) as Control
 	var hint := survival.get("hint_label") as Label
-	if bag == null or upgrade == null or status == null or hotbar == null or panel == null or hint == null:
+	var toast := game.get("toast_label") as Label
+	if bag == null or upgrade == null or status == null or hotbar == null or panel == null or hint == null or toast == null:
 		_fail("one or more HUD controls are missing", 6)
 		return false
 
@@ -79,6 +80,9 @@ func _check_layout(game: Node, survival: Node, compact: bool) -> bool:
 	if _rect(status).intersects(panel_rect):
 		_fail("discovery status overlaps the survival status panel at width %d" % int(viewport_size.x), 9)
 		return false
+	if _rect(status).intersects(_rect(toast)):
+		_fail("discovery status overlaps the toast area at width %d" % int(viewport_size.x), 17)
+		return false
 	if _rect(bag).intersects(_rect(upgrade)):
 		_fail("backpack label overlaps the depot/upgrade button", 10)
 		return false
@@ -89,6 +93,9 @@ func _check_layout(game: Node, survival: Node, compact: bool) -> bool:
 		return false
 	if hotbar_rect.position.x < -0.5 or hotbar_rect.position.x + hotbar_rect.size.x > viewport_size.x + 0.5:
 		_fail("hotbar extends outside the viewport at width %d" % int(viewport_size.x), 12)
+		return false
+	if hotbar_rect.size.y > (56.5 if not compact else 36.5):
+		_fail("hotbar grew taller than its responsive slot size: %s" % str(hotbar_rect.size), 18)
 		return false
 
 	if compact:

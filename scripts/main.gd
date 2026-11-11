@@ -873,7 +873,10 @@ func _setup_ui() -> void:
 	layer.name = "GameUI"
 	add_child(layer)
 	status_label = Label.new()
-	status_label.position = Vector2(16, 230)
+	status_label.position = Vector2(12, 250)
+	status_label.size = Vector2(320, 22)
+	status_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	status_label.add_theme_color_override("font_color", Color("#f4f7e8"))
 	status_label.add_theme_font_size_override("font_size", 13)
 	status_label.add_theme_color_override("font_color", Color("#c8e0d0"))
 	layer.add_child(status_label)
@@ -922,9 +925,14 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 		style.border_color = Color("#6ab88a")
 		style.set_border_width_all(2)
 		style.set_corner_radius_all(8)
+		style.content_margin_left = 0
+		style.content_margin_right = 0
+		style.content_margin_top = 0
+		style.content_margin_bottom = 0
 		slot.add_theme_stylebox_override("panel", style)
 		var v := VBoxContainer.new()
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_theme_constant_override("separation", 0)
 		slot.add_child(v)
 		var icon := ColorRect.new()
 		icon.name = "Icon"
@@ -957,7 +965,7 @@ func _layout_hotbar() -> void:
 	if hotbar_ui == null: return
 	var vs := get_viewport().get_visible_rect().size
 	var compact := vs.x < 700.0
-	var gap := 4 if compact else 6
+	var gap := 2 if compact else 6
 	var slot_size := 56.0
 	if compact:
 		slot_size = clampf((vs.x - 24.0 - float(gap * (inventory.SLOT_COUNT - 1))) / float(inventory.SLOT_COUNT), 26.0, 56.0)
@@ -967,19 +975,22 @@ func _layout_hotbar() -> void:
 		slot.custom_minimum_size = Vector2(slot_size, slot_size)
 		var icon := slot.find_child("Icon", true, false) as ColorRect
 		if icon:
-			icon.custom_minimum_size = Vector2(slot_size * 0.64, slot_size * 0.48)
+			icon.custom_minimum_size = Vector2(slot_size * 0.64, slot_size * 0.32)
 		var count := slot.find_child("Count", true, false) as Label
 		if count:
-			count.add_theme_font_size_override("font_size", 9 if compact else 11)
+			count.add_theme_font_size_override("font_size", 8 if compact else 10)
 		var key := slot.find_child("Key", true, false) as Label
 		if key:
-			key.add_theme_font_size_override("font_size", 8 if compact else 10)
+			key.add_theme_font_size_override("font_size", 7 if compact else 9)
 	var total_width := slot_size * float(inventory.SLOT_COUNT) + float(gap * (inventory.SLOT_COUNT - 1))
 	hotbar_ui.size = Vector2(total_width, slot_size)
 	hotbar_ui.position = Vector2(maxf(0.0, (vs.x - total_width) * 0.5), vs.y - (250.0 if compact else slot_size + 28.0))
 	if toast_label:
 		toast_label.size = Vector2(maxf(0.0, vs.x - 24.0), 40.0) if compact else Vector2(600.0, 40.0)
-		toast_label.position = Vector2(12.0, 260.0) if compact else Vector2(vs.x * 0.5 - 300.0, 110.0)
+		toast_label.position = Vector2(12.0, 280.0) if compact else Vector2(vs.x * 0.5 - 300.0, 110.0)
+	if status_label:
+		status_label.position = Vector2(12.0, 250.0)
+		status_label.size = Vector2(maxf(0.0, vs.x - 24.0), 22.0)
 	_layout_backpack_ui()
 
 func _layout_backpack_ui() -> void:
@@ -1037,6 +1048,10 @@ func _refresh_hotbar(_arg = null) -> void:
 			style.set_border_width_all(2)
 			style.bg_color = Color(0.05, 0.08, 0.1, 0.82)
 		style.set_corner_radius_all(8)
+		style.content_margin_left = 0
+		style.content_margin_right = 0
+		style.content_margin_top = 0
+		style.content_margin_bottom = 0
 		slot.add_theme_stylebox_override("panel", style)
 		var icon := slot.find_child("Icon", true, false) as ColorRect
 		var count := slot.find_child("Count", true, false) as Label
