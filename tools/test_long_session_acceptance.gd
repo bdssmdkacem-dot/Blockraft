@@ -2,6 +2,8 @@ extends SceneTree
 
 const SESSION_FRAMES := 1800
 const WAIT_PER_STOP := 90
+const MAX_MEMORY_GROWTH_BYTES := 48 * 1024 * 1024
+const MAX_OBJECT_GROWTH := 2500
 const ROUTE := [
 	Vector3(0.5, 7.0, 0.5),
 	Vector3(34.5, 16.0, 0.5),
@@ -44,7 +46,8 @@ func _run() -> void:
 
 	var memory_start := int(Performance.get_monitor(Performance.MEMORY_STATIC))
 	var memory_peak := memory_start
-	var object_peak := int(Performance.get_monitor(Performance.OBJECT_COUNT))
+	var object_start := int(Performance.get_monitor(Performance.OBJECT_COUNT))
+	var object_peak := object_start
 	var frames := 0
 	var route_index := 0
 	var max_loaded: int = scene.loaded_chunks.size()
@@ -64,7 +67,13 @@ func _run() -> void:
 			_fail("loaded chunk residency exceeded the 7x7 streaming window", 5)
 			return
 
-	# Let queued chunk frees and deferred builds settle before comparing residency.
+	# Let the final streaming queue drain before measuring retained resources.
+	for _i in range(240):
+		await process_frame
+		var pending_chunks: Array = scene.get("_chunk_queue")
+		if pending_chunks.is_empty():
+			break
+	# Allow deferred node destruction to complete before the final sample.
 	for _i in range(12):
 		await process_frame
 	var memory_end := int(Performance.get_monitor(Performance.MEMORY_STATIC))
@@ -81,6 +90,7 @@ func _run() -> void:
 		" memory_start_bytes=", memory_start,
 		" memory_peak_bytes=", memory_peak,
 		" memory_end_bytes=", memory_end,
+		" object_start=", object_start,
 		" object_peak=", object_peak,
 		" object_end=", object_end)
 	if built < 40:
@@ -89,8 +99,19 @@ func _run() -> void:
 	if scene.loaded_chunks.size() > 49 or peak_chunks > 49:
 		_fail("chunk residency exceeded the expected streaming window", 7)
 		return
-	if memory_end > 0 and memory_peak > 0 and memory_end > memory_peak:
-		_fail("invalid memory monitor readings", 8)
+	if memory_start <= 0 or memory_end <= 0 or object_start <= 0 or object_end <= 0:
+		_fail("memory/object monitors returned invalid readings", 8)
 		return
-	print("LONG_SESSION_ACCEPTANCE_PASS: repeated navigation, bounded chunk residency, memory/object sampling and chunk build timings verified")
+	var retained_memory_growth := memory_end - memory_start
+	var retained_object_growth := object_end - object_start
+	if retained_memory_growth > MAX_MEMORY_GROWTH_BYTES:
+		_fail("retained static memory grew by %d bytes (limit %d)" % [retained_memory_growth, MAX_MEMORY_GROWTH_BYTES], 9)
+		return
+	if retained_object_growth > MAX_OBJECT_GROWTH:
+		_fail("retained object count grew by %d (limit %d)" % [retained_object_growth, MAX_OBJECT_GROWTH], 10)
+		return
+	if peak_ms > 120.0:
+		_fail("a single chunk build exceeded the 120ms desktop acceptance budget: %.1fms" % peak_ms, 11)
+		return
+	print("LONG_SESSION_ACCEPTANCE_PASS: repeated navigation, bounded chunk residency, retained memory/object growth and chunk build timings verified")
 	quit(0)
