@@ -62,7 +62,7 @@ func _check_layout(game: Node, survival: Node, compact: bool) -> bool:
 	var upgrade := game.get("upgrade_btn") as Button
 	var status := game.get("status_label") as Label
 	var hotbar := game.get("hotbar_ui") as HBoxContainer
-	var panel := survival.find_child("SurvivalStatusPanel", true, false) as Control
+	var panel := game.find_child("SurvivalStatusPanel", true, false) as Control
 	var hint := survival.get("hint_label") as Label
 	if bag == null or upgrade == null or status == null or hotbar == null or panel == null or hint == null:
 		_fail("one or more HUD controls are missing", 6)
