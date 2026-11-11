@@ -72,6 +72,13 @@ func _check_layout(game: Node, survival: Node, compact: bool, viewport_size: Vec
 	if _rect(bag).intersects(panel_rect):
 		_fail("backpack label overlaps the survival status panel at width %d" % int(viewport_size.x), 7)
 		return false
+	var bag_rect := _rect(bag)
+	if bag_rect.position.x < -0.5 or bag_rect.position.x + bag_rect.size.x > viewport_size.x - 17.0:
+		_fail("backpack label escapes the horizontal safe area at width %d" % int(viewport_size.x), 19)
+		return false
+	if bag.get_minimum_size().x > bag.size.x + 1.0:
+		_fail("backpack label text exceeds its measured control width at width %d" % int(viewport_size.x), 20)
+		return false
 	if _rect(upgrade).intersects(panel_rect):
 		_fail("depot/upgrade button overlaps the survival status panel at width %d" % int(viewport_size.x), 8)
 		return false
