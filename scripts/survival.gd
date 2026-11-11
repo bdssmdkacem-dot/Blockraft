@@ -227,6 +227,7 @@ func _build_ui() -> void:
 	_ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_ui_root)
 	_top_bar = PanelContainer.new()
+	_top_bar.name = "TopBar"
 	_top_bar.position = Vector2(0, 0)
 	var top_style := StyleBoxFlat.new()
 	top_style.bg_color = Color(0.05, 0.07, 0.1, 0.82)
@@ -256,6 +257,7 @@ func _build_ui() -> void:
 	phase_detail.add_theme_color_override("font_color", Color("#9ab0c0"))
 	top_h.add_child(phase_detail)
 	var panel := PanelContainer.new()
+	panel.name = "SurvivalStatusPanel"
 	panel.position = Vector2(12, 48)
 	var ps := StyleBoxFlat.new()
 	ps.bg_color = Color(0.06, 0.08, 0.1, 0.88)
@@ -344,12 +346,22 @@ func _build_ui() -> void:
 
 func _layout_ui() -> void:
 	var vs := host.get_viewport().get_visible_rect().size
+	var compact := vs.x < 700.0
 	if _top_bar:
 		_top_bar.custom_minimum_size = Vector2(vs.x, 36)
+	var meter_width := 160.0
+	if compact:
+		meter_width = clampf(vs.x * 0.38, 110.0, 160.0)
+	for meter in [clock_bar, health_bar, hunger_bar]:
+		if meter:
+			meter.custom_minimum_size = Vector2(meter_width, meter.custom_minimum_size.y)
 	if night_banner:
-		night_banner.position = Vector2(vs.x * 0.5 - 180.0, 52)
+		night_banner.position = Vector2(vs.x * 0.5 - 180.0, 270.0 if compact else 52.0)
 	if hint_label:
-		hint_label.position = Vector2(vs.x * 0.5 - 240.0, vs.y - 28)
+		hint_label.visible = not compact
+		hint_label.size = Vector2(maxf(0.0, vs.x - 24.0), 18.0)
+		hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hint_label.position = Vector2(12.0, vs.y - 104.0)
 
 func tick(delta: float) -> void:
 	_invuln = maxf(0.0, _invuln - delta)

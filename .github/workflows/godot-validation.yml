@@ -30,6 +30,8 @@ jobs:
       - name: Test deterministic spawn and fall recovery
         timeout-minutes: 5
         run: godot --headless --path . --script res://tests/spawn_safety_test.gd
+      - name: Verify gameplay HUD layout at desktop and phone sizes
+        run: godot --headless --path . --script res://tools/test_gameplay_ui_layout.gd
       - name: Verify main menu structure, interactions, and responsive layout
         run: godot --headless --path . --script res://tools/test_main_menu_acceptance.gd
       - name: Verify raw Android touch movement and action controls

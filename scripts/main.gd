@@ -873,7 +873,7 @@ func _setup_ui() -> void:
 	layer.name = "GameUI"
 	add_child(layer)
 	status_label = Label.new()
-	status_label.position = Vector2(16, 100)
+	status_label.position = Vector2(16, 190)
 	status_label.add_theme_font_size_override("font_size", 13)
 	status_label.add_theme_color_override("font_color", Color("#c8e0d0"))
 	layer.add_child(status_label)
@@ -936,6 +936,7 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 		count.add_theme_font_size_override("font_size", 11)
 		v.add_child(count)
 		var key := Label.new()
+		key.name = "Key"
 		key.text = str(i + 1)
 		key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		key.add_theme_font_size_override("font_size", 10)
@@ -955,19 +956,54 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 func _layout_hotbar() -> void:
 	if hotbar_ui == null: return
 	var vs := get_viewport().get_visible_rect().size
-	hotbar_ui.position = Vector2(vs.x * 0.5 - 260.0, vs.y - 78.0)
-	if toast_label: toast_label.position = Vector2(vs.x * 0.5 - 300.0, 110.0)
+	var compact := vs.x < 700.0
+	var gap := 4 if compact else 6
+	var slot_size := 56.0
+	if compact:
+		slot_size = clampf((vs.x - 24.0 - float(gap * (inventory.SLOT_COUNT - 1))) / float(inventory.SLOT_COUNT), 26.0, 56.0)
+	hotbar_ui.add_theme_constant_override("separation", gap)
+	for slot_variant in hotbar_slots:
+		var slot := slot_variant as PanelContainer
+		slot.custom_minimum_size = Vector2(slot_size, slot_size)
+		var icon := slot.find_child("Icon", true, false) as ColorRect
+		if icon:
+			icon.custom_minimum_size = Vector2(slot_size * 0.64, slot_size * 0.48)
+		var count := slot.find_child("Count", true, false) as Label
+		if count:
+			count.add_theme_font_size_override("font_size", 9 if compact else 11)
+		var key := slot.find_child("Key", true, false) as Label
+		if key:
+			key.add_theme_font_size_override("font_size", 8 if compact else 10)
+	var total_width := slot_size * float(inventory.SLOT_COUNT) + float(gap * (inventory.SLOT_COUNT - 1))
+	hotbar_ui.size = Vector2(total_width, slot_size)
+	hotbar_ui.position = Vector2(maxf(0.0, (vs.x - total_width) * 0.5), vs.y - (250.0 if compact else slot_size + 28.0))
+	if toast_label:
+		toast_label.size = Vector2(maxf(0.0, vs.x - 24.0), 40.0) if compact else Vector2(600.0, 40.0)
+		toast_label.position = Vector2(12.0, 220.0) if compact else Vector2(vs.x * 0.5 - 300.0, 110.0)
+	_layout_backpack_ui()
+
+func _layout_backpack_ui() -> void:
+	if backpack_label == null or upgrade_btn == null:
+		return
+	var vs := get_viewport().get_visible_rect().size
+	var compact := vs.x < 700.0
+	var label_width := minf(520.0, maxf(112.0, vs.x * (0.44 if compact else 0.42)))
+	var button_width := minf(156.0, maxf(112.0, vs.x * 0.42))
+	backpack_label.size = Vector2(label_width, 18.0)
+	backpack_label.position = Vector2(vs.x - label_width - 12.0, 42.0)
+	backpack_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	backpack_label.add_theme_font_size_override("font_size", 11 if compact else 12)
+	upgrade_btn.size = Vector2(button_width, 28.0)
+	upgrade_btn.position = Vector2(vs.x - button_width - 12.0, 64.0)
 
 func _build_backpack_ui(layer: CanvasLayer) -> void:
 	backpack_label = Label.new()
-	backpack_label.position = Vector2(16, 42)
 	backpack_label.add_theme_font_size_override("font_size", 12)
 	backpack_label.add_theme_color_override("font_color", Color("#d8e8d0"))
 	layer.add_child(backpack_label)
 	upgrade_btn = Button.new()
-	upgrade_btn.text = "Depot F / Bag B"
-	upgrade_btn.position = Vector2(16, 66)
-	upgrade_btn.custom_minimum_size = Vector2(160, 28)
+	upgrade_btn.text = "Depot / Upgrade"
+	upgrade_btn.custom_minimum_size = Vector2(156, 28)
 	upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	layer.add_child(upgrade_btn)
 	_refresh_backpack_ui()
@@ -981,7 +1017,9 @@ func _on_upgrade_pressed() -> void:
 
 func _refresh_backpack_ui() -> void:
 	if backpack_label == null: return
-	backpack_label.text = "%s (stack %d) | %s" % [inventory.get_backpack_label(), inventory.get_max_stack(), inventory.upgrade_cost_text()]
+	backpack_label.text = "%s · %d max" % [inventory.get_backpack_label(), inventory.get_max_stack()]
+	if upgrade_btn:
+		upgrade_btn.tooltip_text = inventory.upgrade_cost_text()
 
 func _refresh_hotbar(_arg = null) -> void:
 	_refresh_backpack_ui()

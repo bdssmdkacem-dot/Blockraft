@@ -118,6 +118,11 @@ jobs:
           HOME: /root
         run: godot --headless --path . --script res://tests/spawn_safety_test.gd
 
+      - name: Verify gameplay HUD layout at desktop and phone sizes
+        env:
+          HOME: /root
+        run: godot --headless --path . --script res://tools/test_gameplay_ui_layout.gd
+
       - name: Export Android APK
         env:
           HOME: /root
