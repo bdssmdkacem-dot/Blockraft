@@ -69,6 +69,7 @@ func _check_layout(game: Node, survival: Node, compact: bool) -> bool:
 		return false
 
 	var panel_rect := _rect(panel)
+	print("HUD_LAYOUT_GEOMETRY width=%d panel=%s status=%s bag=%s upgrade=%s hotbar=%s hint=%s" % [int(viewport_size.x), str(panel_rect), str(_rect(status)), str(_rect(bag)), str(_rect(upgrade)), str(_rect(hotbar)), str(_rect(hint))])
 	if _rect(bag).intersects(panel_rect):
 		_fail("backpack label overlaps the survival status panel at width %d" % int(viewport_size.x), 7)
 		return false
