@@ -918,7 +918,7 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 	hotbar_ui = bar
 	hotbar_slots.clear()
 	for i in range(inventory.SLOT_COUNT):
-		var slot := PanelContainer.new()
+		var slot := Panel.new()
 		slot.mouse_filter = Control.MOUSE_FILTER_STOP
 		slot.custom_minimum_size = Vector2(56, 56)
 		var style := StyleBoxFlat.new()
@@ -932,6 +932,7 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 		style.content_margin_bottom = 0
 		slot.add_theme_stylebox_override("panel", style)
 		var v := VBoxContainer.new()
+		v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.add_theme_constant_override("separation", 0)
 		slot.add_child(v)
@@ -972,7 +973,7 @@ func _layout_hotbar() -> void:
 		slot_size = clampf((vs.x - 24.0 - float(gap * (inventory.SLOT_COUNT - 1))) / float(inventory.SLOT_COUNT), 26.0, 56.0)
 	hotbar_ui.add_theme_constant_override("separation", gap)
 	for slot_variant in hotbar_slots:
-		var slot := slot_variant as PanelContainer
+		var slot := slot_variant as Panel
 		slot.custom_minimum_size = Vector2(slot_size, slot_size)
 		var icon := slot.find_child("Icon", true, false) as ColorRect
 		if icon:
@@ -1037,7 +1038,7 @@ func _refresh_hotbar(_arg = null) -> void:
 	_refresh_backpack_ui()
 	if hotbar_slots.is_empty(): return
 	for i in range(inventory.SLOT_COUNT):
-		var slot: PanelContainer = hotbar_slots[i]
+		var slot: Panel = hotbar_slots[i]
 		var data: Dictionary = inventory.slots[i]
 		var style := StyleBoxFlat.new()
 		if i == inventory.selected:
