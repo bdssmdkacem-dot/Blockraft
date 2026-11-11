@@ -767,6 +767,34 @@ func _notification(what: int) -> void:
 		if _save_dirty or what == NOTIFICATION_WM_CLOSE_REQUEST:
 			save_world(what != NOTIFICATION_EXIT_TREE)
 
+func _is_valid_save_candidate(path: String) -> bool:
+	if not FileAccess.file_exists(path):
+		return false
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return false
+	var parsed = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return false
+	var version := int(parsed.get("version", -1))
+	if version != SAVE_VERSION and version != PREVIOUS_SAVE_VERSION:
+		return false
+	if version >= SAVE_VERSION and (inventory == null or not inventory.has_method("validate_state") or not inventory.validate_state(parsed.get("inventory", {}))):
+		return false
+	var entries = parsed.get("blocks", [])
+	if typeof(entries) != TYPE_ARRAY or entries.size() < 2000:
+		return false
+	var valid_blocks := 0
+	for entry in entries:
+		if typeof(entry) == TYPE_ARRAY and entry.size() >= 4:
+			valid_blocks += 1
+		elif typeof(entry) == TYPE_DICTIONARY and entry.has("x") and entry.has("y") and entry.has("z") and entry.has("kind"):
+			valid_blocks += 1
+		if valid_blocks >= 2000:
+			return true
+	return false
+
 func save_world(show_feedback: bool = false) -> void:
 	# Write and validate a complete snapshot before replacing the last known-good save.
 	var serialized: Array = []
@@ -801,25 +829,56 @@ func save_world(show_feedback: bool = false) -> void:
 		return
 	var verified = JSON.parse_string(verify_file.get_as_text())
 	verify_file.close()
-	if typeof(verified) != TYPE_DICTIONARY or typeof(verified.get("blocks", null)) != TYPE_ARRAY or verified["blocks"].size() != blocks.size():
+	if typeof(verified) != TYPE_DICTIONARY or typeof(verified.get("blocks", null)) != TYPE_ARRAY or verified["blocks"].size() != blocks.size() or not _is_valid_save_candidate(temp_path):
 		push_error("Blockraft: temporary save validation failed; previous save preserved")
 		return
 	var absolute_save := ProjectSettings.globalize_path(SAVE_PATH)
 	var absolute_temp := ProjectSettings.globalize_path(temp_path)
 	var absolute_backup := ProjectSettings.globalize_path(backup_path)
-	if FileAccess.file_exists(SAVE_PATH + ".bak"):
-		DirAccess.remove_absolute(absolute_backup)
+	var quarantined_path := SAVE_PATH + ".invalid"
+	var absolute_quarantined := ProjectSettings.globalize_path(quarantined_path)
+	var moved_primary_to_backup := false
+	var moved_invalid_to_quarantine := false
 	if FileAccess.file_exists(SAVE_PATH):
-		var backup_error := DirAccess.rename_absolute(absolute_save, absolute_backup)
-		if backup_error != OK:
-			push_error("Blockraft: could not preserve previous save; error=" + str(backup_error))
-			return
+		if _is_valid_save_candidate(SAVE_PATH):
+			# Rotate only a valid primary snapshot. Once it is in .bak, it is
+			# the last-known-good copy if the new temporary save cannot be committed.
+			if FileAccess.file_exists(backup_path):
+				var remove_backup_error := DirAccess.remove_absolute(absolute_backup)
+				if remove_backup_error != OK:
+					push_error("Blockraft: could not retire old backup; error=" + str(remove_backup_error))
+					return
+			var backup_error := DirAccess.rename_absolute(absolute_save, absolute_backup)
+			if backup_error != OK:
+				push_error("Blockraft: could not preserve previous save; error=" + str(backup_error))
+				return
+			moved_primary_to_backup = true
+		else:
+			# A corrupt primary must never replace a valid backup during recovery.
+			if FileAccess.file_exists(quarantined_path):
+				var remove_quarantine_error := DirAccess.remove_absolute(absolute_quarantined)
+				if remove_quarantine_error != OK:
+					push_error("Blockraft: could not clear stale invalid-save quarantine; error=" + str(remove_quarantine_error))
+					return
+			var quarantine_error := DirAccess.rename_absolute(absolute_save, absolute_quarantined)
+			if quarantine_error != OK:
+				push_error("Blockraft: could not quarantine invalid primary save; error=" + str(quarantine_error))
+				return
+			moved_invalid_to_quarantine = true
 	var replace_error := DirAccess.rename_absolute(absolute_temp, absolute_save)
 	if replace_error != OK:
-		if FileAccess.file_exists(SAVE_PATH + ".bak"):
-			DirAccess.rename_absolute(absolute_backup, absolute_save)
+		if moved_primary_to_backup and FileAccess.file_exists(backup_path):
+			var restore_error := DirAccess.rename_absolute(absolute_backup, absolute_save)
+			if restore_error != OK:
+				push_error("Blockraft: new save failed and previous primary could not be restored; backup remains available")
+		elif moved_invalid_to_quarantine and FileAccess.file_exists(quarantined_path):
+			var restore_invalid_error := DirAccess.rename_absolute(absolute_quarantined, absolute_save)
+			if restore_invalid_error != OK:
+				push_error("Blockraft: invalid primary could not be restored; last-known-good backup remains untouched")
 		push_error("Blockraft: could not commit new save; error=" + str(replace_error))
 		return
+	if moved_invalid_to_quarantine and FileAccess.file_exists(quarantined_path):
+		DirAccess.remove_absolute(absolute_quarantined)
 	_save_dirty = false
 	_autosave_timer = AUTO_SAVE_INTERVAL
 	if show_feedback:
@@ -842,6 +901,9 @@ func _load_world_snapshot() -> bool:
 		var version := int(parsed.get("version", -1))
 		if version != SAVE_VERSION and version != PREVIOUS_SAVE_VERSION:
 			push_warning("Blockraft: unsupported save version in " + candidate)
+			continue
+		if version >= SAVE_VERSION and (inventory == null or not inventory.has_method("validate_state") or not inventory.validate_state(parsed.get("inventory", {}))):
+			push_warning("Blockraft: invalid inventory snapshot in " + candidate)
 			continue
 		var entries = parsed.get("blocks", [])
 		if typeof(entries) != TYPE_ARRAY or entries.size() < 2000:
