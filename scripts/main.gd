@@ -873,7 +873,7 @@ func _setup_ui() -> void:
 	layer.name = "GameUI"
 	add_child(layer)
 	status_label = Label.new()
-	status_label.position = Vector2(16, 190)
+	status_label.position = Vector2(16, 230)
 	status_label.add_theme_font_size_override("font_size", 13)
 	status_label.add_theme_color_override("font_color", Color("#c8e0d0"))
 	layer.add_child(status_label)
@@ -979,7 +979,7 @@ func _layout_hotbar() -> void:
 	hotbar_ui.position = Vector2(maxf(0.0, (vs.x - total_width) * 0.5), vs.y - (250.0 if compact else slot_size + 28.0))
 	if toast_label:
 		toast_label.size = Vector2(maxf(0.0, vs.x - 24.0), 40.0) if compact else Vector2(600.0, 40.0)
-		toast_label.position = Vector2(12.0, 220.0) if compact else Vector2(vs.x * 0.5 - 300.0, 110.0)
+		toast_label.position = Vector2(12.0, 260.0) if compact else Vector2(vs.x * 0.5 - 300.0, 110.0)
 	_layout_backpack_ui()
 
 func _layout_backpack_ui() -> void:
