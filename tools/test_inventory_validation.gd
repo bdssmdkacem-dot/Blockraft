@@ -43,6 +43,12 @@ func _run() -> void:
 	bad["slots"][0]["is_tool"] = false
 	if not _expect_invalid(inventory, bad, "pickaxe marked as a normal item"): return
 	bad = valid.duplicate(true)
+	bad["slots"][1] = {"id": "pickaxe", "count": 1, "is_tool": true}
+	if not _expect_invalid(inventory, bad, "duplicate pickaxe tool"): return
+	bad = valid.duplicate(true)
+	bad["slots"][0] = {"id": "", "count": 0, "is_tool": false}
+	if not _expect_invalid(inventory, bad, "missing required pickaxe tool"): return
+	bad = valid.duplicate(true)
 	bad["slots"][2]["count"] = 0
 	if not _expect_invalid(inventory, bad, "non-empty item with zero count"): return
 	bad = valid.duplicate(true)
