@@ -49,6 +49,11 @@ jobs:
         run: godot --headless --path . --script res://tools/test_reference_assets.gd
       - name: Verify animal size and visible geometry
         run: godot --headless --path . --script res://tools/test_animal_readability.gd
+      - name: Install virtual display for rendered capture
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends xvfb
+
       - name: Capture four-species animal visual gallery
         run: timeout 45s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_animal_gallery.gd
       - name: Verify animal gallery screenshot was generated
@@ -60,10 +65,6 @@ jobs:
           path: animal_gallery_capture.png
           if-no-files-found: error
           retention-days: 7
-      - name: Install virtual display for rendered capture
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends xvfb
       - name: Capture rendered gameplay world at 1280x720
         run: timeout 60s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_gameplay_world.gd
       - name: Verify gameplay world screenshot was generated
