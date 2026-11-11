@@ -23,6 +23,8 @@ jobs:
         run: godot --headless --path . --editor --quit
       - name: Fail on any GDScript parse error
         run: godot --headless --path . --script res://tests/script_parse_test.gd
+      - name: Validate inventory save schema and rejection safety
+        run: godot --headless --path . --script res://tools/test_inventory_validation.gd
       - name: Launch main menu scene headlessly
         run: godot --headless --path . --quit-after 3
       - name: Launch gameplay scene headlessly
