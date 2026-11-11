@@ -39,6 +39,22 @@ func _run() -> void:
 		player.call("_build_touch_controls")
 	await process_frame
 
+	# Confirm the voxel avatar faces its movement direction instead of moonwalking.
+	var body_root := player.get("body_root") as Node3D
+	if body_root == null or absf(absf(body_root.rotation.y) - PI) > 0.05:
+		_fail("avatar default facing is not aligned with the camera's forward travel direction", 13)
+		return
+	player.set("_in_water", true)
+	player.call("_update_body_anim", 1.0, Vector3(1.0, 0.0, 0.0))
+	if absf(wrapf(body_root.rotation.y - PI * 0.5, -PI, PI)) > 0.05:
+		_fail("avatar did not turn to face positive-X movement", 14)
+		return
+	player.call("_update_body_anim", 1.0, Vector3(0.0, 0.0, -1.0))
+	if absf(absf(body_root.rotation.y) - PI) > 0.05:
+		_fail("avatar did not turn back to face negative-Z movement", 15)
+		return
+	player.set("_in_water", false)
+
 	var viewport_size: Vector2 = player.get_viewport().get_visible_rect().size
 	# Deliberately touch above the fixed on-screen stick: movement should be floating,
 	# not dependent on a fixed rectangle or a specific screen density.
