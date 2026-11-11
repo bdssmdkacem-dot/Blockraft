@@ -356,12 +356,12 @@ func _layout_ui() -> void:
 		if meter:
 			meter.custom_minimum_size = Vector2(meter_width, meter.custom_minimum_size.y)
 	if night_banner:
-		night_banner.position = Vector2(vs.x * 0.5 - 180.0, 330.0 if compact else 52.0)
+		night_banner.position = Vector2(vs.x * 0.5 - 180.0, 350.0 if compact else 52.0)
 	if hint_label:
 		hint_label.visible = not compact
 		hint_label.size = Vector2(maxf(0.0, vs.x - 24.0), 18.0)
 		hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		hint_label.position = Vector2(12.0, vs.y - 104.0)
+		hint_label.position = Vector2(12.0, vs.y - 120.0)
 
 func tick(delta: float) -> void:
 	_invuln = maxf(0.0, _invuln - delta)

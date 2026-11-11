@@ -919,6 +919,7 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 	hotbar_slots.clear()
 	for i in range(inventory.SLOT_COUNT):
 		var slot := PanelContainer.new()
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP
 		slot.custom_minimum_size = Vector2(56, 56)
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color(0.05, 0.08, 0.1, 0.82)
@@ -949,13 +950,13 @@ func _build_hotbar(layer: CanvasLayer) -> void:
 		key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		key.add_theme_font_size_override("font_size", 10)
 		v.add_child(key)
-		var btn := Button.new()
-		btn.flat = true
-		btn.focus_mode = Control.FOCUS_NONE
-		btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		var slot_index := i
-		btn.pressed.connect(func(): inventory.select(slot_index))
-		slot.add_child(btn)
+		slot.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				inventory.select(slot_index)
+			elif event is InputEventScreenTouch and event.pressed:
+				inventory.select(slot_index)
+		)
 		bar.add_child(slot)
 		hotbar_slots.append(slot)
 	_layout_hotbar()
@@ -987,7 +988,7 @@ func _layout_hotbar() -> void:
 	hotbar_ui.position = Vector2(maxf(0.0, (vs.x - total_width) * 0.5), vs.y - (250.0 if compact else slot_size + 28.0))
 	if toast_label:
 		toast_label.size = Vector2(maxf(0.0, vs.x - 24.0), 40.0) if compact else Vector2(600.0, 40.0)
-		toast_label.position = Vector2(12.0, 280.0) if compact else Vector2(vs.x * 0.5 - 300.0, 110.0)
+		toast_label.position = Vector2(12.0, 300.0) if compact else Vector2(vs.x * 0.5 - 300.0, 110.0)
 	if status_label:
 		status_label.position = Vector2(12.0, 250.0)
 		status_label.size = Vector2(maxf(0.0, vs.x - 24.0), 22.0)
@@ -1005,7 +1006,7 @@ func _layout_backpack_ui() -> void:
 	backpack_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	backpack_label.add_theme_font_size_override("font_size", 11 if compact else 12)
 	upgrade_btn.size = Vector2(button_width, 28.0)
-	upgrade_btn.position = Vector2(vs.x - button_width - 12.0, 64.0)
+	upgrade_btn.position = Vector2(vs.x - button_width - 12.0, 84.0)
 
 func _build_backpack_ui(layer: CanvasLayer) -> void:
 	backpack_label = Label.new()
