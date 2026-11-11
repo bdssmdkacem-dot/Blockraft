@@ -113,6 +113,11 @@ jobs:
           HOME: /root
         run: godot --headless --path . --script res://tests/script_parse_test.gd
 
+      - name: Validate inventory save schema and rejection safety
+        env:
+          HOME: /root
+        run: godot --headless --path . --script res://tools/test_inventory_validation.gd
+
       - name: Test deterministic spawn and fall recovery
         env:
           HOME: /root
