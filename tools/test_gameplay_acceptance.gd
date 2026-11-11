@@ -156,7 +156,8 @@ func _run_checks() -> void:
         _fail("batched collider hit did not resolve to the correct voxel: %s" % str(resolved_hit), 34)
         return
 
-    # Verify the real mining path uses the resolved hit to remove the voxel.
+    # Verify the real mining path removes the voxel and awards exactly one item.
+    var stone_before_mine: int = scene.inventory.total_of("stone")
     player.set_physics_process(false)
     player.set("_mine_held", true)
     for step in range(5):
@@ -175,16 +176,38 @@ func _run_checks() -> void:
     if scene.blocks.has(probe):
         _fail("mining through the batched chunk collider did not remove the targeted voxel", 35)
         return
-    print("CHUNK_HIT_MAPPING_PASS: physics ray resolved and mined the expected voxel")
+    if scene.inventory.total_of("stone") != stone_before_mine + 1:
+        _fail("successful mining did not award exactly one matching inventory item", 40)
+        return
+    print("CHUNK_HIT_MAPPING_PASS: physics ray resolved, mined the expected voxel, and awarded one inventory item")
 
     var placement_probe := Vector3i(1, 24, 0)
-    scene.place_block(placement_probe, "stone")
-    if not scene.blocks.has(placement_probe):
-        _fail("placing a free block did not update the world model", 8)
+    scene.inventory.select(1)
+    var dirt_before_place: int = scene.inventory.count_of("dirt")
+    var builds_before_place: int = int(scene.chunk_build_count)
+    if not scene.try_place_selected(placement_probe):
+        _fail("selected-item placement rejected a valid empty target", 41)
+        return
+    if str(scene.blocks.get(placement_probe, "")) != "dirt":
+        _fail("selected-item placement did not use the selected inventory material", 42)
+        return
+    if scene.inventory.count_of("dirt") != dirt_before_place - 1:
+        _fail("selected-item placement did not consume exactly one item", 43)
+        return
+    if int(scene.chunk_build_count) <= builds_before_place:
+        _fail("selected-item placement did not rebuild the resident chunk mesh/collision", 44)
+        return
+    var placed_chunk: Node = scene.loaded_chunks[Vector2i.ZERO]
+    if placed_chunk.get_child_count() > 10:
+        _fail("placed voxel bypassed chunk batching and created excessive per-block nodes", 45)
+        return
+    if scene.try_place_selected(placement_probe) or scene.inventory.count_of("dirt") != dirt_before_place - 1:
+        _fail("placing into an occupied voxel consumed inventory or changed the world", 46)
         return
     scene.remove_block(placement_probe)
-    if scene.blocks.has(placement_probe):
-        _fail("removing a placed block did not update the world model", 9)
+    scene.on_block_mined("dirt")
+    if scene.blocks.has(placement_probe) or scene.inventory.count_of("dirt") != dirt_before_place:
+        _fail("block removal/reward did not restore the expected inventory count", 47)
         return
 
     # Persistence format is tested with a representative small snapshot so this acceptance
