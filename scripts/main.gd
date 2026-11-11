@@ -1062,10 +1062,14 @@ func _layout_backpack_ui(viewport_size: Vector2 = Vector2.ZERO) -> void:
 		return
 	var vs := viewport_size if viewport_size.x > 0.0 else get_viewport().get_visible_rect().size
 	var compact := vs.x < 700.0
-	var label_width := minf(520.0, maxf(112.0, vs.x * (0.44 if compact else 0.42)))
+	# Keep the bag label comfortably inside the safe area; a wide right-aligned
+	# control can appear clipped on narrow devices even when its text is short.
+	var label_width := minf(320.0, maxf(120.0, vs.x * (0.48 if compact else 0.34)))
 	var button_width := minf(156.0, maxf(112.0, vs.x * 0.42))
-	backpack_label.size = Vector2(label_width, 18.0)
-	backpack_label.position = Vector2(vs.x - label_width - 12.0, 42.0)
+	backpack_label.size = Vector2(label_width, 20.0)
+	backpack_label.position = Vector2(vs.x - label_width - 20.0, 42.0)
+	backpack_label.clip_text = false
+	backpack_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	backpack_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	backpack_label.add_theme_font_size_override("font_size", 11 if compact else 12)
 	upgrade_btn.size = Vector2(button_width, 28.0)
