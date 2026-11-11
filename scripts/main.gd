@@ -1135,7 +1135,14 @@ func try_place_selected(pos: Vector3i) -> bool:
 	if not inventory.consume_place(): return false
 	blocks[pos] = kind
 	var ck := _chunk_key_from_world(pos.x, pos.z)
-	if loaded_chunks.has(ck): _spawn_block_in(loaded_chunks[ck], pos, kind)
+	# Rebuild the whole edited chunk so neighboring exposed faces disappear
+	# from both rendering and collision. Boundary edits also affect the adjacent
+	# chunk's shared face and must rebuild it when that chunk is resident.
+	_rebuild_chunk(ck)
+	for direction in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+		var neighbor_ck := _chunk_key_from_world(pos.x + direction.x, pos.z + direction.z)
+		if neighbor_ck != ck:
+			_rebuild_chunk(neighbor_ck)
 	if mining_fx and mining_fx.has_method("play_place"):
 		mining_fx.play_place(Vector3(pos), kind)
 	mark_world_dirty()
