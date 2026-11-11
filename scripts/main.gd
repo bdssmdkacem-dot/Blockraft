@@ -767,7 +767,7 @@ func _notification(what: int) -> void:
 		if _save_dirty or what == NOTIFICATION_WM_CLOSE_REQUEST:
 			save_world(what != NOTIFICATION_EXIT_TREE)
 
-func _is_valid_save_candidate(path: String) -> bool:
+func _is_valid_save_candidate(path: String, minimum_blocks: int = 2000) -> bool:
 	if not FileAccess.file_exists(path):
 		return false
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -783,7 +783,7 @@ func _is_valid_save_candidate(path: String) -> bool:
 	if version >= SAVE_VERSION and (inventory == null or not inventory.has_method("validate_state") or not inventory.validate_state(parsed.get("inventory", {}))):
 		return false
 	var entries = parsed.get("blocks", [])
-	if typeof(entries) != TYPE_ARRAY or entries.size() < 2000:
+	if typeof(entries) != TYPE_ARRAY or entries.size() < minimum_blocks:
 		return false
 	var valid_blocks := 0
 	for entry in entries:
@@ -791,7 +791,7 @@ func _is_valid_save_candidate(path: String) -> bool:
 			valid_blocks += 1
 		elif typeof(entry) == TYPE_DICTIONARY and entry.has("x") and entry.has("y") and entry.has("z") and entry.has("kind"):
 			valid_blocks += 1
-		if valid_blocks >= 2000:
+		if valid_blocks >= minimum_blocks:
 			return true
 	return false
 
@@ -829,7 +829,7 @@ func save_world(show_feedback: bool = false) -> void:
 		return
 	var verified = JSON.parse_string(verify_file.get_as_text())
 	verify_file.close()
-	if typeof(verified) != TYPE_DICTIONARY or typeof(verified.get("blocks", null)) != TYPE_ARRAY or verified["blocks"].size() != blocks.size() or not _is_valid_save_candidate(temp_path):
+	if typeof(verified) != TYPE_DICTIONARY or typeof(verified.get("blocks", null)) != TYPE_ARRAY or verified["blocks"].size() != blocks.size() or not _is_valid_save_candidate(temp_path, 1):
 		push_error("Blockraft: temporary save validation failed; previous save preserved")
 		return
 	var absolute_save := ProjectSettings.globalize_path(SAVE_PATH)
