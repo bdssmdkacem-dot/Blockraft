@@ -275,13 +275,12 @@ func export_state() -> Dictionary:
 		"storage": saved_storage
 	}
 
-func import_state(data: Variant) -> bool:
+func validate_state(data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
 	var incoming_slots: Variant = data.get("slots", [])
 	if typeof(incoming_slots) != TYPE_ARRAY or incoming_slots.size() != SLOT_COUNT:
 		return false
-	var restored_slots: Array = []
 	for entry in incoming_slots:
 		if typeof(entry) != TYPE_DICTIONARY:
 			return false
@@ -294,6 +293,27 @@ func import_state(data: Variant) -> bool:
 			return false
 		if item_id == "" and count != 0:
 			return false
+	var tier := str(data.get("backpack_tier", "leather"))
+	if not BACKPACKS.has(tier):
+		return false
+	var incoming_storage: Variant = data.get("storage", {})
+	if typeof(incoming_storage) != TYPE_DICTIONARY:
+		return false
+	for key in incoming_storage:
+		var amount := int(incoming_storage[key])
+		if amount < 0 or amount > 10000000:
+			return false
+	return true
+
+func import_state(data: Variant) -> bool:
+	if not validate_state(data):
+		return false
+	var incoming_slots: Array = data.get("slots", [])
+	var restored_slots: Array = []
+	for entry in incoming_slots:
+		var item_id := str(entry.get("id", ""))
+		var count := int(entry.get("count", 0))
+		var is_tool := bool(entry.get("is_tool", false))
 		restored_slots.append({
 			"id": item_id,
 			"count": count,
@@ -301,16 +321,10 @@ func import_state(data: Variant) -> bool:
 			"is_tool": is_tool
 		})
 	var tier := str(data.get("backpack_tier", "leather"))
-	if not BACKPACKS.has(tier):
-		return false
-	var incoming_storage: Variant = data.get("storage", {})
-	if typeof(incoming_storage) != TYPE_DICTIONARY:
-		return false
+	var incoming_storage: Dictionary = data.get("storage", {})
 	var restored_storage: Dictionary = {}
 	for key in incoming_storage:
 		var amount := int(incoming_storage[key])
-		if amount < 0 or amount > 10000000:
-			return false
 		if amount > 0:
 			restored_storage[str(key)] = amount
 	slots = restored_slots
