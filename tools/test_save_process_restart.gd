@@ -55,13 +55,17 @@ func _run() -> void:
 		inventory.slots[1]["count"] = 3
 		inventory.storage["stone"] = 2
 		scene.save_world()
+		var primary_snapshot := _read_snapshot(SAVE_PATH)
+		var invalid_inventory: Dictionary = primary_snapshot.get("inventory", {})
+		invalid_inventory["slots"] = []
+		primary_snapshot["inventory"] = invalid_inventory
 		var corrupt := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 		if corrupt == null:
-			_fail("could not corrupt primary save for recovery test", 6)
+			_fail("could not write invalid inventory snapshot for recovery test", 6)
 			return
-		corrupt.store_string("{broken-primary")
+		corrupt.store_string(JSON.stringify(primary_snapshot))
 		corrupt.close()
-		print("PROCESS_RESTART_WRITE_PASS: primary deliberately corrupted after valid backup was committed")
+		print("PROCESS_RESTART_WRITE_PASS: primary JSON is valid but its inventory schema is deliberately invalid")
 		quit(0)
 		return
 
@@ -89,7 +93,21 @@ func _run() -> void:
 	if backup_slots.size() != 9 or int(backup_slots[1].get("count", -1)) != 9 or int(backup_storage.get("stone", -1)) != 17:
 		_fail("last-known-good backup did not preserve the matching hotbar and depot values", 11)
 		return
-	print("PROCESS_RESTART_RECOVERY_PASS: new process restored world/inventory and a post-recovery save preserved the last-known-good backup")
+	# Also prove that malformed JSON falls back to the same preserved backup.
+	var corrupt_json := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if corrupt_json == null:
+		_fail("could not corrupt the newly written primary for JSON fallback test", 12)
+		return
+	corrupt_json.store_string("{broken-primary")
+	corrupt_json.close()
+	scene.blocks.clear()
+	if not scene.call("_load_world_snapshot"):
+		_fail("malformed primary JSON did not fall back to the preserved backup", 13)
+		return
+	if str(scene.blocks.get(MARKER, "")) != "stone" or int(inventory.slots[1].get("count", -1)) != 9 or int(inventory.storage_count("stone")) != 17:
+		_fail("JSON fallback did not restore the matching world and inventory backup", 14)
+		return
+	print("PROCESS_RESTART_RECOVERY_PASS: fresh process rejected invalid inventory, restored world/inventory, preserved the backup after saving, and recovered malformed JSON")
 	quit(0)
 
 func _read_snapshot(path: String) -> Dictionary:
