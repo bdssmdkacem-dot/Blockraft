@@ -278,30 +278,57 @@ func export_state() -> Dictionary:
 func validate_state(data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
-	var incoming_slots: Variant = data.get("slots", [])
+	# Validate the complete schema before import so malformed saves cannot
+	# silently turn into unknown items, duplicate tools, or clamped selections.
+	if not data.has("slots") or not data.has("selected") or not data.has("backpack_tier") or not data.has("storage"):
+		return false
+	var incoming_slots: Variant = data.get("slots")
 	if typeof(incoming_slots) != TYPE_ARRAY or incoming_slots.size() != SLOT_COUNT:
 		return false
+	var selected_value: Variant = data.get("selected")
+	if typeof(selected_value) != TYPE_INT or int(selected_value) < 0 or int(selected_value) >= SLOT_COUNT:
+		return false
+	var tier_value: Variant = data.get("backpack_tier")
+	if typeof(tier_value) != TYPE_STRING or not BACKPACKS.has(str(tier_value)):
+		return false
+	var tier := str(tier_value)
+	var max_stack := int(BACKPACKS[tier]["max_stack"])
+	const ITEM_IDS := ["grass", "dirt", "stone", "wood", "sand", "gravel", "rock", "coal", "iron", "gold", "crystal", "chest", "meat", "leaves"]
 	for entry in incoming_slots:
 		if typeof(entry) != TYPE_DICTIONARY:
 			return false
-		var item_id := str(entry.get("id", ""))
-		var count := int(entry.get("count", 0))
+		if not entry.has("id") or not entry.has("count") or not entry.has("is_tool"):
+			return false
+		var id_value: Variant = entry.get("id")
+		var count_value: Variant = entry.get("count")
+		var tool_value: Variant = entry.get("is_tool")
+		if typeof(id_value) != TYPE_STRING or typeof(count_value) != TYPE_INT or typeof(tool_value) != TYPE_BOOL:
+			return false
+		var item_id := str(id_value)
+		var count := int(count_value)
+		var is_tool := bool(tool_value)
 		if count < 0 or count > 1000000:
 			return false
-		var is_tool := bool(entry.get("is_tool", false))
-		if is_tool and item_id != "pickaxe":
+		if item_id == "":
+			if count != 0 or is_tool:
+				return false
+		elif item_id == "pickaxe":
+			if not is_tool or count != 1:
+				return false
+		elif ITEM_IDS.has(item_id):
+			if is_tool or count < 1 or count > max_stack:
+				return false
+		else:
 			return false
-		if item_id == "" and count != 0:
-			return false
-	var tier := str(data.get("backpack_tier", "leather"))
-	if not BACKPACKS.has(tier):
-		return false
-	var incoming_storage: Variant = data.get("storage", {})
+	var incoming_storage: Variant = data.get("storage")
 	if typeof(incoming_storage) != TYPE_DICTIONARY:
 		return false
 	for key in incoming_storage:
-		var amount := int(incoming_storage[key])
-		if amount < 0 or amount > 10000000:
+		var amount_value: Variant = incoming_storage[key]
+		if not ITEM_IDS.has(str(key)) or typeof(amount_value) != TYPE_INT:
+			return false
+		var amount := int(amount_value)
+		if amount < 1 or amount > 10000000:
 			return false
 	return true
 
