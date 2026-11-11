@@ -19,7 +19,7 @@ func _run() -> void:
 	if packed == null:
 		_fail("inventory script could not be loaded", 3)
 		return
-	var inventory := packed.new()
+	var inventory: Variant = packed.new()
 	root.add_child(inventory)
 	await process_frame
 	var valid: Dictionary = inventory.export_state()
