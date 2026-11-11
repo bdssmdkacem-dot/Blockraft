@@ -181,10 +181,13 @@ func _run_checks() -> void:
         return
     print("CHUNK_HIT_MAPPING_PASS: physics ray resolved, mined the expected voxel, and awarded one inventory item")
 
-    var placement_probe := Vector3i(1, 24, 0)
+    var placement_probe := Vector3i(1, 8, 0)
     scene.inventory.select(1)
     var dirt_before_place: int = scene.inventory.count_of("dirt")
     var builds_before_place: int = int(scene.chunk_build_count)
+    if scene.try_place_selected(Vector3i(1, 24, 0)) or scene.inventory.count_of("dirt") != dirt_before_place:
+        _fail("out-of-reach placement was accepted or consumed inventory", 48)
+        return
     if not scene.try_place_selected(placement_probe):
         _fail("selected-item placement rejected a valid empty target", 41)
         return
