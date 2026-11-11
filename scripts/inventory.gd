@@ -7,6 +7,7 @@ signal backpack_changed(tier: String)
 signal storage_changed
 
 const SLOT_COUNT := 9
+const ITEM_IDS := ["grass", "dirt", "stone", "wood", "sand", "gravel", "rock", "coal", "iron", "gold", "crystal", "chest", "meat", "leaves"]
 
 const BACKPACKS := {
 	"leather": {"label": "Leather Bag", "max_stack": 64, "color": Color("#8b5a2b")},
@@ -293,8 +294,9 @@ func validate_state(data: Variant) -> bool:
 		return false
 	var tier := str(tier_value)
 	var max_stack := int(BACKPACKS[tier]["max_stack"])
-	const ITEM_IDS := ["grass", "dirt", "stone", "wood", "sand", "gravel", "rock", "coal", "iron", "gold", "crystal", "chest", "meat", "leaves"]
-	for entry in incoming_slots:
+	var tool_count := 0
+	for slot_index in range(incoming_slots.size()):
+		var entry: Variant = incoming_slots[slot_index]
 		if typeof(entry) != TYPE_DICTIONARY:
 			return false
 		if not entry.has("id") or not entry.has("count") or not entry.has("is_tool"):
@@ -313,13 +315,16 @@ func validate_state(data: Variant) -> bool:
 			if count != 0 or is_tool:
 				return false
 		elif item_id == "pickaxe":
-			if not is_tool or count != 1:
+			if not is_tool or count != 1 or slot_index != 0:
 				return false
+			tool_count += 1
 		elif ITEM_IDS.has(item_id):
 			if is_tool or count < 1 or count > max_stack:
 				return false
 		else:
 			return false
+	if tool_count != 1:
+		return false
 	var incoming_storage: Variant = data.get("storage")
 	if typeof(incoming_storage) != TYPE_DICTIONARY:
 		return false
