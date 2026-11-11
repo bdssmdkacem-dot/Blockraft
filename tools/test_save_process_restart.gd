@@ -13,7 +13,12 @@ func _fail(message: String, code: int) -> void:
 
 func _run() -> void:
 	var args := OS.get_cmdline_user_args()
-	var phase := str(args[0]) if not args.is_empty() else "verify"
+	var phase := "verify"
+	for argument in args:
+		var candidate := str(argument).trim_prefix("--")
+		if candidate in ["write", "verify"]:
+			phase = candidate
+			break
 	var packed := load("res://scenes/main.tscn") as PackedScene
 	if packed == null:
 		_fail("gameplay scene could not load", 2)
@@ -35,6 +40,10 @@ func _run() -> void:
 		return
 
 	if phase == "write":
+		# Seed a valid primary snapshot first so the next save must rotate it
+		# into the backup. This keeps the process-restart test independent of
+		# stale user:// files left by earlier CI steps.
+		scene.save_world()
 		scene.blocks[MARKER] = "stone"
 		inventory.slots[1]["count"] = 9
 		inventory.storage["stone"] = 17
