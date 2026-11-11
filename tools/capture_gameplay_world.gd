@@ -31,6 +31,11 @@ func _capture() -> void:
         quit(4)
         return
 
+    var toast_label := scene.get("toast_label") as Label
+    if toast_label:
+        toast_label.text = ""
+        toast_label.modulate.a = 0.0
+
     var player := scene.get_node_or_null("Player") as CharacterBody3D
     var camera := player.get_node_or_null("PlayerCamera") as Camera3D if player else null
     if camera:

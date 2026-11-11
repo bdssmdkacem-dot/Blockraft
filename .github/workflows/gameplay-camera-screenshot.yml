@@ -40,7 +40,7 @@ jobs:
       - name: Capture actual gameplay frame
         run: |
           mkdir -p artifacts
-          xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 godot --path . --script res://scripts/capture_gameplay.gd
+          xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 godot --audio-driver Dummy --path . --script res://scripts/capture_gameplay.gd
           test -s artifacts/gameplay-camera.png
           file artifacts/gameplay-camera.png
 
