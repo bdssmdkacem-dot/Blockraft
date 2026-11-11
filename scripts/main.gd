@@ -1131,7 +1131,11 @@ func try_place_selected(pos: Vector3i) -> bool:
 	var kind: String = str(inventory.get_place_kind())
 	if kind == "" or kind == "chest": return false
 	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80: return false
-	if player and player.global_position.distance_to(Vector3(pos) + Vector3(0.5, 0.5, 0.5)) < 1.8: return false
+	if player:
+		var target_center := Vector3(pos) + Vector3(0.5, 0.5, 0.5)
+		var target_distance := player.global_position.distance_to(target_center)
+		if target_distance < 1.8 or target_distance > 7.0:
+			return false
 	if not inventory.consume_place(): return false
 	blocks[pos] = kind
 	var ck := _chunk_key_from_world(pos.x, pos.z)
