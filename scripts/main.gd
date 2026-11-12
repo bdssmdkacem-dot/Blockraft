@@ -71,12 +71,14 @@ func _ready() -> void:
 	var settings = load("res://scripts/settings.gd").new()
 	settings.name = "Settings"
 	add_child(settings)
+	_setup_materials()
+	_setup_environment()
+	# Survival binds to the world's active environment during setup. Create the
+	# WorldEnvironment first so day/night and weather can actually tint the sky.
 	var survival = load("res://scripts/survival.gd").new()
 	survival.name = "Survival"
 	add_child(survival)
 	survival.setup(self, settings)
-	_setup_materials()
-	_setup_environment()
 	_setup_ui()
 	_show_toast("Building expanded world...", 30.0)
 	if player:
