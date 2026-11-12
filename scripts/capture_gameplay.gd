@@ -36,6 +36,17 @@ func _capture_gameplay() -> void:
 		quit(2)
 		return
 
+	# Deterministic visual baseline: clear midday, while preserving the
+	# production third-person camera and gameplay scene.
+	var survival := gameplay.get_node_or_null("Survival")
+	if survival:
+		survival.set("time_of_day", 0.5)
+		survival.set("weather", 0)
+		survival.set("_target_weather", 0)
+		survival.set("_weather_blend", 1.0)
+		survival.set("_weather_timer", 999.0)
+		survival.call("_update_day_night", 0.0)
+
 	var toast_label := gameplay.get("toast_label") as Label
 	if toast_label:
 		toast_label.text = ""
@@ -49,6 +60,7 @@ func _capture_gameplay() -> void:
 		return
 	player.set_physics_process(false)
 	camera.make_current()
+	print("GAMEPLAY_CAMERA_CAPTURE=third_person player=", player.global_position, " camera=", camera.global_position)
 
 	await process_frame
 	await RenderingServer.frame_post_draw
