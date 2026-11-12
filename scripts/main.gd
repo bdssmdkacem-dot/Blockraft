@@ -93,6 +93,8 @@ func _initialize_world_async() -> void:
 		if blocks.size() < 2000:
 			_generate_world()
 	_force_solid_spawn_island()
+	if not restored:
+		_clear_spawn_camera_corridor()
 	_ensure_spawn_pad()
 	_spawn_depot()
 	if player:
@@ -517,12 +519,11 @@ func _ensure_spawn_pad() -> void:
 				blocks.erase(Vector3i(x, y, z))
 			blocks[Vector3i(x, 3, z)] = "dirt"
 			blocks[Vector3i(x, 4, z)] = "grass"
-	_clear_spawn_camera_corridor()
 
 func _clear_spawn_camera_corridor() -> void:
-	# Reserve a deterministic sight corridor behind and around the spawn point.
-	# The third-person camera sits on +Z; random trees in this near field used
-	# to fill the frame with trunks and leaves even when the spawn pad was clear.
+	# Flatten only the freshly generated spawn plateau; never touch restored
+	# player-built blocks during respawn or save recovery. Distant hills remain
+	# beyond this radius and form the visible landscape around the starting area.
 	var cleared := 0
 	for x in range(-18, 19):
 		for z in range(-18, 19):
@@ -530,8 +531,7 @@ func _clear_spawn_camera_corridor() -> void:
 				continue
 			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
-				var kind := str(blocks.get(pos, ""))
-				if kind == "wood" or kind == "leaves":
+				if blocks.has(pos):
 					blocks.erase(pos)
 					cleared += 1
 	if cleared > 0:
