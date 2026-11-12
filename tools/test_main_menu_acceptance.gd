@@ -49,7 +49,8 @@ func _run_checks() -> void:
 	if world.find_child("MountainBackdrop", true, false) == null:
 		_fail("menu panorama is missing layered mountain and waterfall backdrop", 34)
 		return
-	var world_environment := world.find_child("WorldEnvironment", true, false) as WorldEnvironment
+	var environment_nodes := world.find_children("*", "WorldEnvironment", true, false)
+	var world_environment: WorldEnvironment = environment_nodes[0] as WorldEnvironment if not environment_nodes.is_empty() else null
 	if world_environment == null or world_environment.environment == null:
 		_fail("menu panorama has no controlled environment/tonemapping", 35)
 		return
