@@ -11,7 +11,7 @@ const KIND_DATA := {
 		"color_body": Color("#c46828"), "color_spot": Color("#f0e8e0")
 	},
 	Kind.CHICKEN: {
-		"scale": 1.12, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
+		"scale": 1.38, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
 		"aggro": 11.0, "hit_range": 2.0, "attack_cd": 0.65,
 		"color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")
 	},
@@ -203,12 +203,12 @@ func _build_mesh(data: Dictionary) -> void:
 	var spot_c: Color = data["color_spot"]
 	match kind:
 		Kind.CHICKEN:
-			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.40 * s, 0.34 * s, 0.48 * s), body_c)
-			_box(_body_root, Vector3(0, 0.52 * s, 0.18 * s), Vector3(0.28 * s, 0.26 * s, 0.28 * s), body_c)
+			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.46 * s, 0.38 * s, 0.54 * s), body_c)
+			_box(_body_root, Vector3(0, 0.52 * s, 0.18 * s), Vector3(0.32 * s, 0.30 * s, 0.32 * s), body_c)
 			_box(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.10 * s, 0.08 * s, 0.18 * s), spot_c)
 			# Oversized comb, bright beak and readable eyes give the chicken a clear mobile silhouette.
-			_box(_body_root, Vector3(0, 0.72 * s, 0.17 * s), Vector3(0.13 * s, 0.18 * s, 0.10 * s), Color("#c9342b"))
-			_box(_body_root, Vector3(0, 0.49 * s, 0.34 * s), Vector3(0.16 * s, 0.10 * s, 0.20 * s), Color("#f4a51c"))
+			_box(_body_root, Vector3(0, 0.72 * s, 0.17 * s), Vector3(0.16 * s, 0.22 * s, 0.12 * s), Color("#c9342b"))
+			_box(_body_root, Vector3(0, 0.49 * s, 0.34 * s), Vector3(0.19 * s, 0.12 * s, 0.22 * s), Color("#f4a51c"))
 			_box(_body_root, Vector3(-0.105 * s, 0.57 * s, 0.29 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
 			_box(_body_root, Vector3(0.105 * s, 0.57 * s, 0.29 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
 			_box(_body_root, Vector3(-0.12 * s, 0.12 * s, 0), Vector3(0.09 * s, 0.22 * s, 0.09 * s), Color("#e8c040"))
@@ -281,17 +281,22 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0.0, 0.33 * s, -0.42 * s), Vector3(0.16 * s, 0.14 * s, 0.18 * s), Color("#f1eee6"))
 			_box(_body_root, Vector3(-0.20 * s, 0.59 * s, 0.40 * s), Vector3(0.09 * s, 0.12 * s, 0.10 * s), Color("#fffdf7"))
 			_box(_body_root, Vector3(0.20 * s, 0.59 * s, 0.40 * s), Vector3(0.09 * s, 0.12 * s, 0.10 * s), Color("#fffdf7"))
-	# Cache the lower limb meshes so walking has an actual alternating gait,
-	# not only a floating body bob. This works across all four species.
+	# Register leg meshes explicitly by species-specific geometry dimensions.
+	# This avoids accidentally animating beaks, wings or decorative tail blocks.
 	_animated_legs.clear()
 	_tail_mesh = null
+	var leg_y := 0.12 * s if kind == Kind.CHICKEN else (0.14 * s if kind == Kind.FOX else (0.20 * s if kind == Kind.COW else 0.16 * s))
+	var leg_height := 0.22 * s if kind == Kind.CHICKEN else (0.26 * s if kind == Kind.FOX else (0.40 * s if kind == Kind.COW else 0.28 * s))
 	for part in _body_root.get_children():
-		if part is MeshInstance3D and part.mesh is BoxMesh:
-			var box := part.mesh as BoxMesh
-			if part.position.y <= 0.31 * s and box.size.y >= 0.20 * s and box.size.y <= 0.43 * s:
-				_animated_legs.append(part)
-			if part.position.z <= -0.55 * s and part.position.y >= 0.28 * s and box.size.z >= 0.18 * s:
-				_tail_mesh = part
+		if not (part is MeshInstance3D) or not (part.mesh is BoxMesh):
+			continue
+		var box := part.mesh as BoxMesh
+		if is_equal_approx(part.position.y, leg_y) and is_equal_approx(box.size.y, leg_height):
+			_animated_legs.append(part)
+		if kind == Kind.FOX and part.position.z <= -0.70 * s and part.position.y >= 0.30 * s and box.size.z >= 0.38 * s:
+			_tail_mesh = part
+		elif kind == Kind.COW and part.position.z <= -0.54 * s and part.position.y >= 0.40 * s and box.size.z >= 0.08 * s:
+			_tail_mesh = part
 
 func _pick_new_direction() -> void:
 	var a := randf() * TAU
