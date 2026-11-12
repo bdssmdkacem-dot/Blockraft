@@ -15,6 +15,7 @@ func setup(world: Node3D, blocks: Dictionary, seed_value: int = 82417) -> void:
 	_blocks = blocks
 	_rng.seed = seed_value + 99
 	_spawn_plants()
+	_spawn_spawn_meadow()
 	_spawn_animals()
 
 func _process(delta: float) -> void:
@@ -91,6 +92,27 @@ func _spawn_plants() -> void:
 		else:
 			_make_tall_grass(plant)
 		count += 1
+
+func _spawn_spawn_meadow() -> void:
+	# A restrained ring of flowers and grass breaks up the protected flat
+	# landing area while leaving the central player/camera corridor unobstructed.
+	var positions := [
+		Vector2i(-10, -8), Vector2i(-9, -3), Vector2i(-10, 3), Vector2i(-9, 8),
+		Vector2i(10, -8), Vector2i(9, -3), Vector2i(10, 3), Vector2i(9, 8),
+		Vector2i(-7, 10), Vector2i(7, 10), Vector2i(-7, -10), Vector2i(7, -10)
+	]
+	for i in range(positions.size()):
+		var cell: Vector2i = positions[i]
+		var sy := _surface_y(cell.x, cell.y)
+		if sy < 0:
+			continue
+		var plant := Node3D.new()
+		plant.position = Vector3(float(cell.x) + 0.5, float(sy) + 1.0, float(cell.y) + 0.5)
+		_flora_root.add_child(plant)
+		if i % 3 == 0:
+			_make_flower(plant)
+		else:
+			_make_tall_grass(plant)
 
 func _make_flower(p: Node3D) -> void:
 	_box_at(p, Vector3(0, 0.18, 0), Vector3(0.05, 0.36, 0.05), Color("#2a6b2a"))
