@@ -838,7 +838,9 @@ func save_world(show_feedback: bool = false) -> void:
 		return
 	if not _is_valid_save_candidate(temp_path, 1):
 		var candidate_inventory: Variant = verified.get("inventory", {})
-		var candidate_inventory_valid := inventory != null and inventory.has_method("validate_state") and inventory.validate_state(candidate_inventory)
+		var candidate_inventory_valid: bool = false
+		if inventory != null and inventory.has_method("validate_state"):
+			candidate_inventory_valid = bool(inventory.call("validate_state", candidate_inventory))
 		push_error("Blockraft: temporary save candidate rejected; version=%d blocks=%d inventory_valid=%s inventory=%s; previous save preserved" % [
 			int(verified.get("version", -1)), verified_blocks.size(), str(candidate_inventory_valid), JSON.stringify(candidate_inventory)
 		])
