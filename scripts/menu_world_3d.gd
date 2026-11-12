@@ -156,6 +156,10 @@ func _build_mountain_backdrop() -> void:
 		_box(ridges, Vector3(x - 1.0, peak * 0.79, depth + 0.1), Vector3(width * 0.42, peak * 0.34, 10.2), Color("#718895"))
 		if i % 2 == 0:
 			_box(ridges, Vector3(x - 1.0, peak * 0.99, depth + 0.2), Vector3(width * 0.20, peak * 0.12, 10.3), Color("#d7ddd8"))
+		# Pointed peaks and snow crowns replace the box-only skyline silhouette.
+		_pyramid(ridges, Vector3(x, peak * 0.58, depth - 0.2), width * 0.58, peak * 1.12, Color("#5d7888"))
+		if i % 2 == 0:
+			_pyramid(ridges, Vector3(x, peak * 1.02, depth - 0.15), width * 0.22, peak * 0.42, Color("#e0e6e2"))
 	for i in range(5):
 		var x := -25.0 + float(i) * 13.0
 		_box(ridges, Vector3(x, 3.2, -31.0), Vector3(15.0, 6.4, 8.0), Color("#344f45"))
@@ -183,7 +187,7 @@ func _build_sunset_disc() -> void:
 	mesh.radial_segments = 20
 	mesh.rings = 10
 	sun.mesh = mesh
-	sun.position = Vector3(1.0, 15.5, -48.0)
+	sun.position = Vector3(14.0, 15.5, -48.0)
 	var material := _emissive(Color("#ffd47a"), 1.45)
 	sun.material_override = material
 	add_child(sun)
