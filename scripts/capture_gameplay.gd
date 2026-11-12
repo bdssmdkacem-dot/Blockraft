@@ -39,8 +39,11 @@ func _capture_gameplay() -> void:
 	# Regression guard for the spawn camera's forward cone: no generated
 	# trunks/canopies may occupy the player's central view after world setup.
 	var world_blocks: Dictionary = gameplay.get("blocks")
-	for x in range(-10, 11):
-		for z in range(-38, -17):
+	for x in range(-18, 19):
+		for z in range(-52, -17):
+			var view_half_width := lerpf(7.0, 17.0, inverse_lerp(-18.0, -52.0, float(z)))
+			if absf(float(x) - 0.5) > view_half_width:
+				continue
 			for y in range(5, 31):
 				var kind := str(world_blocks.get(Vector3i(x, y, z), ""))
 				if kind in ["wood", "leaves"]:
