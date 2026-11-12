@@ -546,8 +546,21 @@ func _clear_spawn_camera_corridor() -> void:
 				if blocks.has(pos):
 					blocks.erase(pos)
 					cleared += 1
-	if cleared > 0:
-		print("BLOCKRAFT_CAMERA_CORRIDOR_CLEAR removed_tree_blocks=", cleared)
+	# Keep the forward third-person sightline open beyond the spawn pad.
+	# Remove only tree foliage/trunks in this tapered corridor; preserve the
+	# distant hills, river banks and all player-built stone/terrain geometry.
+	var forward_removed := 0
+	for x in range(-10, 11):
+		for z in range(-38, -17):
+			for y in range(5, 31):
+				var pos := Vector3i(x, y, z)
+				var kind := str(blocks.get(pos, ""))
+				if kind in ["wood", "leaves"]:
+					blocks.erase(pos)
+					forward_removed += 1
+	if cleared > 0 or forward_removed > 0:
+		print("BLOCKRAFT_CAMERA_CORRIDOR_CLEAR removed_spawn_blocks=", cleared,
+			" removed_forward_foliage=", forward_removed)
 
 func _snap_player_to_surface() -> void:
 	if player == null:
