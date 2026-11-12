@@ -45,5 +45,11 @@ func _scan_directory(directory_path: String, failures: Array[String]) -> void:
 		elif entry.get_extension().to_lower() == "gd":
 			var script_resource = load(entry_path)
 			if script_resource == null:
-				failures.append(entry_path)
+				failures.append(entry_path + " (load returned null)")
+			elif not script_resource is GDScript:
+				failures.append(entry_path + " (resource is not a GDScript)")
+			elif not (script_resource as GDScript).can_instantiate():
+				# load() can return a GDScript resource even after the parser has
+				# reported an error. A non-instantiable resource must fail CI.
+				failures.append(entry_path + " (GDScript cannot instantiate; parse/base error)")
 	directory.list_dir_end()
