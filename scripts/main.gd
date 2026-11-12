@@ -311,15 +311,20 @@ func _generate_world() -> void:
 			elif dist < 32.0:
 				h = lerpf(4.0, h, smoothstep(12.0, 32.0, dist))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
+			# A visible tributary passes beyond the protected spawn pad so the
+			# normal third-person starting view has water, banks and a crossing.
+			var scenic_river_d := absf(fz + 19.0 + sin(fx * 0.12) * 4.0)
+			if dist > 12.0 and dist < 48.0:
+				river_d = minf(river_d, scenic_river_d)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
 			var in_main := river_d < 2.6 and dist > 7.0
 			var in_trib := trib_d < 1.7 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
-				h = mini(h, 2.15)
+				h = mini(h, 1.2)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
-				h = mini(h, 1.85)
+				h = mini(h, 1.0)
 			heights[Vector2i(x, z)] = {
 				"hf": clampf(h, float(MIN_Y + 2), 22.0),
 				"river": in_river or in_lake,
@@ -467,6 +472,15 @@ func _generate_world() -> void:
 					_make_tree(x, height + 1, z, rng)
 			if not is_river and not steep and height >= 3 and abs(x) > 10 and abs(z) > 10 and rng.randf() < 0.0024:
 				blocks[Vector3i(x, height + 1, z)] = "chest"
+
+	# A compact timber footbridge crosses the new forward tributary. It is
+	# placed after terrain generation so the deck remains stable and collision-
+	# backed even when the river's procedural banks change.
+	for z in range(-24, -13):
+		blocks[Vector3i(0, 3, z)] = "wood"
+		if z % 2 == 0:
+			blocks[Vector3i(-1, 4, z)] = "wood"
+			blocks[Vector3i(1, 4, z)] = "wood"
 
 func _ore_noise(x: int, y: int, z: int) -> float:
 	return 0.5 + 0.5 * sin(float(x) * 0.19 + float(y) * 0.37) * cos(float(z) * 0.17 + float(y) * 0.23) * sin(float(x + z) * 0.11 + float(y) * 0.29)
