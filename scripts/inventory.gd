@@ -276,6 +276,14 @@ func export_state() -> Dictionary:
 		"storage": saved_storage
 	}
 
+func _is_integral_number(value: Variant) -> bool:
+	if typeof(value) == TYPE_INT:
+		return true
+	if typeof(value) != TYPE_FLOAT:
+		return false
+	var number := float(value)
+	return is_finite(number) and floorf(number) == number
+
 func validate_state(data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
@@ -287,7 +295,7 @@ func validate_state(data: Variant) -> bool:
 	if typeof(incoming_slots) != TYPE_ARRAY or incoming_slots.size() != SLOT_COUNT:
 		return false
 	var selected_value: Variant = data.get("selected")
-	if typeof(selected_value) != TYPE_INT or int(selected_value) < 0 or int(selected_value) >= SLOT_COUNT:
+	if not _is_integral_number(selected_value) or int(selected_value) < 0 or int(selected_value) >= SLOT_COUNT:
 		return false
 	var tier_value: Variant = data.get("backpack_tier")
 	if typeof(tier_value) != TYPE_STRING or not BACKPACKS.has(str(tier_value)):
@@ -304,7 +312,7 @@ func validate_state(data: Variant) -> bool:
 		var id_value: Variant = entry.get("id")
 		var count_value: Variant = entry.get("count")
 		var tool_value: Variant = entry.get("is_tool")
-		if typeof(id_value) != TYPE_STRING or typeof(count_value) != TYPE_INT or typeof(tool_value) != TYPE_BOOL:
+		if typeof(id_value) != TYPE_STRING or not _is_integral_number(count_value) or typeof(tool_value) != TYPE_BOOL:
 			return false
 		var item_id := str(id_value)
 		var count := int(count_value)
@@ -330,7 +338,7 @@ func validate_state(data: Variant) -> bool:
 		return false
 	for key in incoming_storage:
 		var amount_value: Variant = incoming_storage[key]
-		if not ITEM_IDS.has(str(key)) or typeof(amount_value) != TYPE_INT:
+		if not ITEM_IDS.has(str(key)) or not _is_integral_number(amount_value):
 			return false
 		var amount := int(amount_value)
 		if amount < 1 or amount > 10000000:

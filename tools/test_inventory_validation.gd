@@ -26,6 +26,15 @@ func _run() -> void:
 	if not inventory.validate_state(valid):
 		_fail("default exported inventory did not validate", 4)
 		return
+	# Godot's JSON parser decodes JSON numbers as floats. Whole-number values
+	# must survive a real JSON encode/decode cycle and still restore as integers.
+	var json_round_trip: Variant = JSON.parse_string(JSON.stringify(valid))
+	if typeof(json_round_trip) != TYPE_DICTIONARY or not inventory.validate_state(json_round_trip):
+		_fail("JSON-decoded integral inventory values were rejected: " + JSON.stringify(json_round_trip), 7)
+		return
+	if not inventory.import_state(json_round_trip) or inventory.export_state() != valid:
+		_fail("JSON-decoded inventory did not restore the exact integer state", 8)
+		return
 
 	var bad: Dictionary = valid.duplicate(true)
 	bad["selected"] = -1
@@ -33,6 +42,9 @@ func _run() -> void:
 	bad = valid.duplicate(true)
 	bad["selected"] = 9
 	if not _expect_invalid(inventory, bad, "selected slot past hotbar"): return
+	bad = valid.duplicate(true)
+	bad["selected"] = 1.5
+	if not _expect_invalid(inventory, bad, "fractional selected slot"): return
 	bad = valid.duplicate(true)
 	bad["slots"][2]["id"] = "unknown_mod_item"
 	if not _expect_invalid(inventory, bad, "unknown item id"): return
@@ -58,11 +70,17 @@ func _run() -> void:
 	bad["slots"][2]["count"] = "24"
 	if not _expect_invalid(inventory, bad, "string item count"): return
 	bad = valid.duplicate(true)
+	bad["slots"][2]["count"] = 2.5
+	if not _expect_invalid(inventory, bad, "fractional item count"): return
+	bad = valid.duplicate(true)
 	bad["storage"]["unknown_mod_item"] = 4
 	if not _expect_invalid(inventory, bad, "unknown depot item"): return
 	bad = valid.duplicate(true)
 	bad["storage"]["stone"] = 0
 	if not _expect_invalid(inventory, bad, "zero depot stack"): return
+	bad = valid.duplicate(true)
+	bad["storage"]["stone"] = 1.25
+	if not _expect_invalid(inventory, bad, "fractional depot amount"): return
 	bad = valid.duplicate(true)
 	bad.erase("storage")
 	if not _expect_invalid(inventory, bad, "missing depot state"): return
