@@ -51,6 +51,9 @@ var _state: int = State.WANDER
 var _knockback := Vector3.ZERO
 var _hp_bar: MeshInstance3D
 var _hp_bg: MeshInstance3D
+var _animated_legs: Array[MeshInstance3D] = []
+var _gait_phase := 0.0
+var _tail_mesh: MeshInstance3D
 
 func setup(animal_kind: int, spawn_pos: Vector3) -> void:
 	kind = animal_kind
@@ -278,6 +281,17 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0.0, 0.33 * s, -0.42 * s), Vector3(0.16 * s, 0.14 * s, 0.18 * s), Color("#f1eee6"))
 			_box(_body_root, Vector3(-0.20 * s, 0.59 * s, 0.40 * s), Vector3(0.09 * s, 0.12 * s, 0.10 * s), Color("#fffdf7"))
 			_box(_body_root, Vector3(0.20 * s, 0.59 * s, 0.40 * s), Vector3(0.09 * s, 0.12 * s, 0.10 * s), Color("#fffdf7"))
+	# Cache the lower limb meshes so walking has an actual alternating gait,
+	# not only a floating body bob. This works across all four species.
+	_animated_legs.clear()
+	_tail_mesh = null
+	for part in _body_root.get_children():
+		if part is MeshInstance3D and part.mesh is BoxMesh:
+			var box := part.mesh as BoxMesh
+			if part.position.y <= 0.31 * s and box.size.y >= 0.20 * s and box.size.y <= 0.43 * s:
+				_animated_legs.append(part)
+			if part.position.z <= -0.55 * s and part.position.y >= 0.28 * s and box.size.z >= 0.18 * s:
+				_tail_mesh = part
 
 func _pick_new_direction() -> void:
 	var a := randf() * TAU
@@ -389,8 +403,15 @@ func _physics_process(delta: float) -> void:
 	if _dir.length() > 0.1:
 		rotation.y = lerp_angle(rotation.y, atan2(-_dir.x, -_dir.z), 1.0 - exp(-10.0 * delta))
 		_bob += delta * 12.0
+		_gait_phase += delta * 11.0
 		if _body_root:
 			_body_root.position.y = absf(sin(_bob)) * 0.06
+		for i in range(_animated_legs.size()):
+			var leg := _animated_legs[i]
+			if is_instance_valid(leg):
+				leg.rotation.x = sin(_gait_phase + (PI if i % 2 == 0 else 0.0)) * 0.30
+		if is_instance_valid(_tail_mesh):
+			_tail_mesh.rotation.x = sin(_gait_phase * 0.45) * 0.18
 	elif _body_root:
 		_body_root.position.y = lerpf(_body_root.position.y, 0.0, 1.0 - exp(-6.0 * delta))
 
