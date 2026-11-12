@@ -36,6 +36,18 @@ func _capture_gameplay() -> void:
 		quit(2)
 		return
 
+	# Regression guard for the spawn camera's forward cone: no generated
+	# trunks/canopies may occupy the player's central view after world setup.
+	var world_blocks: Dictionary = gameplay.get("blocks")
+	for x in range(-10, 11):
+		for z in range(-38, -17):
+			for y in range(5, 31):
+				var kind := str(world_blocks.get(Vector3i(x, y, z), ""))
+				if kind in ["wood", "leaves"]:
+					push_error("Spawn camera corridor remains obstructed by %s at %s" % [kind, Vector3i(x, y, z)])
+					quit(7)
+					return
+
 	# Deterministic visual baseline: clear midday, while preserving the
 	# production third-person camera and gameplay scene.
 	var survival := gameplay.get_node_or_null("Survival")
