@@ -524,9 +524,11 @@ func _clear_spawn_camera_corridor() -> void:
 	# The third-person camera sits on +Z; random trees in this near field used
 	# to fill the frame with trunks and leaves even when the spawn pad was clear.
 	var cleared := 0
-	for x in range(-8, 9):
-		for z in range(-10, 13):
-			for y in range(5, 25):
+	for x in range(-18, 19):
+		for z in range(-18, 19):
+			if Vector2(float(x), float(z)).length() > 18.0:
+				continue
+			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
 				var kind := str(blocks.get(pos, ""))
 				if kind == "wood" or kind == "leaves":
