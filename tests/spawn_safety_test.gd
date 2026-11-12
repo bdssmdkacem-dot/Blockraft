@@ -44,6 +44,13 @@ func _run_spawn_safety_test() -> void:
 	if str(blocks.get(Vector3i(0, 4, 0), "")) != "grass":
 		_fail("Spawn pad has no solid grass block at (0, 4, 0)")
 		return
+	for x in range(-8, 9):
+		for z in range(-10, 13):
+			for y in range(5, 25):
+				var kind := str(blocks.get(Vector3i(x, y, z), ""))
+				if kind == "wood" or kind == "leaves":
+					_fail("Spawn camera corridor contains tree geometry at %s" % str(Vector3i(x, y, z)))
+					return
 	if blocks.has(Vector3i(0, 5, 0)):
 		_fail("Spawn headroom is obstructed directly above the pad")
 		return
