@@ -11,7 +11,7 @@ const KIND_DATA := {
 		"color_body": Color("#c46828"), "color_spot": Color("#f0e8e0")
 	},
 	Kind.CHICKEN: {
-		"scale": 1.38, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
+		"scale": 1.70, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
 		"aggro": 11.0, "hit_range": 2.0, "attack_cd": 0.65,
 		"color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")
 	},
