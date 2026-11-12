@@ -42,8 +42,17 @@ func _run_checks() -> void:
 			_fail("animal %d lacks enough silhouette/detail pieces" % kind, 6)
 			return
 		var animated_legs: Array = animal.get("_animated_legs")
-		if animated_legs.size() < 2:
-			_fail("animal %d has no alternating limb animation rig" % kind, 7)
+		if animated_legs.size() != 2:
+			_fail("animal %d has does not have exactly two explicitly registered animated legs" % kind, 7)
+			return
+		animal._dir = Vector3(1.0, 0.0, 0.0)
+		animal._timer = 4.0
+		var before := (animated_legs[0] as MeshInstance3D).rotation.x
+		for _frame in range(8):
+			await physics_frame
+		var after := (animated_legs[0] as MeshInstance3D).rotation.x
+		if is_equal_approx(before, after):
+			_fail("animal %d gait did not animate while moving" % kind, 8)
 			return
 		animal.queue_free()
 		await process_frame
