@@ -28,6 +28,7 @@ func _ready() -> void:
 	_build_horizon_layers()
 	_build_mountain_backdrop()
 	_build_sunset_disc()
+	_build_sky_clouds()
 	_build_river_and_bridge()
 	_build_village()
 	_build_village_details()
@@ -187,10 +188,24 @@ func _build_sunset_disc() -> void:
 	mesh.radial_segments = 20
 	mesh.rings = 10
 	sun.mesh = mesh
-	sun.position = Vector3(14.0, 15.5, -48.0)
+	sun.position = Vector3(27.0, 15.5, -48.0)
 	var material := _emissive(Color("#ffd47a"), 1.45)
 	sun.material_override = material
 	add_child(sun)
+
+func _build_sky_clouds() -> void:
+	var clouds := Node3D.new()
+	clouds.name = "SkyClouds"
+	add_child(clouds)
+	var cloud_specs := [
+		[Vector3(-5.0, 21.0, -38.0), Vector3(5.0, 0.75, 1.8)],
+		[Vector3(0.0, 21.25, -38.0), Vector3(3.2, 1.0, 2.0)],
+		[Vector3(18.0, 23.0, -44.0), Vector3(5.8, 0.8, 2.0)],
+		[Vector3(23.0, 23.2, -44.0), Vector3(3.6, 1.0, 2.2)],
+		[Vector3(38.0, 20.5, -52.0), Vector3(5.0, 0.7, 1.8)]
+	]
+	for spec in cloud_specs:
+		_box(clouds, spec[0], spec[1], Color("#ffe0bd"), 0.2)
 
 func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
 	var spire := MeshInstance3D.new()
