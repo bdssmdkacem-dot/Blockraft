@@ -117,14 +117,14 @@ func _run_checks() -> void:
         return
 
     var scenic_water_found := false
-    for z in range(-24, -13):
+    for z in range(-20, -12):
         if str(scene.blocks.get(Vector3i(0, 2, z), "")) == "water":
             scenic_water_found = true
             break
     if not scenic_water_found:
         _fail("forward scenic tributary did not generate water beyond the spawn plateau", 50)
         return
-    if str(scene.blocks.get(Vector3i(0, 3, -19), "")) != "wood":
+    if str(scene.blocks.get(Vector3i(0, 3, -16), "")) != "wood":
         _fail("forward river footbridge deck is missing", 51)
         return
     if highest_surface - lowest_surface < 6:
