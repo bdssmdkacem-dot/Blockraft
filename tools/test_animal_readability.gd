@@ -10,13 +10,24 @@ func _fail(message: String, code: int) -> void:
 	quit(code)
 
 func _run_checks() -> void:
+	# A real collision floor keeps the roaming test grounded. Without it, the
+	# animal's obstacle/ground probe correctly changes direction while falling,
+	# making movement assertions depend on random wander choices.
+	var floor_body := StaticBody3D.new()
+	var floor_collision := CollisionShape3D.new()
+	var floor_shape := BoxShape3D.new()
+	floor_shape.size = Vector3(40.0, 1.0, 40.0)
+	floor_collision.shape = floor_shape
+	floor_collision.position.y = -0.5
+	floor_body.add_child(floor_collision)
+	root.add_child(floor_body)
 	for kind in range(4):
 		var animal := ANIMAL_SCRIPT.new() as CharacterBody3D
 		if animal == null:
 			_fail("animal script did not instantiate", 2)
 			return
 		root.add_child(animal)
-		animal.setup(kind, Vector3(float(kind) * 3.0, 3.0, 0.0))
+		animal.setup(kind, Vector3(float(kind) * 3.0, 0.05, 0.0))
 		await process_frame
 		await process_frame
 
@@ -62,5 +73,6 @@ func _run_checks() -> void:
 		animal.queue_free()
 		await process_frame
 
-	print("ANIMAL_READABILITY_ACCEPTANCE_PASS: four animal types have species-specific silhouettes, mobile-scale collision, layered geometry and animated gait")
+	floor_body.queue_free()
+	print("ANIMAL_READABILITY_ACCEPTANCE_PASS: four animal types have species-specific silhouettes, mobile-scale collision, grounded roaming and animated gait")
 	quit(0)
