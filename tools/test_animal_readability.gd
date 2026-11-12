@@ -28,7 +28,7 @@ func _run_checks() -> void:
 			_fail("animal %d has no capsule collision" % kind, 3)
 			return
 		var capsule := collision.shape as CapsuleShape3D
-		if capsule.radius < 0.27:
+		if capsule.radius < (0.34 if kind == 1 else 0.27):
 			_fail("animal %d collision/body scale is still too small" % kind, 4)
 			return
 
