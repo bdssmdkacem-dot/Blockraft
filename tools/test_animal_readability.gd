@@ -41,8 +41,12 @@ func _run_checks() -> void:
 		if body == null or body.get_child_count() < min_parts:
 			_fail("animal %d lacks enough silhouette/detail pieces" % kind, 6)
 			return
+		var animated_legs: Array = animal.get("_animated_legs")
+		if animated_legs.size() < 2:
+			_fail("animal %d has no alternating limb animation rig" % kind, 7)
+			return
 		animal.queue_free()
 		await process_frame
 
-	print("ANIMAL_READABILITY_ACCEPTANCE_PASS: four animal types have species-specific silhouettes, mobile-scale collision and layered visible geometry")
+	print("ANIMAL_READABILITY_ACCEPTANCE_PASS: four animal types have species-specific silhouettes, mobile-scale collision, layered geometry and animated gait")
 	quit(0)
