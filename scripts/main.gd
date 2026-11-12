@@ -180,15 +180,25 @@ func _setup_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.name = "WorldEnvironment"
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.55, 0.72, 0.92)
+	env.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color("#31577f")
+	sky_mat.sky_horizon_color = Color("#b8a17e")
+	sky_mat.ground_bottom_color = Color("#25342f")
+	sky_mat.ground_horizon_color = Color("#8c806c")
+	sky_mat.sun_angle_max = 18.0
+	sky.sky_material = sky_mat
+	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.72, 0.78, 0.88)
-	env.ambient_light_energy = 0.42
+	env.ambient_light_color = Color("#91a5b1")
+	env.ambient_light_energy = 0.30
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 0.88
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.65, 0.75, 0.88)
-	env.fog_density = 0.0018
+	env.fog_light_color = Color("#8999a3")
+	env.fog_density = 0.00075
+	env.fog_aerial_perspective = 0.28
 	we.environment = env
 	add_child(we)
 
@@ -430,8 +440,15 @@ func _generate_world() -> void:
 			if not is_river and river_d < 4.2 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5:
-				var tree_chance := 0.030 if sin(float(x) * 0.17) * cos(float(z) * 0.19) > 0.35 else 0.012
-				if river_d < 8.0: tree_chance *= 0.55
+				var tree_chance := 0.018 if sin(float(x) * 0.17) * cos(float(z) * 0.19) > 0.35 else 0.006
+				# Keep the spawn/camera corridor open; dense near-field crowns
+				# previously hid the player and consumed most of the view.
+				var camera_clearance := Vector2(float(x), float(z)).length()
+				if camera_clearance < 22.0:
+					tree_chance *= 0.12
+				elif camera_clearance < 30.0:
+					tree_chance *= 0.55
+				if river_d < 8.0: tree_chance *= 0.45
 				if rng.randf() < tree_chance:
 					_make_tree(x, height + 1, z, rng)
 			if not is_river and not steep and height >= 3 and abs(x) > 10 and abs(z) > 10 and rng.randf() < 0.0024:
@@ -442,13 +459,13 @@ func _ore_noise(x: int, y: int, z: int) -> float:
 
 func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> void:
 	var r := rng if rng else RandomNumberGenerator.new()
-	var trunk := 4 + r.randi_range(0, 3)
+	var trunk := 3 + r.randi_range(0, 2)
 	for dy in range(trunk):
 		blocks[Vector3i(x, y + dy, z)] = "wood"
 	# A tapered, broken canopy keeps sight lines open while retaining a full
 	# voxel-tree silhouette. Sparse outer leaves avoid solid green walls.
 	var canopy_y := y + trunk - 1
-	var radius := 2 if r.randf() < 0.7 else 3
+	var radius := 2
 	for dy in range(-1, 4):
 		var layer_radius := maxi(1, radius - (1 if dy == 3 else 0))
 		for dx in range(-radius, radius + 1):
