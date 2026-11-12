@@ -315,7 +315,8 @@ func _build_gatehouse_castle() -> void:
 	for win_x in [-3.8, -2.5, 2.5, 3.8]:
 		_box(root, Vector3(win_x, 8.8, 0.34), Vector3(0.48, 0.95, 0.12), Color("#253744"))
 		_box(root, Vector3(win_x, 9.3, 0.42), Vector3(0.58, 0.12, 0.14), light)
-	for level in range(4):		_box(root, Vector3(0, 4.5 + float(level) * 1.7, 0.3), Vector3(0.55, 0.75, 0.12), glow, 0.35)
+	for level in range(4):
+		_box(root, Vector3(0, 4.5 + float(level) * 1.7, 0.3), Vector3(0.55, 0.75, 0.12), glow, 0.35)
 		_box(root, Vector3(-1.8, 4.5 + float(level) * 1.7, 0.3), Vector3(0.4, 0.6, 0.12), glow, 0.35)
 		_box(root, Vector3(1.8, 4.5 + float(level) * 1.7, 0.3), Vector3(0.4, 0.6, 0.12), glow, 0.35)
 	_box(root, Vector3(0, 3.6, 7.5), Vector3(2.2, 0.35, 6.0), MAT_WOOD)
