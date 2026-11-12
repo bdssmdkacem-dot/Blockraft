@@ -829,8 +829,19 @@ func save_world(show_feedback: bool = false) -> void:
 		return
 	var verified = JSON.parse_string(verify_file.get_as_text())
 	verify_file.close()
-	if typeof(verified) != TYPE_DICTIONARY or typeof(verified.get("blocks", null)) != TYPE_ARRAY or verified["blocks"].size() != blocks.size() or not _is_valid_save_candidate(temp_path, 1):
-		push_error("Blockraft: temporary save validation failed; previous save preserved")
+	if typeof(verified) != TYPE_DICTIONARY:
+		push_error("Blockraft: temporary save JSON root is not a Dictionary; previous save preserved")
+		return
+	var verified_blocks: Variant = verified.get("blocks", null)
+	if typeof(verified_blocks) != TYPE_ARRAY or verified_blocks.size() != blocks.size():
+		push_error("Blockraft: temporary save block count mismatch; expected=%d actual=%d; previous save preserved" % [blocks.size(), verified_blocks.size() if typeof(verified_blocks) == TYPE_ARRAY else -1])
+		return
+	if not _is_valid_save_candidate(temp_path, 1):
+		var candidate_inventory: Variant = verified.get("inventory", {})
+		var candidate_inventory_valid := inventory != null and inventory.has_method("validate_state") and inventory.validate_state(candidate_inventory)
+		push_error("Blockraft: temporary save candidate rejected; version=%d blocks=%d inventory_valid=%s inventory=%s; previous save preserved" % [
+			int(verified.get("version", -1)), verified_blocks.size(), str(candidate_inventory_valid), JSON.stringify(candidate_inventory)
+		])
 		return
 	var absolute_save := ProjectSettings.globalize_path(SAVE_PATH)
 	var absolute_temp := ProjectSettings.globalize_path(temp_path)

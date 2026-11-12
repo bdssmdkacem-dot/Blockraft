@@ -224,10 +224,17 @@ func _run_checks() -> void:
     }
     print("GAMEPLAY_ACCEPTANCE: testing compact persistence fixture blocks=", scene.blocks.size())
     var inventory_before: Dictionary = scene.inventory.export_state()
+    if not scene.inventory.validate_state(inventory_before):
+        _fail("live inventory was invalid before the persistence fixture: " + JSON.stringify(inventory_before), 49)
+        return
     scene.inventory.slots[1]["count"] = 7
     scene.inventory.storage["stone"] = 11
     scene.inventory.backpack_tier = "iron"
     scene.inventory.selected = 2
+    var fixture_inventory: Dictionary = scene.inventory.export_state()
+    if not scene.inventory.validate_state(fixture_inventory):
+        _fail("persistence fixture produced an invalid inventory snapshot: " + JSON.stringify(fixture_inventory), 50)
+        return
     scene.save_world()
     scene.blocks = full_world_blocks
     print("GAMEPLAY_ACCEPTANCE: save_world returned; full world restored blocks=", scene.blocks.size())
