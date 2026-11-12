@@ -255,6 +255,8 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0.18 * s, 0.20 * s, -0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			# Cow face, pink muzzle, eyes, ears and short horns.
 			_box(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.28 * s, 0.18 * s, 0.12 * s), Color("#e9a5a0"))
+			_box(_body_root, Vector3(-0.14 * s, 0.76 * s, 0.635 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
+			_box(_body_root, Vector3(0.14 * s, 0.76 * s, 0.635 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
 			_box(_body_root, Vector3(-0.105 * s, 0.69 * s, 0.63 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
 			_box(_body_root, Vector3(0.105 * s, 0.69 * s, 0.63 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
 			_box(_body_root, Vector3(-0.23 * s, 0.73 * s, 0.43 * s), Vector3(0.18 * s, 0.09 * s, 0.16 * s), body_c)
