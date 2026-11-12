@@ -296,8 +296,12 @@ func _generate_world() -> void:
 			h += sin(fx * 0.045) * cos(fz * 0.04) * 4.2
 			h += sin(fx * 0.09 + 1.7) * 1.9 + cos(fz * 0.085 + 0.6) * 1.7
 			h += sin(fx * 0.18 + fz * 0.09) * 0.7
+			# Keep the spawn valley open, then blend into rolling hills instead
+			# of creating a sudden high wall at the edge of the starter plateau.
 			if dist < 18.0:
-				h = lerpf(h, 4.0, clampf(1.0 - dist / 18.0, 0.0, 1.0) * 0.92)
+				h = 4.0
+			elif dist < 34.0:
+				h = lerpf(4.0, h, smoothstep(18.0, 34.0, dist))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
 			var in_main := river_d < 2.6 and dist > 7.0
