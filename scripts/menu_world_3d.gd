@@ -215,6 +215,15 @@ func _build_village() -> void:
 		var hz := -2.0 - (i % 3) * 2.5
 		_box(village, Vector3(hx, 0.8, hz), Vector3(2.2, 1.6, 2.0), MAT_WALL)
 		_box(village, Vector3(hx, 1.9, hz), Vector3(2.6, 0.8, 2.4), MAT_ROOF)
+		# Two sloped roof planes and a ridge cap replace the flat slab silhouette.
+		var roof_left := _box(village, Vector3(hx - 0.62, 2.28, hz), Vector3(1.55, 0.16, 2.65), Color("#9a5039"))
+		roof_left.rotation.z = deg_to_rad(-27.0)
+		var roof_right := _box(village, Vector3(hx + 0.62, 2.28, hz), Vector3(1.55, 0.16, 2.65), Color("#b96a48"))
+		roof_right.rotation.z = deg_to_rad(27.0)
+		_box(village, Vector3(hx, 2.63, hz), Vector3(0.18, 0.14, 2.7), Color("#d18a5b"))
+		_box(village, Vector3(hx, 1.85, hz + 1.12), Vector3(0.72, 0.88, 0.08), Color("#594333"))
+		_box(village, Vector3(hx - 0.48, 1.45, hz + 1.12), Vector3(0.42, 0.42, 0.07), Color("#8bc5d0"), 0.3)
+		_box(village, Vector3(hx + 0.48, 1.45, hz + 1.12), Vector3(0.42, 0.42, 0.07), Color("#8bc5d0"), 0.3)
 		_box(village, Vector3(hx, 1.1, hz + 1.05), Vector3(0.5, 0.7, 0.1), MAT_WOOD)
 		_box(village, Vector3(hx - 0.58, 1.05, hz + 0.15), Vector3(0.12, 0.62, 0.12), MAT_WOOD)
 		_box(village, Vector3(hx + 0.58, 1.05, hz + 0.15), Vector3(0.12, 0.62, 0.12), MAT_WOOD)
@@ -292,6 +301,20 @@ func _build_gatehouse_castle() -> void:
 	for i in range(9):
 		_box(root, Vector3(-5.0 + float(i) * 1.25, 7.0, 4.0), Vector3(0.55, 0.7, 0.5), light)
 	_box(root, Vector3(0, 4.2, 4.2), Vector3(2.8, 2.6, 0.5), dark)
+	# Deep-set gate frame, layered arch voussoirs and stone pilasters give the
+	# entrance a readable architectural silhouette instead of a flat cut-out.
+	for side_x in [-1.75, 1.75]:
+		_box(root, Vector3(side_x, 4.25, 4.58), Vector3(0.42, 3.15, 0.34), light)
+		_box(root, Vector3(side_x * 1.10, 5.9, 4.58), Vector3(0.62, 0.30, 0.42), Color("#c0c6bb"))
+	for arch_i in range(7):
+		var arch_x := -1.55 + float(arch_i) * 0.52
+		_box(root, Vector3(arch_x, 5.58, 4.58), Vector3(0.42, 0.34, 0.34), light)
+	for side_x in [-6.5, 6.5]:
+		# Vertical corner quoins and narrow arrow slits break up tower mass.
+		for level in range(5):
+			_box(root, Vector3(side_x + (0.82 if side_x < 0.0 else -0.82), 3.8 + float(level) * 1.25, 4.02), Vector3(0.34, 0.88, 0.16), Color("#b2b9af"))
+		_box(root, Vector3(side_x, 8.1, 4.52), Vector3(0.32, 1.05, 0.14), Color("#263a45"))
+		_box(root, Vector3(side_x, 8.65, 4.60), Vector3(0.46, 0.12, 0.12), Color("#d7c8a0"))
 	for i in range(6):
 		_box(root, Vector3(-1.0 + float(i) * 0.4, 4.3, 4.35), Vector3(0.1, 2.2, 0.08), Color("#2a2a2a"))
 	for side_x in [-6.5, 6.5]:
