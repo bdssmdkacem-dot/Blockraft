@@ -29,6 +29,7 @@ func _ready() -> void:
 	_build_mountain_backdrop()
 	_build_river_and_bridge()
 	_build_village()
+	_build_village_details()
 	_build_forests()
 	_build_floating_islands()
 	_build_gatehouse_castle()
@@ -209,12 +210,32 @@ func _build_village() -> void:
 	var village := Node3D.new()
 	village.name = "Village"
 	add_child(village)
-	for i in range(5):
-		var hx := 10.0 + i * 3.5
+	for i in range(7):
+		var hx := 9.0 + i * 3.0
 		var hz := -2.0 - (i % 3) * 2.5
 		_box(village, Vector3(hx, 0.8, hz), Vector3(2.2, 1.6, 2.0), MAT_WALL)
 		_box(village, Vector3(hx, 1.9, hz), Vector3(2.6, 0.8, 2.4), MAT_ROOF)
 		_box(village, Vector3(hx, 1.1, hz + 1.05), Vector3(0.5, 0.7, 0.1), MAT_WOOD)
+		_box(village, Vector3(hx - 0.58, 1.05, hz + 0.15), Vector3(0.12, 0.62, 0.12), MAT_WOOD)
+		_box(village, Vector3(hx + 0.58, 1.05, hz + 0.15), Vector3(0.12, 0.62, 0.12), MAT_WOOD)
+
+func _build_village_details() -> void:
+	var details := Node3D.new()
+	details.name = "VillageDetails"
+	add_child(details)
+	_box(details, Vector3(19.0, 0.08, -8.0), Vector3(25.0, 0.12, 1.2), Color("#b89a70"))
+	for i in range(8):
+		var x := 8.5 + float(i) * 3.0
+		_box(details, Vector3(x, 1.35, -6.3), Vector3(0.18, 0.72, 0.18), MAT_WOOD)
+		_box(details, Vector3(x, 1.72, -6.3), Vector3(0.22, 0.10, 0.22), Color("#c99b62"))
+		_box(details, Vector3(x, 1.10, -3.0), Vector3(0.42, 0.55, 0.08), Color("#f3c879"), 0.3)
+	for i in range(4):
+		var x := 11.0 + float(i) * 7.0
+		_box(details, Vector3(x, 1.1, -12.0), Vector3(0.24, 2.2, 0.24), MAT_WOOD)
+		_box(details, Vector3(x, 2.55, -12.0), Vector3(1.45, 1.35, 1.45), MAT_LEAF_DARK)
+		_box(details, Vector3(x, 3.2, -12.0), Vector3(1.05, 0.85, 1.05), MAT_LEAF_LIGHT)
+		_box(details, Vector3(x + 1.25, 1.3, -5.0), Vector3(0.08, 1.2, 0.08), MAT_WOOD)
+		_box(details, Vector3(x + 1.25, 1.85, -5.0), Vector3(0.34, 0.24, 0.12), Color("#ffd58a"), 0.25)
 
 func _build_forests() -> void:
 	var forest := Node3D.new()
@@ -287,8 +308,14 @@ func _build_gatehouse_castle() -> void:
 	_box(root, Vector3(0, 15.0, -2.5), Vector3(3.6, 0.4, 3.6), roof)
 	_box(root, Vector3(0, 15.5, -2.5), Vector3(1.8, 0.9, 1.8), roof.darkened(0.12))
 	_box(root, Vector3(0, 16.2, -2.5), Vector3(0.25, 0.8, 0.25), Color("#f6d78c"), 0.25)
-	for level in range(4):
-		_box(root, Vector3(0, 4.5 + float(level) * 1.7, 0.3), Vector3(0.55, 0.75, 0.12), glow, 0.35)
+	for side_x in [-6.5, 6.5]:
+		for crenel in range(5):
+			_box(root, Vector3(side_x, 9.0, -4.5 + float(crenel) * 1.75), Vector3(0.62, 0.72, 0.62), light)
+		_box(root, Vector3(side_x, 7.2, 4.45), Vector3(0.20, 1.8, 0.18), dark)
+	for win_x in [-3.8, -2.5, 2.5, 3.8]:
+		_box(root, Vector3(win_x, 8.8, 0.34), Vector3(0.48, 0.95, 0.12), Color("#253744"))
+		_box(root, Vector3(win_x, 9.3, 0.42), Vector3(0.58, 0.12, 0.14), light)
+	for level in range(4):		_box(root, Vector3(0, 4.5 + float(level) * 1.7, 0.3), Vector3(0.55, 0.75, 0.12), glow, 0.35)
 		_box(root, Vector3(-1.8, 4.5 + float(level) * 1.7, 0.3), Vector3(0.4, 0.6, 0.12), glow, 0.35)
 		_box(root, Vector3(1.8, 4.5 + float(level) * 1.7, 0.3), Vector3(0.4, 0.6, 0.12), glow, 0.35)
 	_box(root, Vector3(0, 3.6, 7.5), Vector3(2.2, 0.35, 6.0), MAT_WOOD)
