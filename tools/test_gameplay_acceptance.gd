@@ -32,6 +32,11 @@ func _run_checks() -> void:
         _fail("nearby world chunks did not stream in", 15)
         return
 
+    var survival := scene.get_node_or_null("Survival")
+    if survival == null or survival.get("world_env") == null:
+        _fail("day/night system did not bind to the active WorldEnvironment", 49)
+        return
+
     # Chunk rendering should use a handful of draw batches and one static collision
     # shape, not hundreds of physics bodies for individual voxel blocks.
     var collision_chunk: Node = null
