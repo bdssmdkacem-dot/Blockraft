@@ -39,13 +39,11 @@ func _capture() -> void:
     var player := scene.get_node_or_null("Player") as CharacterBody3D
     var camera := player.get_node_or_null("PlayerCamera") as Camera3D if player else null
     if camera:
-        # Produce an overhead proof of the terrain, river system and full voxel surface,
-        # without changing the normal in-game camera or the actual gameplay scene.
-        if player:
-            player.set_physics_process(false)
-        camera.global_position = Vector3(25.0, 27.0, 30.0)
-        camera.look_at(Vector3(0.0, 4.0, 0.0), Vector3.UP)
+        # Keep the production third-person camera and player framing intact.
+        # This screenshot must represent the view a player actually sees.
         camera.current = true
+        print("GAMEPLAY_CAPTURE_MODE=third_person camera_position=", camera.global_position,
+            " player_position=", player.global_position if player else Vector3.ZERO)
 
     await process_frame
     await RenderingServer.frame_post_draw
