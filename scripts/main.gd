@@ -550,9 +550,9 @@ func _clear_spawn_camera_corridor() -> void:
 	# Remove only tree foliage/trunks in this tapered corridor; preserve the
 	# distant hills, river banks and all player-built stone/terrain geometry.
 	var forward_removed := 0
-	for x in range(-18, 19):
-		for z in range(-52, -17):
-			var view_half_width := lerpf(7.0, 17.0, inverse_lerp(-18.0, -52.0, float(z)))
+	for x in range(-25, 26):
+		for z in range(-56, -17):
+			var view_half_width := lerpf(7.0, 24.0, inverse_lerp(-18.0, -56.0, float(z)))
 			if absf(float(x) - 0.5) > view_half_width:
 				continue
 			for y in range(5, 31):
