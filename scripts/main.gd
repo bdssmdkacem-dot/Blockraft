@@ -182,7 +182,7 @@ func _setup_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.name = "WorldEnvironment"
 	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
+	env.background_mode = Environment.BG_COLOR
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
 	sky_mat.sky_top_color = Color("#24466f")
@@ -266,7 +266,7 @@ func _spawn_depot() -> void:
 		if blocks.has(Vector3i(3, y, 3)) and str(blocks[Vector3i(3, y, 3)]) != "water":
 			top = y
 			break
-	base.position = Vector3(3.5, float(top) + 1.7, 3.5)
+	base.position = Vector3(9.5, float(top) + 1.7, 8.5)
 
 func use_depot() -> void:
 	if inventory == null:
