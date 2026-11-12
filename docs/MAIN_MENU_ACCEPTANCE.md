@@ -1,7 +1,7 @@
 # Blockraft Main Menu — Acceptance Checklist
 
 ## Visual target
-The exact owner-approved image at `assets/reference/blockraft_main_menu_reference.png` is the mandatory visual north star:
+The exact owner-approved image at `assets/reference/blockraft_visual_north_star.png` is the mandatory visual north star:
 
 - Oversized BLOCKRAFT title + EXPLORE / BUILD / SURVIVE
 - Left actions: Play (green), Settings, Help, Exit
