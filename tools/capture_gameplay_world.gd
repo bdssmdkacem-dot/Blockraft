@@ -31,6 +31,17 @@ func _capture() -> void:
         quit(4)
         return
 
+    # Lock the visual review to a clear midday state so weather RNG cannot
+    # make screenshots appear dark or fogged between CI runs.
+    var survival := scene.get_node_or_null("Survival")
+    if survival:
+        survival.set("time_of_day", 0.5)
+        survival.set("weather", 0)
+        survival.set("_target_weather", 0)
+        survival.set("_weather_blend", 1.0)
+        survival.set("_weather_timer", 999.0)
+        survival.call("_update_day_night", 0.0)
+
     var toast_label := scene.get("toast_label") as Label
     if toast_label:
         toast_label.text = ""
