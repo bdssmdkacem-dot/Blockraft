@@ -306,10 +306,10 @@ func _generate_world() -> void:
 				h += pow(ridge_wave, 3.2) * 7.0
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
-			if dist < 18.0:
+			if dist < 12.0:
 				h = 4.0
-			elif dist < 34.0:
-				h = lerpf(4.0, h, smoothstep(18.0, 34.0, dist))
+			elif dist < 32.0:
+				h = lerpf(4.0, h, smoothstep(12.0, 32.0, dist))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
 			var in_main := river_d < 2.6 and dist > 7.0
@@ -496,8 +496,8 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 					blocks[p] = "leaves"
 
 func _force_solid_spawn_island() -> void:
-	for x in range(-18, 19):
-		for z in range(-18, 19):
+	for x in range(-12, 13):
+		for z in range(-12, 13):
 			for y in range(MIN_Y, 5):
 				var pos := Vector3i(x, y, z)
 				if y < 3:
@@ -537,9 +537,9 @@ func _clear_spawn_camera_corridor() -> void:
 	# player-built blocks during respawn or save recovery. Distant hills remain
 	# beyond this radius and form the visible landscape around the starting area.
 	var cleared := 0
-	for x in range(-18, 19):
-		for z in range(-18, 19):
-			if Vector2(float(x), float(z)).length() > 18.0:
+	for x in range(-12, 13):
+		for z in range(-12, 13):
+			if Vector2(float(x), float(z)).length() > 12.0:
 				continue
 			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
