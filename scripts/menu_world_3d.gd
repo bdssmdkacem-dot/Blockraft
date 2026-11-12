@@ -27,6 +27,7 @@ func _ready() -> void:
 	_build_landscape()
 	_build_horizon_layers()
 	_build_mountain_backdrop()
+	_build_sunset_disc()
 	_build_river_and_bridge()
 	_build_village()
 	_build_village_details()
@@ -172,6 +173,36 @@ func _build_mountain_backdrop() -> void:
 		fall.material_override = fall_mat
 		ridges.add_child(fall)
 
+func _build_sunset_disc() -> void:
+	# A warm, emissive sun gives the valley a clear golden-hour focal point.
+	var sun := MeshInstance3D.new()
+	sun.name = "SunsetDisc"
+	var mesh := SphereMesh.new()
+	mesh.radius = 3.2
+	mesh.height = 6.4
+	mesh.radial_segments = 20
+	mesh.rings = 10
+	sun.mesh = mesh
+	sun.position = Vector3(1.0, 15.5, -48.0)
+	var material := _emissive(Color("#ffd47a"), 1.45)
+	sun.material_override = material
+	add_child(sun)
+
+func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
+	var spire := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 0.0
+	mesh.bottom_radius = radius
+	mesh.height = height
+	mesh.radial_segments = 4
+	mesh.rings = 1
+	spire.mesh = mesh
+	spire.position = position
+	spire.rotation.y = PI * 0.25
+	spire.material_override = _material(color, 0.62)
+	parent.add_child(spire)
+	return spire
+
 func _build_river_and_bridge() -> void:
 	var water := Node3D.new()
 	water.name = "River"
@@ -286,7 +317,7 @@ func _build_gatehouse_castle() -> void:
 	var root := Node3D.new()
 	root.name = "GatehouseCastle"
 	root.position = Vector3(24.0, 0.8, -18.0)
-	root.scale = Vector3(1.22, 1.22, 1.22)
+	root.scale = Vector3(1.42, 1.42, 1.42)
 	add_child(root)
 	var stone := MAT_STONE_CASTLE
 	var light := Color("#a8b4ae")
@@ -322,6 +353,8 @@ func _build_gatehouse_castle() -> void:
 			_box(root, Vector3(side_x, 6.5, side_z), Vector3(2.8, 7.0, 2.8), stone)
 			_box(root, Vector3(side_x, 10.2, side_z), Vector3(3.2, 0.4, 3.2), roof)
 			_box(root, Vector3(side_x, 10.7, side_z), Vector3(2.0, 0.8, 2.0), roof.darkened(0.1))
+			_pyramid(root, Vector3(side_x, 12.0, side_z), 1.75, 2.8, Color("#75443a"))
+			_box(root, Vector3(side_x, 13.55, side_z), Vector3(0.18, 0.85, 0.18), Color("#f2cf83"), 0.28)
 			_box(root, Vector3(side_x, 11.3, side_z), Vector3(0.3, 0.7, 0.3), Color("#f6d78c"), 0.25)
 			_box(root, Vector3(side_x + (0.1 if side_x > 0 else -0.1), 5.5, side_z + (1.45 if side_z > 0 else -1.45)), Vector3(0.5, 0.7, 0.12), glow, 0.3)
 			_box(root, Vector3(side_x + (0.1 if side_x > 0 else -0.1), 7.5, side_z + (1.45 if side_z > 0 else -1.45)), Vector3(0.5, 0.7, 0.12), glow, 0.3)
@@ -331,6 +364,8 @@ func _build_gatehouse_castle() -> void:
 	_box(root, Vector3(0, 15.0, -2.5), Vector3(3.6, 0.4, 3.6), roof)
 	_box(root, Vector3(0, 15.5, -2.5), Vector3(1.8, 0.9, 1.8), roof.darkened(0.12))
 	_box(root, Vector3(0, 16.2, -2.5), Vector3(0.25, 0.8, 0.25), Color("#f6d78c"), 0.25)
+	_pyramid(root, Vector3(0, 18.2, -2.5), 2.1, 4.2, Color("#6f3e35"))
+	_box(root, Vector3(0, 20.45, -2.5), Vector3(0.16, 0.9, 0.16), Color("#f4d68e"), 0.25)
 	for side_x in [-6.5, 6.5]:
 		for crenel in range(5):
 			_box(root, Vector3(side_x, 9.0, -4.5 + float(crenel) * 1.75), Vector3(0.62, 0.72, 0.62), light)
