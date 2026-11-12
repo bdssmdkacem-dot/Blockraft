@@ -517,6 +517,23 @@ func _ensure_spawn_pad() -> void:
 				blocks.erase(Vector3i(x, y, z))
 			blocks[Vector3i(x, 3, z)] = "dirt"
 			blocks[Vector3i(x, 4, z)] = "grass"
+	_clear_spawn_camera_corridor()
+
+func _clear_spawn_camera_corridor() -> void:
+	# Reserve a deterministic sight corridor behind and around the spawn point.
+	# The third-person camera sits on +Z; random trees in this near field used
+	# to fill the frame with trunks and leaves even when the spawn pad was clear.
+	var cleared := 0
+	for x in range(-8, 9):
+		for z in range(-10, 13):
+			for y in range(5, 25):
+				var pos := Vector3i(x, y, z)
+				var kind := str(blocks.get(pos, ""))
+				if kind == "wood" or kind == "leaves":
+					blocks.erase(pos)
+					cleared += 1
+	if cleared > 0:
+		print("BLOCKRAFT_CAMERA_CORRIDOR_CLEAR removed_tree_blocks=", cleared)
 
 func _snap_player_to_surface() -> void:
 	if player == null:
