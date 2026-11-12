@@ -73,6 +73,13 @@ func _capture_gameplay() -> void:
 		push_error("Unexpected gameplay screenshot size: %sx%s" % [viewport_image.get_width(), viewport_image.get_height()])
 		quit(5)
 		return
+	# Visual regression guard: at midday the open-sky sample must retain a
+	# distinctly blue channel; this catches the grey fallback seen in CI.
+	var sky_sample := viewport_image.get_pixel(640, 100)
+	if sky_sample.b < sky_sample.r * 1.18 or sky_sample.b < sky_sample.g * 1.08:
+		push_error("Gameplay sky is not rendering the expected blue midday tint: %s" % sky_sample)
+		quit(7)
+		return
 
 	var output_dir := ProjectSettings.globalize_path("res://artifacts")
 	DirAccess.make_dir_recursive_absolute(output_dir)
