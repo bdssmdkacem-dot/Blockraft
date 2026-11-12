@@ -411,9 +411,8 @@ func _update_day_night(delta: float) -> void:
 			sky = sky_day
 		sky = sky * wtint
 		world_env.background_color = sky
-		# Update the actual procedural sky resource as the day advances.
-		# Previously only background_color changed while BG_SKY was active,
-		# leaving a flat grey fallback sky in rendered gameplay.
+		# The compatibility renderer uses BG_COLOR for a deterministic, correctly
+		# tinted sky. Keep the procedural material in sync for forward renderers.
 		if world_env.sky != null and world_env.sky.sky_material is ProceduralSkyMaterial:
 			var procedural_sky := world_env.sky.sky_material as ProceduralSkyMaterial
 			procedural_sky.sky_top_color = sky.darkened(0.32)
