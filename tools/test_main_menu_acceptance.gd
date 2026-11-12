@@ -43,6 +43,9 @@ func _run_checks() -> void:
 	if camera.rotation.x > -0.05:
 		_fail("menu camera is not pitched down toward the voxel landscape", 29)
 		return
+	if world.find_child("SunsetDisc", true, false) == null or world.find_child("SkyClouds", true, false) == null:
+		_fail("menu sunset focal light or cloud layers are missing", 39)
+		return
 	if world.find_child("GoldenHourSun", true, false) == null:
 		_fail("3D menu world has no key light", 27)
 		return
