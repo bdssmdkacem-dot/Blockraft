@@ -115,6 +115,18 @@ func _run_checks() -> void:
     if water_blocks < 100 or leaf_blocks < 100 or wood_blocks < 20:
         _fail("terrain lacks meaningful water/forest coverage: water=%d leaves=%d wood=%d" % [water_blocks, leaf_blocks, wood_blocks], 40)
         return
+
+    var scenic_water_found := false
+    for z in range(-24, -13):
+        if str(scene.blocks.get(Vector3i(0, 2, z), "")) == "water":
+            scenic_water_found = true
+            break
+    if not scenic_water_found:
+        _fail("forward scenic tributary did not generate water beyond the spawn plateau", 50)
+        return
+    if str(scene.blocks.get(Vector3i(0, 3, -19), "")) != "wood":
+        _fail("forward river footbridge deck is missing", 51)
+        return
     if highest_surface - lowest_surface < 6:
         _fail("generated terrain relief is too flat: range=%d" % (highest_surface - lowest_surface), 41)
         return
