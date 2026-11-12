@@ -48,9 +48,14 @@ func _run_checks() -> void:
 		animal._dir = Vector3(1.0, 0.0, 0.0)
 		animal._timer = 4.0
 		var before := (animated_legs[0] as MeshInstance3D).rotation.x
+		var before_position := animal.global_position
 		for _frame in range(8):
 			await physics_frame
 		var after := (animated_legs[0] as MeshInstance3D).rotation.x
+		var moved_distance := Vector2(animal.global_position.x - before_position.x, animal.global_position.z - before_position.z).length()
+		if moved_distance < 0.08:
+			_fail("animal %d gait animated without actual roaming movement" % kind, 9)
+			return
 		if is_equal_approx(before, after):
 			_fail("animal %d gait did not animate while moving" % kind, 8)
 			return
