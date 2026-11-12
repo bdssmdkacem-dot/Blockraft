@@ -182,7 +182,7 @@ func _setup_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.name = "WorldEnvironment"
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
+	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
 	sky_mat.sky_top_color = Color("#24466f")
@@ -193,20 +193,20 @@ func _setup_environment() -> void:
 	sky.sky_material = sky_mat
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("#a0b2bd")
-	env.ambient_light_energy = 0.26
+	env.ambient_light_color = Color("#91a8b8")
+	env.ambient_light_energy = 0.31
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 0.82
+	env.tonemap_exposure = 0.90
 	env.fog_enabled = true
-	env.fog_light_color = Color("#9b9b91")
-	env.fog_density = 0.00048
+	env.fog_light_color = Color("#9aabb0")
+	env.fog_density = 0.00034
 	env.fog_aerial_perspective = 0.28
 	we.environment = env
 	add_child(we)
 
 func _setup_materials() -> void:
 	var colors := {
-		"grass": Color(0.21, 0.40, 0.18), "dirt": Color(0.36, 0.23, 0.13),
+		"grass": Color(0.19, 0.36, 0.19), "dirt": Color(0.39, 0.26, 0.16),
 		"stone": Color(0.48, 0.50, 0.52), "wood": Color(0.42, 0.25, 0.11),
 		"sand": Color(0.82, 0.72, 0.48), "water": Color(0.22, 0.48, 0.72),
 		"gravel": Color(0.55, 0.52, 0.48), "rock": Color(0.35, 0.36, 0.38),
