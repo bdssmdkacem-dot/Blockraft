@@ -208,9 +208,11 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.10 * s, 0.08 * s, 0.18 * s), spot_c)
 			# Oversized comb, bright beak and readable eyes give the chicken a clear mobile silhouette.
 			_box(_body_root, Vector3(0, 0.72 * s, 0.17 * s), Vector3(0.16 * s, 0.22 * s, 0.12 * s), Color("#c9342b"))
-			_box(_body_root, Vector3(0, 0.49 * s, 0.34 * s), Vector3(0.19 * s, 0.12 * s, 0.22 * s), Color("#f4a51c"))
-			_box(_body_root, Vector3(-0.105 * s, 0.57 * s, 0.29 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
-			_box(_body_root, Vector3(0.105 * s, 0.57 * s, 0.29 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
+			_box(_body_root, Vector3(0, 0.49 * s, 0.37 * s), Vector3(0.14 * s, 0.09 * s, 0.15 * s), Color("#f4a51c"))
+			# White eye sockets and tiny dark pupils keep the face legible at distance.
+			for eye_x in [-0.105, 0.105]:
+				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.325 * s), Vector3(0.075 * s, 0.085 * s, 0.045 * s), Color("#fffdf5"))
+				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.354 * s), Vector3(0.032 * s, 0.048 * s, 0.018 * s), Color("#20242a"))
 			_box(_body_root, Vector3(-0.12 * s, 0.12 * s, 0), Vector3(0.09 * s, 0.22 * s, 0.09 * s), Color("#e8c040"))
 			_box(_body_root, Vector3(0.12 * s, 0.12 * s, 0), Vector3(0.09 * s, 0.22 * s, 0.09 * s), Color("#e8c040"))
 			# Wing panels, tail feathers and cheek patches add a readable bird profile.
@@ -219,6 +221,8 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(-0.12 * s, 0.49 * s, 0.36 * s), Vector3(0.07 * s, 0.08 * s, 0.05 * s), Color("#f7d6bf"))
 			_box(_body_root, Vector3(0.12 * s, 0.49 * s, 0.36 * s), Vector3(0.07 * s, 0.08 * s, 0.05 * s), Color("#f7d6bf"))
 			_box(_body_root, Vector3(0.0, 0.38 * s, -0.31 * s), Vector3(0.22 * s, 0.16 * s, 0.20 * s), Color("#e4ded2"))
+			for feather_x in [-0.10, 0.0, 0.10]:
+				_box(_body_root, Vector3(feather_x * s, 0.43 * s, -0.38 * s), Vector3(0.085 * s, 0.16 * s, 0.22 * s), Color("#e4ded2"))
 		Kind.FOX:
 			_box(_body_root, Vector3(0, 0.35 * s, 0), Vector3(0.42 * s, 0.32 * s, 0.70 * s), body_c)
 			_box(_body_root, Vector3(0, 0.48 * s, 0.32 * s), Vector3(0.30 * s, 0.28 * s, 0.30 * s), body_c)
