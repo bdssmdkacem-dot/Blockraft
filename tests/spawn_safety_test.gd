@@ -49,9 +49,8 @@ func _run_spawn_safety_test() -> void:
 			if Vector2(float(x), float(z)).length() > 18.0:
 				continue
 			for y in range(5, 31):
-				var kind := str(blocks.get(Vector3i(x, y, z), ""))
-				if kind == "wood" or kind == "leaves":
-					_fail("Spawn camera corridor contains tree geometry at %s" % str(Vector3i(x, y, z)))
+				if blocks.has(Vector3i(x, y, z)):
+					_fail("Spawn plateau/camera corridor is obstructed at %s" % str(Vector3i(x, y, z)))
 					return
 	if blocks.has(Vector3i(0, 5, 0)):
 		_fail("Spawn headroom is obstructed directly above the pad")
