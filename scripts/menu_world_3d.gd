@@ -26,6 +26,7 @@ func _ready() -> void:
 	_setup_camera()
 	_build_landscape()
 	_build_horizon_layers()
+	_build_mountain_backdrop()
 	_build_river_and_bridge()
 	_build_village()
 	_build_forests()
@@ -74,15 +75,15 @@ func _setup_environment() -> void:
 	sky.sky_material = sky_material
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color("#a8c8d8")
-	environment.ambient_light_energy = 0.35
+	environment.ambient_light_color = Color("#8199a8")
+	environment.ambient_light_energy = 0.28
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_exposure = 0.95
+	environment.tonemap_exposure = 0.84
 	environment.glow_enabled = true
-	environment.glow_intensity = 0.18
+	environment.glow_intensity = 0.10
 	environment.fog_enabled = true
-	environment.fog_light_color = Color("#c8a878")
-	environment.fog_density = 0.0007
+	environment.fog_light_color = Color("#b6a080")
+	environment.fog_density = 0.00038
 	environment.fog_aerial_perspective = 0.35
 	world.environment = environment
 	add_child(world)
@@ -92,14 +93,14 @@ func _setup_lighting() -> void:
 	sun.name = "GoldenHourSun"
 	sun.rotation_degrees = Vector3(-32.0, -42.0, 0.0)
 	sun.light_color = Color("#ffe0a0")
-	sun.light_energy = 1.35
+	sun.light_energy = 1.05
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 100.0
 	add_child(sun)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-20.0, 120.0, 0.0)
 	fill.light_color = Color("#88b8d8")
-	fill.light_energy = 0.25
+	fill.light_energy = 0.14
 	add_child(fill)
 
 func _setup_camera() -> void:
@@ -108,7 +109,7 @@ func _setup_camera() -> void:
 	# Pull the panorama camera back and above the near forest canopy. This
 	# keeps the protagonist in the left foreground while revealing the river,
 	# village, gatehouse and floating islands behind the menu UI.
-	camera.position = Vector3(-20.0, 8.0, 27.0)
+	camera.position = Vector3(-17.0, 8.5, 29.0)
 	camera.rotation_degrees = Vector3(-15.0, -34.0, 0.0)
 	camera.fov = 55.0
 	camera.near = 0.1
@@ -136,6 +137,39 @@ func _build_horizon_layers() -> void:
 	_box(far, Vector3(35, 10, -45), Vector3(12, 18, 6), MAT_STONE_LIGHT)
 	_box(far, Vector3(-20, 5, -38), Vector3(18, 12, 7), MAT_STONE)
 	_box(far, Vector3(0, 3, -35), Vector3(40, 6, 5), MAT_GRASS)
+
+
+func _build_mountain_backdrop() -> void:
+	# Three depth-separated ridgelines establish a real mountain valley rather
+	# than a flat horizon. Snow facets and darker foothills preserve contrast.
+	var ridges := Node3D.new()
+	ridges.name = "MountainBackdrop"
+	add_child(ridges)
+	for i in range(7):
+		var x := -34.0 + float(i) * 12.0
+		var peak := 13.0 + float((i * 7) % 5) * 2.2
+		var width := 13.0 + float(i % 3) * 3.0
+		var depth := -54.0 - float(i % 2) * 9.0
+		_box(ridges, Vector3(x, peak * 0.42, depth), Vector3(width, peak, 10.0), Color("#526b78"))
+		_box(ridges, Vector3(x - 1.0, peak * 0.79, depth + 0.1), Vector3(width * 0.42, peak * 0.34, 10.2), Color("#718895"))
+		if i % 2 == 0:
+			_box(ridges, Vector3(x - 1.0, peak * 0.99, depth + 0.2), Vector3(width * 0.20, peak * 0.12, 10.3), Color("#d7ddd8"))
+	for i in range(5):
+		var x := -25.0 + float(i) * 13.0
+		_box(ridges, Vector3(x, 3.2, -31.0), Vector3(15.0, 6.4, 8.0), Color("#344f45"))
+	# Waterfall ribbons on the valley wall add a readable vertical landmark.
+	var fall_mat := _material(Color("#75c8dc"), 0.18)
+	fall_mat.emission_enabled = true
+	fall_mat.emission = Color("#397f9a")
+	fall_mat.emission_energy_multiplier = 0.18
+	for x in [-18.0, 19.0]:
+		var fall := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(1.0, 7.0, 0.22)
+		fall.mesh = mesh
+		fall.position = Vector3(x, 3.8, -27.0)
+		fall.material_override = fall_mat
+		ridges.add_child(fall)
 
 func _build_river_and_bridge() -> void:
 	var water := Node3D.new()
@@ -318,11 +352,11 @@ func _build_protagonist() -> void:
 	var ledge := Node3D.new()
 	ledge.name = "HeroForegroundLedge"
 	add_child(ledge)
-	_box(ledge, Vector3(-20.0, 1.75, 13.0), Vector3(5.0, 1.5, 5.0), MAT_GRASS)
-	_box(ledge, Vector3(-20.0, 0.5, 13.0), Vector3(5.2, 1.0, 5.2), MAT_STONE)
+	_box(ledge, Vector3(-13.5, 1.75, 13.0), Vector3(5.0, 1.5, 5.0), MAT_GRASS)
+	_box(ledge, Vector3(-13.5, 0.5, 13.0), Vector3(5.2, 1.0, 5.2), MAT_STONE)
 	var hero := Node3D.new()
 	hero.name = "Protagonist"
-	hero.position = Vector3(-20.0, 2.5, 13.0)
+	hero.position = Vector3(-13.5, 2.5, 13.0)
 	hero.rotation_degrees = Vector3(0, 135, 0)
 	hero.scale = Vector3(1.28, 1.28, 1.28)
 	add_child(hero)
