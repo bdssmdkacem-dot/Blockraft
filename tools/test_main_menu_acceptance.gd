@@ -46,6 +46,16 @@ func _run_checks() -> void:
 	if world.find_child("GoldenHourSun", true, false) == null:
 		_fail("3D menu world has no key light", 27)
 		return
+	if world.find_child("MountainBackdrop", true, false) == null:
+		_fail("menu panorama is missing layered mountain and waterfall backdrop", 34)
+		return
+	var world_environment := world.find_child("WorldEnvironment", true, false) as WorldEnvironment
+	if world_environment == null or world_environment.environment == null:
+		_fail("menu panorama has no controlled environment/tonemapping", 35)
+		return
+	if world_environment.environment.tonemap_exposure > 0.9 or world_environment.environment.ambient_light_energy > 0.32:
+		_fail("menu lighting exceeds the visual exposure budget", 36)
+		return
 	if world.find_child("FloatingIsland", true, false) == null:
 		_fail("3D menu world is missing its floating island landmark", 28)
 		return
