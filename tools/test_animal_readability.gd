@@ -43,7 +43,7 @@ func _run_checks() -> void:
 			return
 		var animated_legs: Array = animal.get("_animated_legs")
 		if animated_legs.size() < 2:
-			_fail("animal %d has has fewer than two explicitly registered animated legs" % kind, 7)
+			_fail("animal %d has fewer than two explicitly registered animated legs" % kind, 7)
 			return
 		animal._dir = Vector3(1.0, 0.0, 0.0)
 		animal._timer = 4.0
