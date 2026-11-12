@@ -393,7 +393,7 @@ func _update_day_night(delta: float) -> void:
 		else:
 			sun_col = day_col
 		sun_light.light_color = sun_col * wtint
-		var energy := lerpf(0.05, 1.25, factor * factor)
+		var energy := lerpf(0.04, 0.95, factor * factor)
 		if _lightning_t > 0.0:
 			energy = maxf(energy, 2.2)
 		sun_light.light_energy = energy * wmult
@@ -411,11 +411,20 @@ func _update_day_night(delta: float) -> void:
 			sky = sky_day
 		sky = sky * wtint
 		world_env.background_color = sky
+		# Update the actual procedural sky resource as the day advances.
+		# Previously only background_color changed while BG_SKY was active,
+		# leaving a flat grey fallback sky in rendered gameplay.
+		if world_env.sky != null and world_env.sky.sky_material is ProceduralSkyMaterial:
+			var procedural_sky := world_env.sky.sky_material as ProceduralSkyMaterial
+			procedural_sky.sky_top_color = sky.darkened(0.32)
+			procedural_sky.sky_horizon_color = sky.lightened(0.08)
+			procedural_sky.ground_bottom_color = Color(0.10, 0.16, 0.15).lerp(sky.darkened(0.55), factor * 0.25)
+			procedural_sky.ground_horizon_color = sky.darkened(0.12)
 		world_env.ambient_light_color = sky.lerp(Color(0.78, 0.82, 0.9), factor * 0.7)
-		world_env.ambient_light_energy = lerpf(0.15, 0.58, factor) * lerpf(1.0, 0.7, 1.0 - wmult)
+		world_env.ambient_light_energy = lerpf(0.12, 0.36, factor) * lerpf(1.0, 0.72, 1.0 - wmult)
 		world_env.fog_enabled = true
 		world_env.fog_light_color = sky
-		var base_fog := lerpf(0.0048, 0.0018, factor)
+		var base_fog := lerpf(0.0014, 0.00035, factor)
 		world_env.fog_density = base_fog + _weather_fog_add() * _weather_blend
 	var hour := int(time_of_day * 24.0) % 24
 	var minute := int(fmod(time_of_day * 24.0, 1.0) * 60.0)
