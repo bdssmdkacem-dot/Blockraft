@@ -313,7 +313,7 @@ func _generate_world() -> void:
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
 			# A visible tributary passes beyond the protected spawn pad so the
 			# normal third-person starting view has water, banks and a crossing.
-			var scenic_river_d := absf(fz + 19.0 + sin(fx * 0.12) * 4.0)
+			var scenic_river_d := absf(fz + 15.0 + sin(fx * 0.12) * 3.0)
 			if dist > 12.0 and dist < 48.0:
 				river_d = minf(river_d, scenic_river_d)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
@@ -476,7 +476,7 @@ func _generate_world() -> void:
 	# A compact timber footbridge crosses the new forward tributary. It is
 	# placed after terrain generation so the deck remains stable and collision-
 	# backed even when the river's procedural banks change.
-	for z in range(-24, -13):
+	for z in range(-20, -12):
 		blocks[Vector3i(0, 3, z)] = "wood"
 		if z % 2 == 0:
 			blocks[Vector3i(-1, 4, z)] = "wood"
