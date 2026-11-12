@@ -194,9 +194,9 @@ func _setup_environment() -> void:
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color("#a0b2bd")
-	env.ambient_light_energy = 0.34
+	env.ambient_light_energy = 0.26
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 0.94
+	env.tonemap_exposure = 0.82
 	env.fog_enabled = true
 	env.fog_light_color = Color("#9b9b91")
 	env.fog_density = 0.00048
@@ -206,13 +206,13 @@ func _setup_environment() -> void:
 
 func _setup_materials() -> void:
 	var colors := {
-		"grass": Color(0.27, 0.49, 0.22), "dirt": Color(0.36, 0.23, 0.13),
+		"grass": Color(0.21, 0.40, 0.18), "dirt": Color(0.36, 0.23, 0.13),
 		"stone": Color(0.48, 0.50, 0.52), "wood": Color(0.42, 0.25, 0.11),
 		"sand": Color(0.82, 0.72, 0.48), "water": Color(0.22, 0.48, 0.72),
 		"gravel": Color(0.55, 0.52, 0.48), "rock": Color(0.35, 0.36, 0.38),
 		"coal": Color(0.12, 0.12, 0.14), "iron": Color(0.72, 0.58, 0.48),
 		"gold": Color(0.92, 0.78, 0.22), "crystal": Color(0.45, 0.85, 0.95),
-		"leaves": Color(0.18, 0.39, 0.20), "chest": Color(0.55, 0.32, 0.12),
+		"leaves": Color(0.15, 0.33, 0.16), "chest": Color(0.55, 0.32, 0.12),
 	}
 	for key in colors:
 		var mat := StandardMaterial3D.new()
