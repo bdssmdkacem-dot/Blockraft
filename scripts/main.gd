@@ -182,7 +182,8 @@ func _setup_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.name = "WorldEnvironment"
 	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color("#7aa8d8")
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
 	sky_mat.sky_top_color = Color("#24466f")
@@ -206,7 +207,7 @@ func _setup_environment() -> void:
 
 func _setup_materials() -> void:
 	var colors := {
-		"grass": Color(0.19, 0.36, 0.19), "dirt": Color(0.39, 0.26, 0.16),
+		"grass": Color(0.15, 0.29, 0.16), "dirt": Color(0.39, 0.26, 0.16),
 		"stone": Color(0.48, 0.50, 0.52), "wood": Color(0.42, 0.25, 0.11),
 		"sand": Color(0.82, 0.72, 0.48), "water": Color(0.22, 0.48, 0.72),
 		"gravel": Color(0.55, 0.52, 0.48), "rock": Color(0.35, 0.36, 0.38),
@@ -293,9 +294,14 @@ func _generate_world() -> void:
 			var fz := float(z)
 			var dist := sqrt(fx * fx + fz * fz)
 			var h := 4.6
-			h += sin(fx * 0.045) * cos(fz * 0.04) * 4.2
-			h += sin(fx * 0.09 + 1.7) * 1.9 + cos(fz * 0.085 + 0.6) * 1.7
-			h += sin(fx * 0.18 + fz * 0.09) * 0.7
+			h += sin(fx * 0.045) * cos(fz * 0.04) * 5.4
+			h += sin(fx * 0.09 + 1.7) * 2.2 + cos(fz * 0.085 + 0.6) * 2.0
+			h += sin(fx * 0.18 + fz * 0.09) * 0.85
+			# A broad, broken ridge beyond the starter valley creates a visible
+			# mountain skyline without raising the spawn corridor or walk paths.
+			var ridge_wave := maxf(0.0, cos((fx + fz * 0.38) * 0.072))
+			if dist > 24.0:
+				h += pow(ridge_wave, 3.2) * 7.0
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
 			if dist < 18.0:
