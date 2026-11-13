@@ -293,20 +293,31 @@ func _generate_world() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 82417
 	var heights: Dictionary = {}
+	# Fractal simplex noise breaks up the long, straight sinusoidal ridges that
+	# previously read as a continuous cliff wall in the third-person view.
+	var terrain_noise := FastNoiseLite.new()
+	terrain_noise.seed = 82417
+	terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	terrain_noise.frequency = 0.035
+	terrain_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	terrain_noise.fractal_octaves = 3
+	terrain_noise.fractal_gain = 0.48
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var fx := float(x)
 			var fz := float(z)
 			var dist := sqrt(fx * fx + fz * fz)
 			var h := 4.6
-			h += sin(fx * 0.045) * cos(fz * 0.04) * 2.2
-			h += sin(fx * 0.09 + 1.7) * 0.9 + cos(fz * 0.085 + 0.6) * 0.85
-			h += sin(fx * 0.18 + fz * 0.09) * 0.35
-			# A broad, broken ridge beyond the starter valley creates a visible
-			# mountain skyline without raising the spawn corridor or walk paths.
-			var ridge_wave := maxf(0.0, cos((fx + fz * 0.38) * 0.072))
-			if dist > 24.0:
-				h += pow(ridge_wave, 2.8) * 2.4
+			h += sin(fx * 0.045) * cos(fz * 0.04) * 1.45
+			h += sin(fx * 0.09 + 1.7) * 0.62 + cos(fz * 0.085 + 0.6) * 0.58
+			h += sin(fx * 0.18 + fz * 0.09) * 0.28
+			var local_relief := terrain_noise.get_noise_2d(fx, fz)
+			h += local_relief * 1.35
+			# Higher outer ridges are made from local noise peaks rather than one
+			# broad cosine band, giving the skyline varied saddles and rounded hills.
+			if dist > 22.0:
+				var ridge_peak := maxf(0.0, terrain_noise.get_noise_2d(fx * 0.72 + 91.0, fz * 0.72 - 47.0))
+				h += pow(ridge_peak, 1.65) * 2.4
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
 			if dist < 8.0:
