@@ -36,9 +36,19 @@ func _capture_gameplay() -> void:
 		quit(2)
 		return
 
-	# Regression guard for the spawn camera's forward cone: no generated
-	# trunks/canopies may occupy the player's central view after world setup.
+	# Regression guard: the immediate 360-degree spawn view must stay free
+	# of generated tree trunks/canopies, with the distant forward cone clear too.
 	var world_blocks: Dictionary = gameplay.get("blocks")
+	for x in range(-28, 29):
+		for z in range(-28, 29):
+			if Vector2(float(x), float(z)).length() > 28.0:
+				continue
+			for y in range(5, 31):
+				var kind := str(world_blocks.get(Vector3i(x, y, z), ""))
+				if kind in ["wood", "leaves"]:
+					push_error("Near spawn camera view remains obstructed by %s at %s" % [kind, Vector3i(x, y, z)])
+					quit(8)
+					return
 	for x in range(-35, 36):
 		for z in range(-56, -16):
 			var view_half_width := lerpf(10.0, 34.0, inverse_lerp(-17.0, -56.0, float(z)))
