@@ -27,6 +27,21 @@ var _swing_stream: AudioStreamWAV
 var _hit_stream: AudioStreamWAV
 var _pool_index := 0
 
+func _exit_tree() -> void:
+	# Stop every pooled playback before releasing generated WAV resources.
+	# AudioStreamPlayer3D playback can otherwise outlive the world node and
+	# leave AudioStreamWAV / AudioStreamPlaybackWAV instances alive at shutdown.
+	for player_variant in _players:
+		var audio_player := player_variant as AudioStreamPlayer3D
+		if is_instance_valid(audio_player):
+			audio_player.stop()
+			audio_player.stream = null
+	_players.clear()
+	_dig_streams.clear()
+	_place_stream = null
+	_swing_stream = null
+	_hit_stream = null
+
 func _ready() -> void:
 	_dig_streams["stone"] = _make_dig_wav(0.14, 0.55, 90.0, 0.85)
 	_dig_streams["rock"] = _make_dig_wav(0.15, 0.6, 80.0, 0.9)
