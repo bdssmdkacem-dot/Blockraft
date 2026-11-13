@@ -71,8 +71,13 @@ func _capture_gameplay() -> void:
 		survival.set("_weather_blend", 1.0)
 		survival.set("_weather_timer", 999.0)
 		survival.call("_update_day_night", 0.0)
-		# Synchronize particle emission after forcing deterministic clear weather.
+		# Synchronize particle emission and flush already-spawned rain streaks;
+		# disabling emission alone leaves particles visible for their lifetime.
 		survival.call("_update_weather", 0.0)
+		var rain_particles := survival.get("_rain") as GPUParticles3D
+		if rain_particles:
+			rain_particles.emitting = false
+			rain_particles.restart()
 
 	var toast_label := gameplay.get("toast_label") as Label
 	if toast_label:
@@ -99,6 +104,33 @@ func _capture_gameplay() -> void:
 	var animal_start_positions: Dictionary = {}
 	for animal in animals:
 		animal_start_positions[animal.get_instance_id()] = animal.global_position
+
+	# Use a temporary observer camera inside the same live gameplay world.
+	# Frame the four animals nearest the player so their movement is visible
+	# instead of relying on tiny distant silhouettes in the third-person view.
+	var remaining_animals: Array = animals.duplicate()
+	var focus_animals: Array = []
+	for _pick in range(mini(4, remaining_animals.size())):
+		var nearest = remaining_animals[0]
+		var nearest_distance := player.global_position.distance_to(nearest.global_position)
+		for candidate in remaining_animals:
+			var candidate_distance := player.global_position.distance_to(candidate.global_position)
+			if candidate_distance < nearest_distance:
+				nearest = candidate
+				nearest_distance = candidate_distance
+		focus_animals.append(nearest)
+		remaining_animals.erase(nearest)
+	var fauna_center := Vector3.ZERO
+	for animal in focus_animals:
+		fauna_center += animal.global_position
+	fauna_center /= float(maxi(1, focus_animals.size()))
+	var fauna_camera := Camera3D.new()
+	fauna_camera.name = "FaunaObservationCamera"
+	fauna_camera.fov = 62.0
+	gameplay.add_child(fauna_camera)
+	fauna_camera.global_position = fauna_center + Vector3(0.0, 8.5, 11.0)
+	fauna_camera.look_at(fauna_center, Vector3.UP)
+	fauna_camera.make_current()
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var before_image := root.get_texture().get_image()
@@ -131,6 +163,9 @@ func _capture_gameplay() -> void:
 		push_error("Could not save post-roaming gameplay fauna screenshot.")
 		quit(12)
 		return
+	# Restore the production third-person view for the gameplay baseline.
+	fauna_camera.queue_free()
+	camera.make_current()
 	# Keep the final player-camera baseline unobstructed. The live fauna has
 	# already been observed and captured above; aggressive chickens/foxes can
 	# otherwise walk directly into the camera during the observation interval.
