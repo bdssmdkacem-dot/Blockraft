@@ -332,8 +332,8 @@ func _generate_world() -> void:
 			# transition the finite map ends in a continuous 10+ block cliff
 			# visible from the spawn camera, even when interior slopes are smooth.
 			var edge_distance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
-			if edge_distance < 24.0:
-				h = lerpf(float(MIN_Y + 2), h, smoothstep(0.0, 24.0, edge_distance))
+			if edge_distance < 32.0:
+				h = lerpf(float(MIN_Y + 2), h, smoothstep(0.0, 32.0, edge_distance))
 			heights[Vector2i(x, z)] = {
 				"hf": clampf(h, float(MIN_Y + 2), 12.5),
 				"river": in_river or in_lake,
