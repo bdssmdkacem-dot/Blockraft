@@ -337,6 +337,18 @@ func _generate_world() -> void:
 			var in_river := in_main or in_trib
 			if in_river:
 				h = mini(h, 1.2)
+			else:
+				# Shape a broad, traversable bank rather than leaving a two-to-four
+				# block vertical cut beside the water surface. River floors remain
+				# unchanged; only dry approach columns are raised/lowered gradually.
+				var bank_distance := river_d
+				if dist > 11.0 and fz > 0.0:
+					bank_distance = minf(bank_distance, trib_d)
+				if bank_distance < 6.0 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(2.6, 6.0, bank_distance))
+					h = minf(h, bank_height)
+			if in_lake:
+				h = mini(h, 1.0)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
 				h = mini(h, 1.0)
@@ -631,11 +643,11 @@ func _blend_generated_spawn_terrain() -> void:
 	# must not fall away by two or more voxels. Blend only freshly generated
 	# terrain into the surrounding hills; restored player-built worlds are never
 	# passed through this function.
-	const BLEND_RADIUS := 20.0
+	const BLEND_RADIUS := 14.0
 	var ground_kinds := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
 	var target_heights: Dictionary = {}
-	for x in range(-20, 21):
-		for z in range(-20, 21):
+	for x in range(-14, 15):
+		for z in range(-14, 15):
 			var radius := Vector2(float(x), float(z)).length()
 			if radius > BLEND_RADIUS:
 				continue
