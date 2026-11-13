@@ -161,7 +161,12 @@ func _spawn_animals() -> void:
 		attempts += 1
 		var x := _rng.randi_range(-50, 50)
 		var z := _rng.randi_range(-50, 50)
-		if abs(x) < 6 and abs(z) < 6:
+		# Keep wildlife out of the immediate spawn meadow and the forward
+		# third-person sightline. Nearby aggressive chickens/foxes previously
+		# rushed into the player before the opening view could be read.
+		if Vector2(float(x) - 0.5, float(z) - 0.5).length() < 18.0:
+			continue
+		if z < -12 and z > -42 and abs(x) < 18:
 			continue
 		if _is_water(x, z):
 			continue
