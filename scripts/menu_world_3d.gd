@@ -6,7 +6,7 @@ const MAT_GRASS_LIGHT := Color("#70b956")
 const MAT_DIRT := Color("#79513a")
 const MAT_STONE := Color("#687b80")
 const MAT_STONE_LIGHT := Color("#9eafa8")
-const MAT_STONE_CASTLE := Color("#8a9590")
+const MAT_STONE_CASTLE := Color("#7b8985")
 const MAT_WOOD := Color("#70472f")
 const MAT_LEAF_DARK := Color("#276747")
 const MAT_LEAF := Color("#3d8a4b")
@@ -70,23 +70,27 @@ func _setup_environment() -> void:
 	environment.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color("#315f96")
-	sky_material.sky_horizon_color = Color("#f2a45f")
-	sky_material.ground_bottom_color = Color("#1a2b2a")
-	sky_material.ground_horizon_color = Color("#e0a868")
+	sky_material.sky_top_color = Color("#2d70b4")
+	sky_material.sky_horizon_color = Color("#f6b46f")
+	sky_material.ground_bottom_color = Color("#172b2d")
+	sky_material.ground_horizon_color = Color("#c58c61")
 	sky_material.sun_angle_max = 22.0
 	sky.sky_material = sky_material
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color("#8199a8")
-	environment.ambient_light_energy = 0.28
+	environment.ambient_light_color = Color("#8da8bf")
+	environment.ambient_light_energy = 0.23
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_exposure = 0.78
+	environment.tonemap_exposure = 0.88
+	environment.adjustment_enabled = true
+	environment.adjustment_contrast = 1.12
+	environment.adjustment_saturation = 1.16
+	environment.adjustment_brightness = 1.02
 	environment.glow_enabled = true
-	environment.glow_intensity = 0.09
+	environment.glow_intensity = 0.12
 	environment.fog_enabled = true
-	environment.fog_light_color = Color("#b6a080")
-	environment.fog_density = 0.00030
+	environment.fog_light_color = Color("#a9b6b5")
+	environment.fog_density = 0.00024
 	environment.fog_aerial_perspective = 0.35
 	world.environment = environment
 	add_child(world)
@@ -96,14 +100,14 @@ func _setup_lighting() -> void:
 	sun.name = "GoldenHourSun"
 	sun.rotation_degrees = Vector3(-32.0, -42.0, 0.0)
 	sun.light_color = Color("#ffe0a0")
-	sun.light_energy = 1.05
+	sun.light_energy = 1.18
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 100.0
 	add_child(sun)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-20.0, 120.0, 0.0)
 	fill.light_color = Color("#88b8d8")
-	fill.light_energy = 0.14
+	fill.light_energy = 0.20
 	add_child(fill)
 
 func _setup_camera() -> void:
@@ -241,11 +245,11 @@ func _build_river_and_bridge() -> void:
 	var water := Node3D.new()
 	water.name = "River"
 	add_child(water)
-	var wmat := _material(Color(0.22, 0.58, 0.78, 0.72), 0.08, 0.25)
+	var wmat := _material(Color(0.14, 0.43, 0.66, 0.78), 0.12, 0.18)
 	wmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	wmat.emission_enabled = true
 	wmat.emission = Color(0.08, 0.2, 0.3)
-	wmat.emission_energy_multiplier = 0.2
+	wmat.emission_energy_multiplier = 0.08
 	var river := MeshInstance3D.new()
 	var rm := BoxMesh.new()
 	rm.size = Vector3(9.5, 0.28, 66)
@@ -275,9 +279,9 @@ func _build_village() -> void:
 	var village := Node3D.new()
 	village.name = "Village"
 	add_child(village)
-	for i in range(7):
-		var hx := 9.0 + i * 3.0
-		var hz := -2.0 - (i % 3) * 2.5
+	for i in range(9):
+		var hx := 8.0 + i * 2.5
+		var hz := -2.0 - (i % 3) * 2.8
 		_box(village, Vector3(hx, 0.8, hz), Vector3(2.2, 1.6, 2.0), MAT_WALL)
 		_box(village, Vector3(hx, 1.9, hz), Vector3(2.6, 0.8, 2.4), MAT_ROOF)
 		# Two sloped roof planes and a ridge cap replace the flat slab silhouette.
