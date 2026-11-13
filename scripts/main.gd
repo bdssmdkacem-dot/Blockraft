@@ -600,9 +600,9 @@ func _generate_world() -> void:
 				# previously hid the player and consumed most of the view.
 				var camera_clearance := Vector2(float(x), float(z)).length()
 				if camera_clearance < 22.0:
-					tree_chance *= 0.12
-				elif camera_clearance < 30.0:
 					tree_chance *= 0.55
+				elif camera_clearance < 30.0:
+					tree_chance *= 0.80
 				if river_d < 8.0: tree_chance *= 0.45
 				if rng.randf() < tree_chance:
 					_make_tree(x, height + 1, z, rng)
@@ -691,16 +691,13 @@ func _ensure_spawn_pad() -> void:
 			blocks[Vector3i(x, surface_y, z)] = "grass"
 
 func _clear_spawn_camera_corridor() -> void:
-	# Preserve every generated terrain column around spawn. Only remove foliage
-	# from the camera corridor; deleting blocks above y=4 here cut through the
-	# surrounding hills and recreated the very cliffs the terrain pass removed.
-	# Keep the immediate 360-degree spawn view open, not just the narrow
-	# forward cone. This removes near trees that otherwise dominate the
-	# third-person frame from its left/right edges. Ground and structures remain.
+	# Preserve the nearby forest and clear only the reserved player landing
+	# pocket plus a narrow sightline to the bridge. The old 28-block radius
+	# and wide forward wedge removed almost every tree from the playable view.
 	var near_foliage_removed := 0
-	for x in range(-28, 29):
-		for z in range(-28, 29):
-			if Vector2(float(x), float(z)).length() > 28.0:
+	for x in range(-8, 9):
+		for z in range(-8, 9):
+			if Vector2(float(x), float(z)).length() > 8.0:
 				continue
 			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
@@ -708,12 +705,12 @@ func _clear_spawn_camera_corridor() -> void:
 				if kind in ["wood", "leaves"]:
 					blocks.erase(pos)
 					near_foliage_removed += 1
-	# Remove only remaining tree foliage/trunks in the distant tapered view
-	# corridor; preserve the mountain ridges and river banks.
+	# Keep the bridge approach readable without carving away the distant
+	# forest: a tapered 5-to-9-block corridor is enough for the camera.
 	var forward_removed := 0
-	for x in range(-35, 36):
-		for z in range(-56, -16):
-			var view_half_width := lerpf(10.0, 34.0, inverse_lerp(-17.0, -56.0, float(z)))
+	for x in range(-10, 11):
+		for z in range(-28, -8):
+			var view_half_width := lerpf(2.5, 4.5, inverse_lerp(-9.0, -28.0, float(z)))
 			if absf(float(x) - 0.5) > view_half_width:
 				continue
 			for y in range(5, 31):
