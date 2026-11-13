@@ -70,10 +70,12 @@ func _setup_environment() -> void:
 	environment.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color("#2d70b4")
-	sky_material.sky_horizon_color = Color("#f6b46f")
+	sky_material.sky_top_color = Color("#245f9d")
+	sky_material.sky_horizon_color = Color("#f2a66a")
 	sky_material.ground_bottom_color = Color("#172b2d")
-	sky_material.ground_horizon_color = Color("#c58c61")
+	sky_material.ground_horizon_color = Color("#b77f58")
+	sky_material.sky_energy_multiplier = 1.2
+	sky_material.sky_curve = 0.22
 	sky_material.sun_angle_max = 22.0
 	sky.sky_material = sky_material
 	environment.sky = sky
@@ -81,11 +83,11 @@ func _setup_environment() -> void:
 	environment.ambient_light_color = Color("#8da8bf")
 	environment.ambient_light_energy = 0.23
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_exposure = 0.88
+	environment.tonemap_exposure = 0.82
 	environment.adjustment_enabled = true
 	environment.adjustment_contrast = 1.12
-	environment.adjustment_saturation = 1.16
-	environment.adjustment_brightness = 1.02
+	environment.adjustment_saturation = 1.05
+	environment.adjustment_brightness = 1.0
 	environment.glow_enabled = true
 	environment.glow_intensity = 0.12
 	environment.fog_enabled = true
@@ -245,7 +247,7 @@ func _build_river_and_bridge() -> void:
 	var water := Node3D.new()
 	water.name = "River"
 	add_child(water)
-	var wmat := _material(Color(0.14, 0.43, 0.66, 0.78), 0.12, 0.18)
+	var wmat := _material(Color(0.13, 0.37, 0.58, 0.72), 0.18, 0.10)
 	wmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	wmat.emission_enabled = true
 	wmat.emission = Color(0.08, 0.2, 0.3)
