@@ -78,9 +78,23 @@ func _run_checks() -> void:
 	if hero.get_child_count() < 24 or hero.find_child("DiamondPickaxe", true, false) == null:
 		_fail("menu protagonist silhouette is missing layered clothing, backpack or pickaxe detail", 32)
 		return
+	if hero.position.x < -10.0:
+		_fail("menu protagonist remains underneath the left action-button column", 42)
+		return
+	var rounded_peaks := 0
+	for mountain_part in world.find_children("*", "MeshInstance3D", true, false):
+		var mountain_mesh := (mountain_part as MeshInstance3D).mesh
+		if mountain_mesh is CylinderMesh and mountain_mesh.radial_segments >= 7 and mountain_mesh.top_radius > 0.0:
+			rounded_peaks += 1
+	if rounded_peaks < 9:
+		_fail("mountain backdrop still uses sharp pyramid peaks instead of softened ridges", 43)
+		return
 	var castle := world.find_child("GatehouseCastle", true, false) as Node3D
 	if castle == null or castle.get_child_count() < 120:
 		_fail("menu castle lacks the layered facade and landmark detail pass", 33)
+		return
+	if castle.scale.x > 1.30:
+		_fail("castle scale clips the upper landmark at menu framing", 44)
 		return
 
 	var strip := scene.find_child("FeatureStrip", true, false) as HBoxContainer
