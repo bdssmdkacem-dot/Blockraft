@@ -804,11 +804,9 @@ func _load_chunk(ck: Vector2i) -> void:
 					continue
 				if kind != "water":
 					collision_face_count += _append_exposed_collision_faces(collision_faces, pos)
-				if not render_groups.has(kind):
-					render_groups[kind] = []
-				render_groups[kind].append(Transform3D(Basis.IDENTITY, Vector3(float(x) + 0.5, float(y) + 0.5, float(z) + 0.5)))
+				_append_exposed_render_faces(render_groups, pos, kind)
 				block_count += 1
-	_build_chunk_multimeshes(root, render_groups)
+	_build_chunk_surface_meshes(root, render_groups)
 	if not collision_faces.is_empty():
 		var body := StaticBody3D.new()
 		body.name = "ChunkCollision"
@@ -833,6 +831,66 @@ func _load_chunk(ck: Vector2i) -> void:
 	chunk_peak_loaded = maxi(chunk_peak_loaded, loaded_chunks.size())
 	if OS.is_debug_build():
 		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " collision_faces=", collision_face_count, " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
+
+func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String) -> void:
+	if not groups.has(kind):
+		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array()}
+	var group: Dictionary = groups[kind]
+	var vertices: PackedVector3Array = group["vertices"]
+	var normals: PackedVector3Array = group["normals"]
+	var x := float(pos.x)
+	var y := float(pos.y)
+	var z := float(pos.z)
+	var faces := [
+		[Vector3i(1, 0, 0), Vector3(x + 1, y, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y, z + 1), Vector3.RIGHT],
+		[Vector3i(-1, 0, 0), Vector3(x, y, z), Vector3(x, y, z + 1), Vector3(x, y + 1, z + 1), Vector3(x, y + 1, z), Vector3.LEFT],
+		[Vector3i(0, 1, 0), Vector3(x, y + 1, z), Vector3(x, y + 1, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y + 1, z), Vector3.UP],
+		[Vector3i(0, -1, 0), Vector3(x, y, z), Vector3(x + 1, y, z), Vector3(x + 1, y, z + 1), Vector3(x, y, z + 1), Vector3.DOWN],
+		[Vector3i(0, 0, 1), Vector3(x, y, z + 1), Vector3(x + 1, y, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x, y + 1, z + 1), Vector3.BACK],
+		[Vector3i(0, 0, -1), Vector3(x, y, z), Vector3(x, y + 1, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y, z), Vector3.FORWARD]
+	]
+	for face in faces:
+		var neighbor: Vector3i = pos + face[0]
+		var neighbor_exists: bool = blocks.has(neighbor)
+		var neighbor_kind := str(blocks.get(neighbor, ""))
+		var visible := not neighbor_exists
+		if kind != "water" and neighbor_kind == "water":
+			visible = true
+		if kind == "water" and neighbor_exists:
+			visible = false
+		if not visible:
+			continue
+		var a: Vector3 = face[1]
+		var b: Vector3 = face[2]
+		var c: Vector3 = face[3]
+		var d: Vector3 = face[4]
+		var normal: Vector3 = face[5]
+		vertices.append_array(PackedVector3Array([a, b, c, a, c, d]))
+		normals.append_array(PackedVector3Array([normal, normal, normal, normal, normal, normal]))
+	group["vertices"] = vertices
+	group["normals"] = normals
+	groups[kind] = group
+
+func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> void:
+	for kind_variant in render_groups.keys():
+		var kind := str(kind_variant)
+		var group: Dictionary = render_groups[kind_variant]
+		var vertices: PackedVector3Array = group["vertices"]
+		var normals: PackedVector3Array = group["normals"]
+		if vertices.is_empty():
+			continue
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var instance := MeshInstance3D.new()
+		instance.name = "Surface_" + kind
+		instance.mesh = mesh
+		instance.material_override = block_materials.get(kind, block_materials["stone"])
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		parent.add_child(instance)
 
 func _append_exposed_collision_faces(faces: PackedVector3Array, pos: Vector3i) -> int:
 	var x := float(pos.x)
