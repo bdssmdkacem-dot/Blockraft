@@ -28,6 +28,7 @@ var _hit_stream: AudioStreamWAV
 var _pool_index := 0
 
 func _exit_tree() -> void:
+	print("MINING_FX_AUDIO_CLEANUP players=%d" % _players.size())
 	# Stop every pooled playback before releasing generated WAV resources.
 	# AudioStreamPlayer3D playback can otherwise outlive the world node and
 	# leave AudioStreamWAV / AudioStreamPlaybackWAV instances alive at shutdown.
