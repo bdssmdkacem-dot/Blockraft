@@ -163,7 +163,7 @@ func _build_mountain_backdrop() -> void:
 		var peak := 12.0 + float((i * 7) % 6) * 2.1
 		var radius := 7.5 + float(i % 3) * 1.6
 		var depth := -57.0 - float(i % 3) * 7.0
-		var rock := rock_colors[i % rock_colors.size()]
+		var rock: Color = rock_colors[i % rock_colors.size()]
 		_pyramid(ridges, Vector3(x, peak * 0.50, depth), radius, peak, rock)
 		# Offset secondary shoulders create irregular mountain profiles.
 		if i % 2 == 0:
