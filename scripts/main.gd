@@ -590,7 +590,12 @@ func _generate_world() -> void:
 			if not is_river and river_d < 4.2 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5:
-				var tree_chance := 0.018 if sin(float(x) * 0.17) * cos(float(z) * 0.19) > 0.35 else 0.006
+				# Give the outer hills a readable forest biome instead of isolated
+				# single trees. Keep the immediate spawn view open, but raise the
+				# baseline density enough that the generated world contains real
+				# groves after slope and river exclusions.
+				var forest_signal := sin(float(x) * 0.17) * cos(float(z) * 0.19)
+				var tree_chance := 0.055 if forest_signal > 0.35 else 0.020
 				# Keep the spawn/camera corridor open; dense near-field crowns
 				# previously hid the player and consumed most of the view.
 				var camera_clearance := Vector2(float(x), float(z)).length()
