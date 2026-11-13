@@ -126,9 +126,13 @@ func _initialize_world_async() -> void:
 
 func _spawn_guaranteed_floor() -> void:
 	var floor_y := 2.0
-	var size := Vector3(100.0, 4.0, 100.0)
+	# This is collision-only spawn insurance, not a visible world floor.
+	# The former 100x100 green slab masked the procedural landscape and made
+	# the world look like a flat platform with a distant vertical wall.
+	var size := Vector3(14.0, 4.0, 14.0)
 	var mi := MeshInstance3D.new()
 	mi.name = "GuaranteedFloorMesh"
+	mi.visible = false
 	var box := BoxMesh.new()
 	box.size = size
 	mi.mesh = box
