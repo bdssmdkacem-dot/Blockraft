@@ -151,38 +151,44 @@ func _build_horizon_layers() -> void:
 
 
 func _build_mountain_backdrop() -> void:
-	# Three depth-separated ridgelines establish a real mountain valley rather
-	# than a flat horizon. Snow facets and darker foothills preserve contrast.
+	# Layered faceted peaks replace the old continuous rectangular cliff wall.
+	# Each ridge has a sloped silhouette, visible valley gaps and a separate
+	# snow crown so the castle sits in a mountain landscape rather than a box canyon.
 	var ridges := Node3D.new()
 	ridges.name = "MountainBackdrop"
 	add_child(ridges)
+	var rock_colors := [Color("#405c6d"), Color("#526f7d"), Color("#607c86"), Color("#718c91")]
+	for i in range(9):
+		var x := -43.0 + float(i) * 10.5
+		var peak := 12.0 + float((i * 7) % 6) * 2.1
+		var radius := 7.5 + float(i % 3) * 1.6
+		var depth := -57.0 - float(i % 3) * 7.0
+		var rock := rock_colors[i % rock_colors.size()]
+		_pyramid(ridges, Vector3(x, peak * 0.50, depth), radius, peak, rock)
+		# Offset secondary shoulders create irregular mountain profiles.
+		if i % 2 == 0:
+			_pyramid(ridges, Vector3(x - radius * 0.72, peak * 0.30, depth + 2.0), radius * 0.66, peak * 0.60, rock.lightened(0.10))
+		if i % 3 != 1:
+			_pyramid(ridges, Vector3(x + radius * 0.62, peak * 0.27, depth + 1.0), radius * 0.58, peak * 0.54, rock.darkened(0.10))
+		# Small snow facets sit only on the tallest rear peaks.
+		if i % 2 == 0:
+			_pyramid(ridges, Vector3(x, peak * 0.88, depth - 0.3), radius * 0.34, peak * 0.34, Color("#d8e1df"))
+	# Lower green foothills retain a broad valley floor and do not form a wall.
 	for i in range(7):
-		var x := -34.0 + float(i) * 12.0
-		var peak := 13.0 + float((i * 7) % 5) * 2.2
-		var width := 13.0 + float(i % 3) * 3.0
-		var depth := -54.0 - float(i % 2) * 9.0
-		_box(ridges, Vector3(x, peak * 0.42, depth), Vector3(width, peak, 10.0), Color("#526b78"))
-		_box(ridges, Vector3(x - 1.0, peak * 0.79, depth + 0.1), Vector3(width * 0.42, peak * 0.34, 10.2), Color("#718895"))
-		if i % 2 == 0:
-			_box(ridges, Vector3(x - 1.0, peak * 0.99, depth + 0.2), Vector3(width * 0.20, peak * 0.12, 10.3), Color("#d7ddd8"))
-		# Pointed peaks and snow crowns replace the box-only skyline silhouette.
-		_pyramid(ridges, Vector3(x, peak * 0.58, depth - 0.2), width * 0.58, peak * 1.12, Color("#5d7888"))
-		if i % 2 == 0:
-			_pyramid(ridges, Vector3(x, peak * 1.02, depth - 0.15), width * 0.22, peak * 0.42, Color("#e0e6e2"))
-	for i in range(5):
-		var x := -25.0 + float(i) * 13.0
-		_box(ridges, Vector3(x, 3.2, -31.0), Vector3(15.0, 6.4, 8.0), Color("#344f45"))
-	# Waterfall ribbons on the valley wall add a readable vertical landmark.
+		var x := -36.0 + float(i) * 12.0
+		var height := 4.5 + float((i * 3) % 4) * 1.0
+		_pyramid(ridges, Vector3(x, height * 0.5, -34.0 - float(i % 2) * 3.0), 10.0, height, Color("#496b55").lightened(float(i % 3) * 0.035))
+	# Narrow waterfalls descend through two visible mountain gaps.
 	var fall_mat := _material(Color("#75c8dc"), 0.18)
 	fall_mat.emission_enabled = true
 	fall_mat.emission = Color("#397f9a")
-	fall_mat.emission_energy_multiplier = 0.18
-	for x in [-18.0, 19.0]:
+	fall_mat.emission_energy_multiplier = 0.12
+	for spec in [[-19.0, 5.0, -30.0], [20.0, 6.0, -31.0]]:
 		var fall := MeshInstance3D.new()
 		var mesh := BoxMesh.new()
-		mesh.size = Vector3(1.0, 7.0, 0.22)
+		mesh.size = Vector3(0.55, spec[1], 0.16)
 		fall.mesh = mesh
-		fall.position = Vector3(x, 3.8, -27.0)
+		fall.position = Vector3(spec[0], spec[1] * 0.5, spec[2])
 		fall.material_override = fall_mat
 		ridges.add_child(fall)
 
@@ -309,9 +315,11 @@ func _build_forests() -> void:
 	var forest := Node3D.new()
 	forest.name = "Forests"
 	add_child(forest)
-	for i in range(22):
-		var tx := -10.0 + float(i % 7) * 2.4 + sin(float(i) * 1.7) * 0.6
-		var tz := -3.5 + float(i / 7) * 3.0 + cos(float(i) * 1.3) * 0.5
+	for i in range(14):
+		# Keep the dense canopy on the left flank; the river, village and castle
+		# remain visible through the centre of the panorama.
+		var tx := -19.0 + float(i % 5) * 2.35 + sin(float(i) * 1.7) * 0.45
+		var tz := -5.5 + float(i / 5) * 3.2 + cos(float(i) * 1.3) * 0.4
 		var h := 1.8 + float(i % 4) * 0.35
 		_box(forest, Vector3(tx, h * 0.5, tz), Vector3(0.32, h, 0.32), MAT_WOOD)
 		_box(forest, Vector3(tx, h + 0.5, tz), Vector3(1.8, 1.2, 1.8), MAT_LEAF_DARK)
