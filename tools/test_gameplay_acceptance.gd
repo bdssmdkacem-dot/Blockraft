@@ -355,4 +355,11 @@ func _run_checks() -> void:
     print("SAVE_BACKUP_RECOVERY_PASS: corrupted primary restored previous world and inventory snapshot")
 
     print("GAMEPLAY_ACCEPTANCE_PASS: player/camera, generated blocks, real chunk mining, place/remove, save deletion, and backup recovery verified")
+    # Release the generated world, animal actors, chunk meshes and physics
+    # resources before the headless process exits.
+    if is_instance_valid(scene):
+        scene.queue_free()
+    await process_frame
+    await process_frame
+    await physics_frame
     quit(0)
