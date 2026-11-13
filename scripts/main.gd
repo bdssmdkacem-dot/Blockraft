@@ -48,6 +48,10 @@ var chunk_build_count := 0
 var chunk_build_ms_last := 0.0
 var chunk_build_ms_peak := 0.0
 var chunk_peak_loaded := 0
+var chunk_render_triangle_count_total := 0
+var chunk_render_vertex_bytes_total := 0
+var chunk_render_full_cube_triangle_equivalent_total := 0
+var chunk_render_face_quads_total := 0
 
 func _ready() -> void:
 	player = get_node_or_null("Player") as CharacterBody3D
@@ -806,6 +810,20 @@ func _load_chunk(ck: Vector2i) -> void:
 					collision_face_count += _append_exposed_collision_faces(collision_faces, pos)
 				_append_exposed_render_faces(render_groups, pos, kind)
 				block_count += 1
+	var render_triangles := 0
+	var render_vertex_bytes := 0
+	var render_face_quads := 0
+	for group_variant in render_groups.keys():
+		var render_group: Dictionary = render_groups[group_variant]
+		var group_vertices: PackedVector3Array = render_group["vertices"]
+		var group_indices: PackedInt32Array = render_group["indices"]
+		render_triangles += int(group_indices.size() / 3)
+		render_face_quads += int(group_indices.size() / 6)
+		render_vertex_bytes += group_vertices.size() * 24 + group_indices.size() * 4
+	chunk_render_triangle_count_total += render_triangles
+	chunk_render_vertex_bytes_total += render_vertex_bytes
+	chunk_render_full_cube_triangle_equivalent_total += block_count * 12
+	chunk_render_face_quads_total += render_face_quads
 	_build_chunk_surface_meshes(root, render_groups)
 	if not collision_faces.is_empty():
 		var body := StaticBody3D.new()
@@ -830,14 +848,15 @@ func _load_chunk(ck: Vector2i) -> void:
 	chunk_build_ms_peak = maxf(chunk_build_ms_peak, chunk_build_ms_last)
 	chunk_peak_loaded = maxi(chunk_peak_loaded, loaded_chunks.size())
 	if OS.is_debug_build():
-		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " collision_faces=", collision_face_count, " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
+		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " collision_faces=", collision_face_count, " render_triangles=", render_triangles, " full_cube_triangles=", block_count * 12, " render_face_quads=", render_face_quads, " render_buffer_bytes=", render_vertex_bytes, " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
 
 func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String) -> void:
 	if not groups.has(kind):
-		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array()}
+		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "indices": PackedInt32Array()}
 	var group: Dictionary = groups[kind]
 	var vertices: PackedVector3Array = group["vertices"]
 	var normals: PackedVector3Array = group["normals"]
+	var indices: PackedInt32Array = group["indices"]
 	var x := float(pos.x)
 	var y := float(pos.y)
 	var z := float(pos.z)
@@ -865,12 +884,15 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var c: Vector3 = face[3]
 		var d: Vector3 = face[4]
 		var normal: Vector3 = face[5]
-		# Godot's front-face convention is clockwise. Reverse triangle winding
-		# while keeping the explicit outward normals for correct lighting.
-		vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
-		normals.append_array(PackedVector3Array([normal, normal, normal, normal, normal, normal]))
+		# Store four shared quad vertices and six indices instead of six
+		# duplicated vertices. Clockwise winding matches Godot's front faces.
+		var base_index := vertices.size()
+		vertices.append_array(PackedVector3Array([a, b, c, d]))
+		normals.append_array(PackedVector3Array([normal, normal, normal, normal]))
+		indices.append_array(PackedInt32Array([base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]))
 	group["vertices"] = vertices
 	group["normals"] = normals
+	group["indices"] = indices
 	groups[kind] = group
 
 func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> void:
@@ -879,12 +901,14 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		var group: Dictionary = render_groups[kind_variant]
 		var vertices: PackedVector3Array = group["vertices"]
 		var normals: PackedVector3Array = group["normals"]
-		if vertices.is_empty():
+		var indices: PackedInt32Array = group["indices"]
+		if vertices.is_empty() or indices.is_empty():
 			continue
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = vertices
 		arrays[Mesh.ARRAY_NORMAL] = normals
+		arrays[Mesh.ARRAY_INDEX] = indices
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var instance := MeshInstance3D.new()
