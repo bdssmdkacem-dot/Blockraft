@@ -1260,7 +1260,7 @@ func _setup_ui() -> void:
 	layer.name = "GameUI"
 	add_child(layer)
 	status_label = Label.new()
-	status_label.position = Vector2(12, 194)
+	status_label.position = Vector2(12, 246)
 	status_label.size = Vector2(320, 22)
 	status_label.visible = false
 	status_label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -1380,7 +1380,7 @@ func _layout_hotbar(viewport_size: Vector2 = Vector2.ZERO) -> void:
 		toast_label.size = Vector2(maxf(0.0, vs.x - 24.0), 40.0) if compact else Vector2(600.0, 40.0)
 		toast_label.position = Vector2(12.0, 300.0) if compact else Vector2(vs.x * 0.5 - 300.0, 110.0)
 	if status_label:
-		status_label.position = Vector2(12.0, 194.0)
+		status_label.position = Vector2(12.0, 246.0)
 		status_label.size = Vector2(maxf(0.0, vs.x - 24.0), 22.0)
 	_layout_backpack_ui(vs)
 
