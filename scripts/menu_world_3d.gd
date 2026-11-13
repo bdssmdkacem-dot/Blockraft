@@ -270,10 +270,10 @@ func _build_sky_clouds() -> void:
 func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
 	var spire := MeshInstance3D.new()
 	var mesh := CylinderMesh.new()
-	mesh.top_radius = 0.0
+	mesh.top_radius = radius * 0.16
 	mesh.bottom_radius = radius
 	mesh.height = height
-	mesh.radial_segments = 4
+	mesh.radial_segments = 7
 	mesh.rings = 1
 	spire.mesh = mesh
 	spire.position = position
@@ -403,7 +403,7 @@ func _build_gatehouse_castle() -> void:
 	var root := Node3D.new()
 	root.name = "GatehouseCastle"
 	root.position = Vector3(30.0, 0.8, -18.0)
-	root.scale = Vector3(1.42, 1.42, 1.42)
+	root.scale = Vector3(1.25, 1.25, 1.25)
 	add_child(root)
 	var stone := MAT_STONE_CASTLE
 	var light := Color("#a8b4ae")
@@ -541,11 +541,11 @@ func _build_protagonist() -> void:
 	var ledge := Node3D.new()
 	ledge.name = "HeroForegroundLedge"
 	add_child(ledge)
-	_box(ledge, Vector3(-13.5, 1.75, 13.0), Vector3(5.0, 1.5, 5.0), MAT_GRASS)
-	_box(ledge, Vector3(-13.5, 0.5, 13.0), Vector3(5.2, 1.0, 5.2), MAT_STONE)
+	_box(ledge, Vector3(-9.0, 1.75, 13.0), Vector3(5.0, 1.5, 5.0), MAT_GRASS)
+	_box(ledge, Vector3(-9.0, 0.5, 13.0), Vector3(5.2, 1.0, 5.2), MAT_STONE)
 	var hero := Node3D.new()
 	hero.name = "Protagonist"
-	hero.position = Vector3(-13.5, 2.5, 13.0)
+	hero.position = Vector3(-9.0, 2.5, 13.0)
 	hero.rotation_degrees = Vector3(0, 135, 0)
 	hero.scale = Vector3(1.28, 1.28, 1.28)
 	add_child(hero)
