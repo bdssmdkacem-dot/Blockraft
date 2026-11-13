@@ -102,9 +102,9 @@ func _capture_gameplay() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var before_image := root.get_texture().get_image()
-	var output_dir := ProjectSettings.globalize_path("res://artifacts")
-	DirAccess.make_dir_recursive_absolute(output_dir)
-	var before_path := output_dir.path_join("gameplay-animals-before.png")
+	var fauna_output_dir := ProjectSettings.globalize_path("res://artifacts")
+	DirAccess.make_dir_recursive_absolute(fauna_output_dir)
+	var before_path := fauna_output_dir.path_join("gameplay-animals-before.png")
 	if before_image.save_png(before_path) != OK:
 		push_error("Could not save pre-roaming gameplay fauna screenshot.")
 		quit(10)
