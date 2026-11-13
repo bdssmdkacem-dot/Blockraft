@@ -122,7 +122,7 @@ func _capture_gameplay() -> void:
 		push_error("No spawned gameplay animal visibly roamed during the 180-frame observation window.")
 		quit(11)
 		return
-	print("GAMEPLAY_FAUNA_ROAMING_PASS animals=", animals.size(), " moved=", moved_animals, " observation_frames=180)
+	print("GAMEPLAY_FAUNA_ROAMING_PASS animals=", animals.size(), " moved=", moved_animals, " observation_frames=180")
 
 	await process_frame
 	await RenderingServer.frame_post_draw
