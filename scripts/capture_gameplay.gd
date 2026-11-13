@@ -36,28 +36,29 @@ func _capture_gameplay() -> void:
 		quit(2)
 		return
 
-	# Regression guard: the immediate 360-degree spawn view must stay free
-	# of generated tree trunks/canopies, with the distant forward cone clear too.
+	# Regression guard: keep the immediate landing pocket clear and the
+	# actual narrow bridge sightline unobstructed, while allowing the nearby
+	# forest to remain visible outside the player's close camera envelope.
 	var world_blocks: Dictionary = gameplay.get("blocks")
-	for x in range(-28, 29):
-		for z in range(-28, 29):
-			if Vector2(float(x), float(z)).length() > 28.0:
+	for x in range(-8, 9):
+		for z in range(-8, 9):
+			if Vector2(float(x), float(z)).length() > 8.0:
 				continue
 			for y in range(5, 31):
 				var kind := str(world_blocks.get(Vector3i(x, y, z), ""))
 				if kind in ["wood", "leaves"]:
-					push_error("Near spawn camera view remains obstructed by %s at %s" % [kind, Vector3i(x, y, z)])
+					push_error("Near spawn landing view remains obstructed by %s at %s" % [kind, Vector3i(x, y, z)])
 					quit(8)
 					return
-	for x in range(-35, 36):
-		for z in range(-56, -16):
-			var view_half_width := lerpf(10.0, 34.0, inverse_lerp(-17.0, -56.0, float(z)))
+	for x in range(-10, 11):
+		for z in range(-28, -8):
+			var view_half_width := lerpf(2.5, 4.5, inverse_lerp(-9.0, -28.0, float(z)))
 			if absf(float(x) - 0.5) > view_half_width:
 				continue
 			for y in range(5, 31):
 				var kind := str(world_blocks.get(Vector3i(x, y, z), ""))
 				if kind in ["wood", "leaves"]:
-					push_error("Spawn camera corridor remains obstructed by %s at %s" % [kind, Vector3i(x, y, z)])
+					push_error("Spawn bridge sightline remains obstructed by %s at %s" % [kind, Vector3i(x, y, z)])
 					quit(7)
 					return
 
