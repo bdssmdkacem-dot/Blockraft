@@ -89,6 +89,41 @@ func _capture_gameplay() -> void:
 	camera.make_current()
 	print("GAMEPLAY_CAMERA_CAPTURE=third_person player=", player.global_position, " camera=", camera.global_position)
 
+	# Observe fauna in the real generated gameplay world, not only the isolated
+	# animal gallery. Save a before/after pair so roaming is visually reviewable.
+	var animals := gameplay.find_children("Animal_*", "CharacterBody3D", true, false)
+	if animals.size() < 3:
+		push_error("Gameplay fauna capture expected at least three spawned animals; found %d" % animals.size())
+		quit(9)
+		return
+	var animal_start_positions: Dictionary = {}
+	for animal in animals:
+		animal_start_positions[animal.get_instance_id()] = animal.global_position
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var before_image := root.get_texture().get_image()
+	var output_dir := ProjectSettings.globalize_path("res://artifacts")
+	DirAccess.make_dir_recursive_absolute(output_dir)
+	var before_path := output_dir.path_join("gameplay-animals-before.png")
+	if before_image.save_png(before_path) != OK:
+		push_error("Could not save pre-roaming gameplay fauna screenshot.")
+		quit(10)
+		return
+	for _frame in range(180):
+		await physics_frame
+	var moved_animals := 0
+	for animal in animals:
+		if not is_instance_valid(animal):
+			continue
+		var start_position: Vector3 = animal_start_positions.get(animal.get_instance_id(), animal.global_position)
+		if Vector2(animal.global_position.x - start_position.x, animal.global_position.z - start_position.z).length() >= 0.15:
+			moved_animals += 1
+	if moved_animals == 0:
+		push_error("No spawned gameplay animal visibly roamed during the 180-frame observation window.")
+		quit(11)
+		return
+	print("GAMEPLAY_FAUNA_ROAMING_PASS animals=", animals.size(), " moved=", moved_animals, " observation_frames=180)
+
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var viewport_image := root.get_texture().get_image()
