@@ -118,18 +118,17 @@ func _capture_gameplay() -> void:
 			focus_animal = candidate_animal
 	var fauna_camera := Camera3D.new()
 	fauna_camera.name = "FaunaObservationCamera"
-	fauna_camera.fov = 38.0
-	fauna_camera.near = 0.05
+	fauna_camera.fov = 48.0
 	gameplay.add_child(fauna_camera)
-	# Keep the observer well above nearby ridges, then angle down to include
-	# the animal and the ground contact without clipping into terrain.
+	# A spawn-facing three-quarter view keeps the animal model large enough
+	# to inspect. The separate movement assertion verifies its real world motion.
 	var observer_offset := player.global_position - focus_animal.global_position
 	observer_offset.y = 0.0
 	if observer_offset.length_squared() < 0.01:
 		observer_offset = Vector3(0.0, 0.0, 1.0)
 	observer_offset = observer_offset.normalized()
-	fauna_camera.global_position = focus_animal.global_position + observer_offset * 5.0 + Vector3.UP * 12.0
-	fauna_camera.look_at(focus_animal.global_position + Vector3(0.0, 0.62, 0.0), Vector3.UP)
+	fauna_camera.global_position = focus_animal.global_position + observer_offset * 6.0 + Vector3.UP * 3.0
+	fauna_camera.look_at(focus_animal.global_position + Vector3(0.0, 0.72, 0.0), Vector3.UP)
 	fauna_camera.make_current()
 	print("GAMEPLAY_FAUNA_FOCUS name=", focus_animal.name, " kind=", focus_animal.get("kind"), " start=", focus_animal.global_position, " camera=", fauna_camera.global_position)
 	await process_frame
