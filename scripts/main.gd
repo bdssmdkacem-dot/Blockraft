@@ -347,8 +347,6 @@ func _generate_world() -> void:
 				if bank_distance < 6.0 and dist > 7.0:
 					var bank_height := lerpf(1.2, h, smoothstep(2.6, 6.0, bank_distance))
 					h = minf(h, bank_height)
-			if in_lake:
-				h = mini(h, 1.0)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
 				h = mini(h, 1.0)
