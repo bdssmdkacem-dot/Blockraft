@@ -567,6 +567,21 @@ func _force_solid_spawn_island() -> void:
 		for z in range(-8, 9):
 			if Vector2(float(x), float(z)).length() > 8.0:
 				continue
+			# Never overwrite a river channel or its immediate bank with the
+			# emergency spawn fill; doing so created a 3-block step at the island edge.
+			var near_water := false
+			for ox in [-1, 0, 1]:
+				for oz in [-1, 0, 1]:
+					for wy in range(0, 3):
+						if str(blocks.get(Vector3i(x + ox, wy, z + oz), "")) == "water":
+							near_water = true
+							break
+					if near_water:
+						break
+				if near_water:
+					break
+			if near_water:
+				continue
 			for y in range(MIN_Y, 5):
 				var pos := Vector3i(x, y, z)
 				if y < 3:
