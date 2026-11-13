@@ -865,7 +865,9 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var c: Vector3 = face[3]
 		var d: Vector3 = face[4]
 		var normal: Vector3 = face[5]
-		vertices.append_array(PackedVector3Array([a, b, c, a, c, d]))
+		# Godot's front-face convention is clockwise. Reverse triangle winding
+		# while keeping the explicit outward normals for correct lighting.
+		vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
 		normals.append_array(PackedVector3Array([normal, normal, normal, normal, normal, normal]))
 	group["vertices"] = vertices
 	group["normals"] = normals
@@ -888,12 +890,9 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		var instance := MeshInstance3D.new()
 		instance.name = "Surface_" + kind
 		instance.mesh = mesh
-		# Voxel quads are assembled explicitly. Keep both sides visible so the
-		# renderer's front-face convention cannot make terrain disappear when
-		# viewing steep slopes or the underside of overhangs. Each exposed face
-		# is emitted once, so this does not duplicate geometry.
 		var surface_material := (block_materials.get(kind, block_materials["stone"]) as StandardMaterial3D).duplicate() as StandardMaterial3D
-		surface_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		# Preserve normal back-face culling after emitting clockwise front faces.
+		surface_material.cull_mode = BaseMaterial3D.CULL_BACK
 		instance.material_override = surface_material
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(instance)
