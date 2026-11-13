@@ -115,10 +115,13 @@ func _ready() -> void:
 	_init_footsteps()
 	_yaw_target = yaw
 	_pitch_target = pitch
-	var snode = load("res://scripts/settings.gd").new()
-	snode.load_settings()
-	_look_sens_mult = float(snode.look_sensitivity)
-	snode.apply_audio()
+	# Read settings through a short-lived helper and free it immediately.
+	# Leaving this unattached Node alive leaked one GDScript/Node on every scene exit.
+	var settings_helper = load("res://scripts/settings.gd").new()
+	settings_helper.load_settings()
+	_look_sens_mult = float(settings_helper.look_sensitivity)
+	settings_helper.apply_audio()
+	settings_helper.free()
 	var platform_name := OS.get_name().to_lower()
 	touch_controls_enabled = platform_name == "android" or platform_name == "ios" or OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
 	print("BLOCKRAFT_INPUT platform=", platform_name, " touch_controls=", touch_controls_enabled)
