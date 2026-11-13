@@ -56,11 +56,17 @@ func _run_checks() -> void:
 		if animated_legs.size() < 2:
 			_fail("animal %d has fewer than two explicitly registered animated legs" % kind, 7)
 			return
+		if kind == 1:
+			var animated_wings: Array = animal.get("_animated_wings")
+			if animated_wings.size() != 2:
+				_fail("chicken must expose two animated wing panels", 10)
+				return
 		animal._dir = Vector3(1.0, 0.0, 0.0)
 		animal._timer = 4.0
 		var before := (animated_legs[0] as MeshInstance3D).rotation.x
 		var before_position := animal.global_position
-		for _frame in range(8):
+		var wing_before := (animal.get("_animated_wings")[0] as MeshInstance3D).rotation.z if kind == 1 else 0.0
+		for _frame in range(12):
 			await physics_frame
 		var after := (animated_legs[0] as MeshInstance3D).rotation.x
 		var moved_distance := Vector2(animal.global_position.x - before_position.x, animal.global_position.z - before_position.z).length()
@@ -69,6 +75,9 @@ func _run_checks() -> void:
 			return
 		if is_equal_approx(before, after):
 			_fail("animal %d gait did not animate while moving" % kind, 8)
+			return
+		if kind == 1 and is_equal_approx(wing_before, (animal.get("_animated_wings")[0] as MeshInstance3D).rotation.z):
+			_fail("chicken wing flap did not animate during roaming", 11)
 			return
 		animal.queue_free()
 		await process_frame
