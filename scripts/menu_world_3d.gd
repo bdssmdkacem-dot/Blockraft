@@ -83,10 +83,10 @@ func _setup_environment() -> void:
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.tonemap_exposure = 0.84
 	environment.glow_enabled = true
-	environment.glow_intensity = 0.10
+	environment.glow_intensity = 0.16
 	environment.fog_enabled = true
 	environment.fog_light_color = Color("#b6a080")
-	environment.fog_density = 0.00038
+	environment.fog_density = 0.00030
 	environment.fog_aerial_perspective = 0.35
 	world.environment = environment
 	add_child(world)
@@ -188,7 +188,8 @@ func _build_sunset_disc() -> void:
 	mesh.radial_segments = 20
 	mesh.rings = 10
 	sun.mesh = mesh
-	sun.position = Vector3(27.0, 15.5, -48.0)
+	sun.position = Vector3(8.5, 15.5, -48.0)
+	sun.scale = Vector3.ONE * 1.35
 	var material := _emissive(Color("#ffd47a"), 1.45)
 	sun.material_override = material
 	add_child(sun)
@@ -233,9 +234,9 @@ func _build_river_and_bridge() -> void:
 	wmat.emission_energy_multiplier = 0.2
 	var river := MeshInstance3D.new()
 	var rm := BoxMesh.new()
-	rm.size = Vector3(7.5, 0.28, 58)
+	rm.size = Vector3(9.5, 0.28, 66)
 	river.mesh = rm
-	river.position = Vector3(3.5, -0.05, -6)
+	river.position = Vector3(4.5, -0.05, -8)
 	river.material_override = wmat
 	water.add_child(river)
 	_box(water, Vector3(-0.8, 0.15, -6), Vector3(1.6, 0.25, 50), Color("#d4c090"))
@@ -335,7 +336,7 @@ func _build_floating_islands() -> void:
 func _build_gatehouse_castle() -> void:
 	var root := Node3D.new()
 	root.name = "GatehouseCastle"
-	root.position = Vector3(24.0, 0.8, -18.0)
+	root.position = Vector3(30.0, 0.8, -18.0)
 	root.scale = Vector3(1.42, 1.42, 1.42)
 	add_child(root)
 	var stone := MAT_STONE_CASTLE
@@ -396,6 +397,18 @@ func _build_gatehouse_castle() -> void:
 		_box(root, Vector3(0, 4.5 + float(level) * 1.7, 0.3), Vector3(0.55, 0.75, 0.12), glow, 0.35)
 		_box(root, Vector3(-1.8, 4.5 + float(level) * 1.7, 0.3), Vector3(0.4, 0.6, 0.12), glow, 0.35)
 		_box(root, Vector3(1.8, 4.5 + float(level) * 1.7, 0.3), Vector3(0.4, 0.6, 0.12), glow, 0.35)
+	# Layered facade courses, lit arrow windows and roof-edge stonework
+	# break up the broad wall planes at the new right-of-centre composition.
+	for course in range(5):
+		var y := 3.7 + float(course) * 1.45
+		_box(root, Vector3(0, y, 4.28), Vector3(10.8, 0.12, 0.18), Color("#b8c0b4"))
+	for window_x in [-4.8, -3.2, 3.2, 4.8]:
+		_box(root, Vector3(window_x, 6.5, 4.38), Vector3(0.52, 1.05, 0.12), Color("#263b48"))
+		_box(root, Vector3(window_x, 6.5, 4.46), Vector3(0.22, 0.78, 0.04), Color("#f4c56f"), 0.3)
+		_box(root, Vector3(window_x, 7.08, 4.50), Vector3(0.72, 0.12, 0.14), light)
+	for side_x in [-8.0, 8.0]:
+		for level in range(3):
+			_box(root, Vector3(side_x, 2.9 + float(level) * 1.4, 3.75), Vector3(0.52, 0.62, 0.36), Color("#c2c8bc"))
 	_box(root, Vector3(0, 3.6, 7.5), Vector3(2.2, 0.35, 6.0), MAT_WOOD)
 	for xz in [[-1.0, 6.0], [1.0, 6.0], [-1.0, 9.0], [1.0, 9.0]]:
 		_box(root, Vector3(xz[0], 4.2, xz[1]), Vector3(0.15, 1.2, 0.15), MAT_WOOD)
