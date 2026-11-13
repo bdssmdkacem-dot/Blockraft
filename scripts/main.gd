@@ -431,8 +431,8 @@ func _generate_world() -> void:
 	# near-water exemption preserved abrupt river cliffs, and the rounded voxel
 	# heights then turned modest height differences into vertical rock faces.
 	# This bounded-neighbour relaxation limits each grid step before voxelizing.
-	const MAX_WALKABLE_HEIGHT_STEP := 0.65
-	for _slope_pass in range(32):
+	const MAX_WALKABLE_HEIGHT_STEP := 0.45
+	for _slope_pass in range(48):
 		var slope_updates: Dictionary = {}
 		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
