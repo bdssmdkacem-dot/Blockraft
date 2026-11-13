@@ -47,18 +47,26 @@ func _run() -> void:
 
 	var worst_step := 0
 	var steep_edges := 0
+	var worst_edge := ""
+	var samples: Array[String] = []
 	for key in surface_heights:
 		var height := int(surface_heights[key])
 		for offset in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, -1)]:
 			var neighbor_key: Vector2i = key + offset
 			if not surface_heights.has(neighbor_key):
 				continue
-			var step := absi(height - int(surface_heights[neighbor_key]))
-			worst_step = maxi(worst_step, step)
+			var neighbor_height := int(surface_heights[neighbor_key])
+			var step := absi(height - neighbor_height)
+			if step > worst_step:
+				worst_step = step
+				worst_edge = "%s=%d -> %s=%d" % [key, height, neighbor_key, neighbor_height]
 			if step > 1:
 				steep_edges += 1
+				if samples.size() < 16:
+					samples.append("%s=%d -> %s=%d" % [key, height, neighbor_key, neighbor_height])
 	if worst_step > 1:
-		_fail("Generated terrain still contains %d abrupt edges; worst adjacent height difference is %d blocks" % [steep_edges, worst_step])
+		push_error("Terrain edge samples: " + str(samples))
+		_fail("Generated terrain still contains %d abrupt edges; worst adjacent height difference is %d blocks at %s" % [steep_edges, worst_step, worst_edge])
 		return
 	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step)
 	quit(0)
