@@ -72,10 +72,18 @@ func _spawn_plants() -> void:
 		if abs(x) < 3 and abs(z) < 3:
 			continue
 		var sy := _surface_y(x, z)
+		# Keep decorative flora inside the readable playable landscape. Plants
+		# placed on the far perimeter looked suspended because the terrain fades
+		# below the distant camera horizon.
+		if Vector2(float(x), float(z)).length() > 40.0:
+			continue
 		if sy < 0 or sy > 18:
 			continue
 		var kind := str(_blocks.get(Vector3i(x, sy, z), ""))
-		if kind in ["stone", "rock", "water", "wood", "leaves"]:
+		if kind not in ["grass", "dirt", "sand", "gravel"]:
+			continue
+		# Never attach a plant inside an existing tree canopy, chest, or build.
+		if _blocks.has(Vector3i(x, sy + 1, z)) or _blocks.has(Vector3i(x, sy + 2, z)):
 			continue
 		var near_water := _is_water(x, z) or _is_water(x + 1, z) or _is_water(x, z + 1)
 		var plant := Node3D.new()
