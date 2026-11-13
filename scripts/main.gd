@@ -541,6 +541,37 @@ func _generate_world() -> void:
 			if not is_river and not steep and height >= 3 and abs(x) > 10 and abs(z) > 10 and rng.randf() < 0.0024:
 				blocks[Vector3i(x, height + 1, z)] = "chest"
 
+	# Guarantee one discoverable chest in the generated overworld. The
+	# procedural rarity roll remains for additional loot, but a fixed seed must
+	# never produce a world with no chest at all.
+	var guaranteed_chest_placed := false
+	for radius in range(16, 25):
+		if guaranteed_chest_placed:
+			break
+		for x in range(11, 25):
+			if guaranteed_chest_placed:
+				break
+			for z in range(11, 25):
+				if Vector2(float(x), float(z)).length() < float(radius - 1) or Vector2(float(x), float(z)).length() > float(radius + 1):
+					continue
+				var top := MIN_Y - 1
+				var wet := false
+				for y in range(MIN_Y, 15):
+					var kind := str(blocks.get(Vector3i(x, y, z), ""))
+					if kind == "water":
+						wet = true
+					if kind in ["grass", "dirt", "stone", "rock", "sand", "gravel"]:
+						top = maxi(top, y)
+				if wet or top < 3 or blocks.has(Vector3i(x, top + 1, z)) or blocks.has(Vector3i(x, top + 2, z)):
+					continue
+				blocks[Vector3i(x, top + 1, z)] = "chest"
+				guaranteed_chest_placed = true
+				break
+	if not guaranteed_chest_placed:
+			push_warning("Blockraft: could not place guaranteed overworld chest")
+	else:
+		print("BLOCKRAFT_GUARANTEED_CHEST position found")
+
 	# A compact timber footbridge crosses the new forward tributary. It is
 	# placed after terrain generation so the deck remains stable and collision-
 	# backed even when the river's procedural banks change.
