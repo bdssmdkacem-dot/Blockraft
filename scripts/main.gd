@@ -333,7 +333,7 @@ func _generate_world() -> void:
 			# transition the finite map ends in a continuous 10+ block cliff
 			# visible from the spawn camera, even when interior slopes are smooth.
 			var edge_distance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
-			if edge_distance < 16.0 and not in_river and not in_lake:
+			if edge_distance < 16.0:
 				h = lerpf(float(MIN_Y + 2), h, smoothstep(0.0, 16.0, edge_distance))
 			heights[Vector2i(x, z)] = {
 				"hf": clampf(h, float(MIN_Y + 2), 12.5),
@@ -428,7 +428,7 @@ func _generate_world() -> void:
 	# heights then turned modest height differences into vertical rock faces.
 	# This bounded-neighbour relaxation limits each grid step before voxelizing.
 	const MAX_WALKABLE_HEIGHT_STEP := 0.90
-	for _slope_pass in range(16):
+	for _slope_pass in range(32):
 		var slope_updates: Dictionary = {}
 		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
@@ -456,7 +456,7 @@ func _generate_world() -> void:
 					constrained_height = clampf(current_height, lower_bound, upper_bound)
 				else:
 					constrained_height = (lower_bound + upper_bound) * 0.5
-				slope_updates[key] = lerpf(current_height, constrained_height, 0.72)
+				slope_updates[key] = constrained_height
 		for key in slope_updates:
 			var slope_info: Dictionary = heights[key]
 			slope_info["hf"] = float(slope_updates[key])
@@ -565,6 +565,8 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 func _force_solid_spawn_island() -> void:
 	for x in range(-8, 9):
 		for z in range(-8, 9):
+			if Vector2(float(x), float(z)).length() > 8.0:
+				continue
 			for y in range(MIN_Y, 5):
 				var pos := Vector3i(x, y, z)
 				if y < 3:
