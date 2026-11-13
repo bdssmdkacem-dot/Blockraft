@@ -54,6 +54,9 @@ func _setup_menu_audio() -> void:
 	s.apply_audio()
 	if _ambient_player:
 		_ambient_player.volume_db = -18.0 + linear_to_db(maxf(s.master_volume, 0.01))
+	# Settings is only a temporary reader here; do not leave an orphan Node or
+	# retain scripts/settings.gd after the menu has applied its audio preference.
+	s.free()
 
 func _make_click_wav() -> AudioStreamWAV:
 	var rate := 22050
