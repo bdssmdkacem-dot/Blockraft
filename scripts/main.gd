@@ -96,6 +96,7 @@ func _initialize_world_async() -> void:
 			_generate_world()
 	if not restored:
 		_clear_spawn_camera_corridor()
+		_blend_generated_spawn_terrain()
 	_ensure_spawn_pad()
 	_spawn_depot()
 	if player:
@@ -624,6 +625,53 @@ func _clear_spawn_camera_corridor() -> void:
 		print("BLOCKRAFT_CAMERA_CORRIDOR_CLEAR removed_spawn_blocks=", cleared,
 			" removed_near_foliage=", near_foliage_removed,
 			" removed_forward_foliage=", forward_removed)
+
+func _blend_generated_spawn_terrain() -> void:
+	# The reserved 7x7 pad is intentionally flat, but the first ring outside it
+	# must not fall away by two or more voxels. Blend only freshly generated
+	# terrain into the surrounding hills; restored player-built worlds are never
+	# passed through this function.
+	const BLEND_RADIUS := 20.0
+	var ground_kinds := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
+	var target_heights: Dictionary = {}
+	for x in range(-20, 21):
+		for z in range(-20, 21):
+			var radius := Vector2(float(x), float(z)).length()
+			if radius > BLEND_RADIUS:
+				continue
+			var column := Vector2i(x, z)
+			var has_water := false
+			var top := MIN_Y - 1
+			for y in range(MIN_Y, 14):
+				var kind := str(blocks.get(Vector3i(x, y, z), ""))
+				if kind == "water":
+					has_water = true
+				if kind in ground_kinds:
+					top = maxi(top, y)
+			if has_water or top < MIN_Y:
+				continue
+			var blend := smoothstep(4.0, BLEND_RADIUS, radius)
+			target_heights[column] = int(round(lerpf(4.0, float(top), blend)))
+	# Apply the blended surface after measuring every original column, so edits
+	# cannot feed back into the next column's target height.
+	for column_variant in target_heights:
+		var column: Vector2i = column_variant
+		var target := int(target_heights[column])
+		var old_top := MIN_Y - 1
+		for y in range(MIN_Y, 14):
+			var p := Vector3i(column.x, y, column.y)
+			if str(blocks.get(p, "")) in ground_kinds:
+				old_top = maxi(old_top, y)
+		if old_top > target:
+			for y in range(target + 1, old_top + 1):
+				var p := Vector3i(column.x, y, column.y)
+				if str(blocks.get(p, "")) in ground_kinds:
+					blocks.erase(p)
+		elif old_top < target:
+			for y in range(old_top + 1, target):
+				blocks[Vector3i(column.x, y, column.y)] = "dirt"
+		blocks[Vector3i(column.x, target, column.y)] = "grass"
+	print("BLOCKRAFT_SPAWN_TERRAIN_BLEND columns=", target_heights.size(), " radius=", BLEND_RADIUS)
 
 func _snap_player_to_surface() -> void:
 	if player == null:
