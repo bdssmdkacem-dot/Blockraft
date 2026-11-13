@@ -123,6 +123,20 @@ func _capture_gameplay() -> void:
 		quit(11)
 		return
 	print("GAMEPLAY_FAUNA_ROAMING_PASS animals=", animals.size(), " moved=", moved_animals, " observation_frames=180")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var after_image := root.get_texture().get_image()
+	var after_path := fauna_output_dir.path_join("gameplay-animals-after.png")
+	if after_image.save_png(after_path) != OK:
+		push_error("Could not save post-roaming gameplay fauna screenshot.")
+		quit(12)
+		return
+	# Keep the final player-camera baseline unobstructed. The live fauna has
+	# already been observed and captured above; aggressive chickens/foxes can
+	# otherwise walk directly into the camera during the observation interval.
+	for animal in animals:
+		if is_instance_valid(animal):
+			animal.visible = false
 
 	await process_frame
 	await RenderingServer.frame_post_draw
