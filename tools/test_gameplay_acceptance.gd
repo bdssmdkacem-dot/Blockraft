@@ -94,6 +94,15 @@ func _run_checks() -> void:
                 if mesh_vertices.is_empty() or mesh_vertices.size() != mesh_normals.size() or mesh_vertices.size() % 3 != 0:
                     _fail("chunk %s contains invalid culled surface geometry" % str(key), 62)
                     return
+                var surface_material := child.material_override as StandardMaterial3D
+                if surface_material == null or surface_material.cull_mode != BaseMaterial3D.CULL_DISABLED:
+                    _fail("chunk %s surface material may cull visible voxel faces" % str(key), 64)
+                    return
+                for vertex_index in range(0, mesh_vertices.size(), 3):
+                    var geometric_normal := (mesh_vertices[vertex_index + 1] - mesh_vertices[vertex_index]).cross(mesh_vertices[vertex_index + 2] - mesh_vertices[vertex_index])
+                    if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(mesh_normals[vertex_index]) < 0.99:
+                        _fail("chunk %s surface triangle winding disagrees with its outward normal" % str(key), 65)
+                        return
         if surface_batches == 0:
             _fail("chunk %s has no culled ArrayMesh surface batches" % str(key), 63)
             return
