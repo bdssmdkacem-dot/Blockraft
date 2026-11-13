@@ -672,11 +672,11 @@ func _blend_generated_spawn_terrain() -> void:
 	# must not fall away by two or more voxels. Blend only freshly generated
 	# terrain into the surrounding hills; restored player-built worlds are never
 	# passed through this function.
-	const BLEND_RADIUS := 10.0
+	const BLEND_RADIUS := 14.0
 	var ground_kinds := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
 	var target_heights: Dictionary = {}
-	for x in range(-10, 11):
-		for z in range(-10, 11):
+	for x in range(-14, 15):
+		for z in range(-14, 15):
 			var radius := Vector2(float(x), float(z)).length()
 			if radius > BLEND_RADIUS:
 				continue
