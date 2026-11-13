@@ -82,6 +82,32 @@ func _run_checks() -> void:
     if animals.is_empty():
         _fail("generated world has no animal assets", 18)
         return
+    # No spawned animal may begin inside a water voxel. Also exercise the
+    # explicit water-avoidance steering path against a deterministic water cell.
+    for animal_node in animals:
+        var animal := animal_node as CharacterBody3D
+        if animal.call("_is_water_at_world_position", animal.global_position):
+            _fail("animal spawned inside a water volume: %s" % animal.name, 52)
+            return
+    var navigation_animal := animals[0] as CharacterBody3D
+    var original_direction: Vector3 = navigation_animal.get("_dir")
+    var water_probe := navigation_animal.global_position + original_direction * 2.0
+    var water_cell := Vector3i(floori(water_probe.x), 2, floori(water_probe.z))
+    var previous_water_value: Variant = scene.blocks.get(water_cell, null)
+    scene.blocks[water_cell] = "water"
+    if not navigation_animal.call("_is_water_at_world_position", water_probe):
+        _fail("animal water-navigation probe did not detect the test water cell", 53)
+        return
+    navigation_animal.call("_steer_away_from_water")
+    var redirected_probe: Vector3 = navigation_animal.global_position + (navigation_animal.get("_dir") as Vector3) * 2.0
+    if navigation_animal.call("_is_water_at_world_position", redirected_probe):
+        _fail("animal water-avoidance steering still points into the water cell", 54)
+        return
+    if previous_water_value == null:
+        scene.blocks.erase(water_cell)
+    else:
+        scene.blocks[water_cell] = previous_water_value
+    print("ANIMAL_WATER_AVOIDANCE_PASS: spawned fauna is dry and steering redirects away from water")
     var block_kinds: Dictionary = {}
     for value in scene.blocks.values():
         block_kinds[str(value)] = true
