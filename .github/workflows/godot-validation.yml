@@ -30,7 +30,7 @@ jobs:
       - name: Launch main menu scene headlessly
         run: godot --headless --path . --quit-after 3
       - name: Launch gameplay scene headlessly
-        run: godot --headless --path . res://scenes/main.tscn --quit-after 5
+        run: godot --headless --verbose --path . res://scenes/main.tscn --quit-after 5
       - name: Test deterministic spawn and fall recovery
         timeout-minutes: 5
         run: godot --headless --path . --script res://tests/spawn_safety_test.gd
