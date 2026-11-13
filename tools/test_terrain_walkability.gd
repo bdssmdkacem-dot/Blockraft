@@ -51,7 +51,7 @@ func _run() -> void:
 	var samples: Array[String] = []
 	for key in surface_heights:
 		var height := int(surface_heights[key])
-		for offset in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, -1)]:
+		for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
 			var neighbor_key: Vector2i = key + offset
 			if not surface_heights.has(neighbor_key):
 				continue
