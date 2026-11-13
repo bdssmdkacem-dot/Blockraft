@@ -120,9 +120,9 @@ void vertex() {
 }
 void fragment() {
 	float elevation = clamp(normalize(sky_direction).y, -0.08, 1.0);
-	float blend = smoothstep(-0.02, 0.88, elevation);
-	vec3 horizon = vec3(0.96, 0.68, 0.47);
-	vec3 zenith = vec3(0.12, 0.34, 0.60);
+	float blend = smoothstep(-0.10, 0.30, elevation);
+	vec3 horizon = vec3(0.96, 0.68, 0.48);
+	vec3 zenith = vec3(0.13, 0.40, 0.72);
 	ALBEDO = mix(horizon, zenith, blend);
 }
 """
