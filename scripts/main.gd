@@ -312,7 +312,7 @@ func _generate_world() -> void:
 			h += sin(fx * 0.09 + 1.7) * 0.62 + cos(fz * 0.085 + 0.6) * 0.58
 			h += sin(fx * 0.18 + fz * 0.09) * 0.28
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
-			h += local_relief * 1.35
+			h += local_relief * 1.8
 			# Higher outer ridges are made from local noise peaks rather than one
 			# broad cosine band, giving the skyline varied saddles and rounded hills.
 			if dist > 22.0:
@@ -320,10 +320,10 @@ func _generate_world() -> void:
 				h += pow(ridge_peak, 1.65) * 2.4
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
-			if dist < 8.0:
+			if dist < 5.0:
 				h = 4.0
-			elif dist < 28.0:
-				h = lerpf(4.0, h, smoothstep(8.0, 28.0, dist))
+			elif dist < 25.0:
+				h = lerpf(4.0, h, smoothstep(5.0, 25.0, dist))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
 			# A visible tributary passes beyond the protected spawn pad so the
 			# normal third-person starting view has water, banks and a crossing.
