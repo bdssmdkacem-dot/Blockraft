@@ -298,7 +298,7 @@ func _generate_world() -> void:
 	var terrain_noise := FastNoiseLite.new()
 	terrain_noise.seed = 82417
 	terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	terrain_noise.frequency = 0.045
+	terrain_noise.frequency = 0.030
 	terrain_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	terrain_noise.fractal_octaves = 4
 	terrain_noise.fractal_gain = 0.48
@@ -308,16 +308,16 @@ func _generate_world() -> void:
 			var fz := float(z)
 			var dist := sqrt(fx * fx + fz * fz)
 			var h := 4.6
-			h += sin(fx * 0.045) * cos(fz * 0.04) * 1.9
-			h += sin(fx * 0.09 + 1.7) * 0.82 + cos(fz * 0.085 + 0.6) * 0.78
-			h += sin(fx * 0.18 + fz * 0.09) * 0.28
+			h += sin(fx * 0.032) * cos(fz * 0.032) * 1.65
+			h += sin(fx * 0.060 + 1.7) * 0.68 + cos(fz * 0.058 + 0.6) * 0.64
+			h += sin(fx * 0.12 + fz * 0.06) * 0.20
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
-			h += local_relief * 3.2
+			h += local_relief * 2.6
 			# Higher outer ridges are made from local noise peaks rather than one
 			# broad cosine band, giving the skyline varied saddles and rounded hills.
 			if dist > 22.0:
 				var ridge_peak := maxf(0.0, terrain_noise.get_noise_2d(fx * 0.72 + 91.0, fz * 0.72 - 47.0))
-				h += pow(ridge_peak, 1.65) * 3.4
+				h += pow(ridge_peak, 1.65) * 2.8
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
 			if dist < 4.5:
@@ -331,8 +331,8 @@ func _generate_world() -> void:
 			if dist > 12.0 and dist < 48.0:
 				river_d = minf(river_d, scenic_river_d)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
-			var in_main := river_d < 2.6 and dist > 7.0
-			var in_trib := trib_d < 1.7 and dist > 11.0 and fz > 0.0
+			var in_main := river_d < 3.0 and dist > 7.0
+			var in_trib := trib_d < 2.0 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
 				h = mini(h, 1.2)
@@ -344,7 +344,7 @@ func _generate_world() -> void:
 				if dist > 11.0 and fz > 0.0:
 					bank_distance = minf(bank_distance, trib_d)
 				if bank_distance < 9.0 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(2.6, 9.0, bank_distance))
+					var bank_height := lerpf(1.2, h, smoothstep(3.0, 12.0, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
@@ -361,7 +361,7 @@ func _generate_world() -> void:
 				"river_d": mini(river_d if in_main else (trib_d if in_trib else 99.0), 99.0),
 				"lake": in_lake,
 			}
-	for _pass in range(6):
+	for _pass in range(10):
 		var next_map: Dictionary = {}
 		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
