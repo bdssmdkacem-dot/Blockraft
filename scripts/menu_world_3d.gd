@@ -1,18 +1,18 @@
 extends Node3D
 ## Blockraft menu 3D panorama — golden-hour valley with grand castle.
 
-const MAT_GRASS := Color("#3c7944")
-const MAT_GRASS_LIGHT := Color("#659f50")
+const MAT_GRASS := Color("#326b3c")
+const MAT_GRASS_LIGHT := Color("#548e45")
 const MAT_DIRT := Color("#79513a")
 const MAT_STONE := Color("#687b80")
 const MAT_STONE_LIGHT := Color("#9eafa8")
-const MAT_STONE_CASTLE := Color("#7b8985")
+const MAT_STONE_CASTLE := Color("#697873")
 const MAT_WOOD := Color("#70472f")
 const MAT_LEAF_DARK := Color("#276747")
 const MAT_LEAF := Color("#397b49")
 const MAT_LEAF_LIGHT := Color("#5da64f")
 const MAT_ROOF := Color("#a65f42")
-const MAT_WALL := Color("#e4c98e")
+const MAT_WALL := Color("#cbb17c")
 const MAT_WATER := Color("#48b9d1")
 const MAT_SKIN := Color("#e8b896")
 const MAT_TEAL := Color("#2ec4b6")
@@ -137,14 +137,14 @@ func _setup_lighting() -> void:
 	sun.name = "GoldenHourSun"
 	sun.rotation_degrees = Vector3(-32.0, -42.0, 0.0)
 	sun.light_color = Color("#ffe0a0")
-	sun.light_energy = 1.18
+	sun.light_energy = 0.92
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 100.0
 	add_child(sun)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-20.0, 120.0, 0.0)
 	fill.light_color = Color("#88b8d8")
-	fill.light_energy = 0.20
+	fill.light_energy = 0.13
 	add_child(fill)
 
 func _setup_camera() -> void:
