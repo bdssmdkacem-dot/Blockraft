@@ -296,14 +296,14 @@ func _generate_world() -> void:
 			var fz := float(z)
 			var dist := sqrt(fx * fx + fz * fz)
 			var h := 4.6
-			h += sin(fx * 0.045) * cos(fz * 0.04) * 5.4
-			h += sin(fx * 0.09 + 1.7) * 2.2 + cos(fz * 0.085 + 0.6) * 2.0
-			h += sin(fx * 0.18 + fz * 0.09) * 0.85
+			h += sin(fx * 0.045) * cos(fz * 0.04) * 3.2
+			h += sin(fx * 0.09 + 1.7) * 1.25 + cos(fz * 0.085 + 0.6) * 1.15
+			h += sin(fx * 0.18 + fz * 0.09) * 0.48
 			# A broad, broken ridge beyond the starter valley creates a visible
 			# mountain skyline without raising the spawn corridor or walk paths.
 			var ridge_wave := maxf(0.0, cos((fx + fz * 0.38) * 0.072))
 			if dist > 24.0:
-				h += pow(ridge_wave, 3.2) * 7.0
+				h += pow(ridge_wave, 2.8) * 3.6
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
 			if dist < 12.0:
@@ -326,7 +326,7 @@ func _generate_world() -> void:
 			if in_lake:
 				h = mini(h, 1.0)
 			heights[Vector2i(x, z)] = {
-				"hf": clampf(h, float(MIN_Y + 2), 22.0),
+				"hf": clampf(h, float(MIN_Y + 2), 15.5),
 				"river": in_river or in_lake,
 				"river_d": mini(river_d if in_main else (trib_d if in_trib else 99.0), 99.0),
 				"lake": in_lake,
@@ -357,7 +357,7 @@ func _generate_world() -> void:
 						var nw := 1.0 if (ox == 0 or oz == 0) else 0.55
 						sum += float(neighbor["hf"]) * nw
 						wsum += nw
-				if near_water or hf < 3.2 or hf > 15.5:
+				if near_water or hf < 2.6:
 					next_map[key] = hf
 				else:
 					next_map[key] = lerpf(hf, sum / wsum, 0.55)
@@ -369,7 +369,7 @@ func _generate_world() -> void:
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var key := Vector2i(x, z)
 			var info: Dictionary = heights[key]
-			var hi := clampi(int(round(float(info["hf"]))), MIN_Y + 2, 22)
+			var hi := clampi(int(round(float(info["hf"]))), MIN_Y + 2, 16)
 			info["h"] = hi
 			var dist2 := sqrt(float(x * x + z * z))
 			var path := false
@@ -426,7 +426,7 @@ func _generate_world() -> void:
 					var nkey := Vector2i(x + ox, z + oz)
 					if heights.has(nkey):
 						max_dh = maxi(max_dh, absi(height - int(heights[nkey]["h"])))
-			var steep := max_dh >= 4
+			var steep := max_dh >= 3
 			var water_level := 2
 			for y in range(MIN_Y, height + 1):
 				var kind := "stone"
