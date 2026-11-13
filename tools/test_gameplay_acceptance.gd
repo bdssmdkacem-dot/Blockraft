@@ -99,7 +99,8 @@ func _run_checks() -> void:
         _fail("animal water-navigation probe did not detect the test water cell", 53)
         return
     navigation_animal.call("_steer_away_from_water")
-    var redirected_probe: Vector3 = navigation_animal.global_position + (navigation_animal.get("_dir") as Vector3) * 2.0
+    var redirected_direction: Vector3 = navigation_animal.get("_dir")
+    var redirected_probe: Vector3 = navigation_animal.global_position + redirected_direction * 2.0
     if navigation_animal.call("_is_water_at_world_position", redirected_probe):
         _fail("animal water-avoidance steering still points into the water cell", 54)
         return
