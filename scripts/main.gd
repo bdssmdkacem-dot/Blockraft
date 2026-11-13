@@ -309,22 +309,22 @@ func _generate_world() -> void:
 			var fz := float(z)
 			var dist := sqrt(fx * fx + fz * fz)
 			var h := 4.6
-			h += sin(fx * 0.045) * cos(fz * 0.04) * 1.45
-			h += sin(fx * 0.09 + 1.7) * 0.62 + cos(fz * 0.085 + 0.6) * 0.58
+			h += sin(fx * 0.045) * cos(fz * 0.04) * 1.9
+			h += sin(fx * 0.09 + 1.7) * 0.82 + cos(fz * 0.085 + 0.6) * 0.78
 			h += sin(fx * 0.18 + fz * 0.09) * 0.28
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
-			h += local_relief * 2.0
+			h += local_relief * 3.2
 			# Higher outer ridges are made from local noise peaks rather than one
 			# broad cosine band, giving the skyline varied saddles and rounded hills.
 			if dist > 22.0:
 				var ridge_peak := maxf(0.0, terrain_noise.get_noise_2d(fx * 0.72 + 91.0, fz * 0.72 - 47.0))
-				h += pow(ridge_peak, 1.65) * 2.4
+				h += pow(ridge_peak, 1.65) * 3.4
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
-			if dist < 6.0:
+			if dist < 4.5:
 				h = 4.0
-			elif dist < 25.0:
-				h = lerpf(4.0, h, smoothstep(6.0, 25.0, dist))
+			elif dist < 15.0:
+				h = lerpf(4.0, h, smoothstep(4.5, 15.0, dist))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
 			# A visible tributary passes beyond the protected spawn pad so the
 			# normal third-person starting view has water, banks and a crossing.
@@ -344,8 +344,8 @@ func _generate_world() -> void:
 				var bank_distance := river_d
 				if dist > 11.0 and fz > 0.0:
 					bank_distance = minf(bank_distance, trib_d)
-				if bank_distance < 6.0 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(2.6, 6.0, bank_distance))
+				if bank_distance < 9.0 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(2.6, 9.0, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
@@ -672,11 +672,11 @@ func _blend_generated_spawn_terrain() -> void:
 	# must not fall away by two or more voxels. Blend only freshly generated
 	# terrain into the surrounding hills; restored player-built worlds are never
 	# passed through this function.
-	const BLEND_RADIUS := 14.0
+	const BLEND_RADIUS := 10.0
 	var ground_kinds := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
 	var target_heights: Dictionary = {}
-	for x in range(-14, 15):
-		for z in range(-14, 15):
+	for x in range(-10, 11):
+		for z in range(-10, 11):
 			var radius := Vector2(float(x), float(z)).length()
 			if radius > BLEND_RADIUS:
 				continue
