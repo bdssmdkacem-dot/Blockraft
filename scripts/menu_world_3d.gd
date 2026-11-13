@@ -1,16 +1,16 @@
 extends Node3D
 ## Blockraft menu 3D panorama — golden-hour valley with grand castle.
 
-const MAT_GRASS := Color("#438b49")
-const MAT_GRASS_LIGHT := Color("#70b956")
+const MAT_GRASS := Color("#3c7944")
+const MAT_GRASS_LIGHT := Color("#659f50")
 const MAT_DIRT := Color("#79513a")
 const MAT_STONE := Color("#687b80")
 const MAT_STONE_LIGHT := Color("#9eafa8")
 const MAT_STONE_CASTLE := Color("#7b8985")
 const MAT_WOOD := Color("#70472f")
 const MAT_LEAF_DARK := Color("#276747")
-const MAT_LEAF := Color("#3d8a4b")
-const MAT_LEAF_LIGHT := Color("#65b85a")
+const MAT_LEAF := Color("#397b49")
+const MAT_LEAF_LIGHT := Color("#5da64f")
 const MAT_ROOF := Color("#a65f42")
 const MAT_WALL := Color("#e4c98e")
 const MAT_WATER := Color("#48b9d1")
@@ -22,6 +22,7 @@ const MAT_BROWN_PACK := Color("#8b5a2b")
 
 func _ready() -> void:
 	_setup_environment()
+	_build_sky_dome()
 	_setup_lighting()
 	_setup_camera()
 	_build_landscape()
@@ -96,6 +97,40 @@ func _setup_environment() -> void:
 	environment.fog_aerial_perspective = 0.35
 	world.environment = environment
 	add_child(world)
+
+func _build_sky_dome() -> void:
+	# A deterministic gradient dome keeps the menu sky vivid in the nested
+	# SubViewport on both desktop and software-rendered CI, where the procedural
+	# sky background was falling back to a flat grey tone.
+	var dome := MeshInstance3D.new()
+	dome.name = "MenuSkyDome"
+	var sphere := SphereMesh.new()
+	sphere.radius = 190.0
+	sphere.height = 380.0
+	sphere.radial_segments = 32
+	sphere.rings = 16
+	dome.mesh = sphere
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never;
+varying vec3 sky_direction;
+void vertex() {
+	sky_direction = VERTEX;
+}
+void fragment() {
+	float elevation = clamp(normalize(sky_direction).y, -0.08, 1.0);
+	float blend = smoothstep(-0.02, 0.88, elevation);
+	vec3 horizon = vec3(0.96, 0.68, 0.47);
+	vec3 zenith = vec3(0.12, 0.34, 0.60);
+	ALBEDO = mix(horizon, zenith, blend);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	dome.material_override = material
+	dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(dome)
 
 func _setup_lighting() -> void:
 	var sun := DirectionalLight3D.new()
