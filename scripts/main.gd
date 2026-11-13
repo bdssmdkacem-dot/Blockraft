@@ -320,10 +320,10 @@ func _generate_world() -> void:
 				h += pow(ridge_peak, 1.65) * 2.4
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
-			if dist < 5.0:
+			if dist < 6.0:
 				h = 4.0
 			elif dist < 25.0:
-				h = lerpf(4.0, h, smoothstep(5.0, 25.0, dist))
+				h = lerpf(4.0, h, smoothstep(6.0, 25.0, dist))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
 			# A visible tributary passes beyond the protected spawn pad so the
 			# normal third-person starting view has water, banks and a crossing.
