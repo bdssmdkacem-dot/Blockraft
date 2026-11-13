@@ -48,6 +48,21 @@ func _run() -> void:
 		_fail("Too few terrain columns were generated: %d" % surface_heights.size())
 		return
 
+	var annulus_min := 999
+	var annulus_max := -999
+	var annulus_heights: Dictionary = {}
+	for key_variant in surface_heights:
+		var key: Vector2i = key_variant
+		var radius := Vector2(float(key.x), float(key.y)).length()
+		if radius >= 14.0 and radius <= 42.0:
+			var h := int(surface_heights[key])
+			annulus_min = mini(annulus_min, h)
+			annulus_max = maxi(annulus_max, h)
+			annulus_heights[h] = true
+	if annulus_max - annulus_min < 3 or annulus_heights.size() < 4:
+		_fail("surrounding hills lack gradual but visible relief: range=%d unique_heights=%d" % [annulus_max - annulus_min, annulus_heights.size()])
+		return
+
 	var worst_step := 0
 	var steep_edges := 0
 	var worst_edge := ""
@@ -71,14 +86,13 @@ func _run() -> void:
 				steep_edges += 1
 				if samples.size() < 16:
 					samples.append("%s=%d -> %s=%d" % [key, height, neighbor_key, neighbor_height])
-	# A two-block rise can occur at a small number of diagonal/river-adjacent
-	# transitions in a voxel world; reject any 3+ block wall or a broad spread
-	# of two-block edges across the walkable ground.
-	if worst_step > 2 or steep_edges > 8:
+	# After the 0.45-block slope relaxation, adjacent dry ground must round to
+	# at most one voxel step; any two-block edge is a real traversal defect.
+	if worst_step > 1 or steep_edges > 0:
 		push_error("Terrain edge samples: " + str(samples))
 		_fail("Generated terrain still contains %d abrupt edges; worst adjacent height difference is %d blocks at %s" % [steep_edges, worst_step, worst_edge])
 		return
-	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " two_block_edges=", steep_edges)
+	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " two_block_edges=", steep_edges, " hill_relief=", annulus_max - annulus_min, " distinct_hill_heights=", annulus_heights.size())
 	quit(0)
 
 func _fail(message: String) -> void:
