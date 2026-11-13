@@ -127,7 +127,7 @@ func _capture_gameplay() -> void:
 	if observer_offset.length_squared() < 0.01:
 		observer_offset = Vector3(0.0, 0.0, 1.0)
 	observer_offset = observer_offset.normalized()
-	fauna_camera.global_position = focus_animal.global_position + observer_offset * 6.0 + Vector3.UP * 3.0
+	fauna_camera.global_position = focus_animal.global_position - observer_offset * 6.0 + Vector3.UP * 7.0
 	fauna_camera.look_at(focus_animal.global_position + Vector3(0.0, 0.72, 0.0), Vector3.UP)
 	fauna_camera.make_current()
 	print("GAMEPLAY_FAUNA_FOCUS name=", focus_animal.name, " kind=", focus_animal.get("kind"), " start=", focus_animal.global_position, " camera=", fauna_camera.global_position)
