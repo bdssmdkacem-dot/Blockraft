@@ -94,7 +94,6 @@ func _initialize_world_async() -> void:
 		_generate_world()
 		if blocks.size() < 2000:
 			_generate_world()
-	_force_solid_spawn_island()
 	if not restored:
 		_clear_spawn_camera_corridor()
 	_ensure_spawn_pad()
@@ -562,65 +561,8 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 				if not blocks.has(p):
 					blocks[p] = "leaves"
 
-func _force_solid_spawn_island() -> void:
-	for x in range(-8, 9):
-		for z in range(-8, 9):
-			if Vector2(float(x), float(z)).length() > 8.0:
-				continue
-			# Never overwrite a river channel or its immediate bank with the
-			# emergency spawn fill; doing so created a 3-block step at the island edge.
-			var near_water := false
-			for ox in [-1, 0, 1]:
-				for oz in [-1, 0, 1]:
-					for wy in range(0, 3):
-						if str(blocks.get(Vector3i(x + ox, wy, z + oz), "")) == "water":
-							near_water = true
-							break
-					if near_water:
-						break
-				if near_water:
-					break
-			if near_water:
-				continue
-			for y in range(MIN_Y, 5):
-				var pos := Vector3i(x, y, z)
-				if y < 3:
-					if not blocks.has(pos) or str(blocks[pos]) == "water":
-						blocks[pos] = "stone" if y < 1 else "dirt"
-				elif y == 3:
-					blocks[pos] = "dirt"
-				else:
-					if not blocks.has(pos) or str(blocks[pos]) in ["water", ""]:
-						blocks[pos] = "grass"
-
 func _ensure_spawn_pad() -> void:
-	# Always repair the spawn surface, including restored saves. A save can be
-	# structurally valid while its spawn columns are missing or obstructed.
-	for x in range(-4, 5):
-		for z in range(-4, 5):
-			if Vector2(float(x), float(z)).length() > 4.0:
-				continue
-			# Do not extend the emergency spawn pad into a nearby river bank.
-			var near_water := false
-			for ox in [-1, 0, 1]:
-				for oz in [-1, 0, 1]:
-					for y in range(0, 3):
-						if str(blocks.get(Vector3i(x + ox, y, z + oz), "")) == "water":
-							near_water = true
-							break
-					if near_water:
-						break
-				if near_water:
-					break
-			if near_water:
-				continue
-			var top := MIN_Y
-			for y in range(MIN_Y, 30):
-				if blocks.has(Vector3i(x, y, z)) and str(blocks[Vector3i(x, y, z)]) != "water":
-					top = maxi(top, y)
-			if top < 3:
-				for y in range(MIN_Y, 4):
-					blocks[Vector3i(x, y, z)] = "dirt" if y < 3 else "grass"
+func _ensure_spawn_pad() -> void:
 	# Reserve a clear, level landing area so trees/old edits cannot leave the
 	# player trapped inside terrain or looking out into the sky.
 	for x in range(-3, 4):
