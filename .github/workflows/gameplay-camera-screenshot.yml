@@ -48,6 +48,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-gameplay-camera-screenshot
-          path: artifacts/gameplay-camera.png
+          path: artifacts/*.png
           if-no-files-found: warn
           retention-days: 7
