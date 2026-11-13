@@ -306,10 +306,10 @@ func _generate_world() -> void:
 				h += pow(ridge_wave, 2.8) * 2.4
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
-			if dist < 12.0:
+			if dist < 8.0:
 				h = 4.0
-			elif dist < 32.0:
-				h = lerpf(4.0, h, smoothstep(12.0, 32.0, dist))
+			elif dist < 28.0:
+				h = lerpf(4.0, h, smoothstep(8.0, 28.0, dist))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
 			# A visible tributary passes beyond the protected spawn pad so the
 			# normal third-person starting view has water, banks and a crossing.
@@ -325,6 +325,12 @@ func _generate_world() -> void:
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
 				h = mini(h, 1.0)
+			# Fade the terrain down toward the world perimeter. Without this
+			# transition the finite map ends in a continuous 10+ block cliff
+			# visible from the spawn camera, even when interior slopes are smooth.
+			var edge_distance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
+			if edge_distance < 16.0 and not in_river and not in_lake:
+				h = lerpf(float(MIN_Y + 2), h, smoothstep(0.0, 16.0, edge_distance))
 			heights[Vector2i(x, z)] = {
 				"hf": clampf(h, float(MIN_Y + 2), 12.5),
 				"river": in_river or in_lake,
@@ -553,8 +559,8 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 					blocks[p] = "leaves"
 
 func _force_solid_spawn_island() -> void:
-	for x in range(-12, 13):
-		for z in range(-12, 13):
+	for x in range(-8, 9):
+		for z in range(-8, 9):
 			for y in range(MIN_Y, 5):
 				var pos := Vector3i(x, y, z)
 				if y < 3:
