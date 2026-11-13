@@ -51,9 +51,21 @@ func _run_checks() -> void:
     var face_test_group: Dictionary = face_test_groups["stone"]
     var face_test_vertices: PackedVector3Array = face_test_group["vertices"]
     var face_test_normals: PackedVector3Array = face_test_group["normals"]
-    if face_test_vertices.size() != 60 or face_test_normals.size() != 60:
-        _fail("greedy face culling did not remove the shared internal voxel face: vertices=%d" % face_test_vertices.size(), 60)
+    var face_test_indices: PackedInt32Array = face_test_group["indices"]
+    if face_test_vertices.size() != 40 or face_test_normals.size() != 40 or face_test_indices.size() != 60:
+        _fail("indexed face culling did not produce ten quads with four vertices each: vertices=%d indices=%d" % [face_test_vertices.size(), face_test_indices.size()], 60)
         return
+    for index_offset in range(0, face_test_indices.size(), 3):
+        var ia := face_test_indices[index_offset]
+        var ib := face_test_indices[index_offset + 1]
+        var ic := face_test_indices[index_offset + 2]
+        if ia >= face_test_vertices.size() or ib >= face_test_vertices.size() or ic >= face_test_vertices.size():
+            _fail("indexed voxel surface references a vertex outside its buffer", 66)
+            return
+        var geometric_normal := (face_test_vertices[ib] - face_test_vertices[ia]).cross(face_test_vertices[ic] - face_test_vertices[ia])
+        if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(face_test_normals[ia]) > -0.99:
+            _fail("indexed voxel triangle winding disagrees with outward normals", 67)
+            return
     if old_origin == null:
         scene.blocks.erase(face_test_origin)
     else:
@@ -91,9 +103,21 @@ func _run_checks() -> void:
                 var mesh_arrays: Array = child.mesh.surface_get_arrays(0)
                 var mesh_vertices: PackedVector3Array = mesh_arrays[Mesh.ARRAY_VERTEX]
                 var mesh_normals: PackedVector3Array = mesh_arrays[Mesh.ARRAY_NORMAL]
-                if mesh_vertices.is_empty() or mesh_vertices.size() != mesh_normals.size() or mesh_vertices.size() % 3 != 0:
-                    _fail("chunk %s contains invalid culled surface geometry" % str(key), 62)
+                var mesh_indices: PackedInt32Array = mesh_arrays[Mesh.ARRAY_INDEX]
+                if mesh_vertices.is_empty() or mesh_vertices.size() != mesh_normals.size() or mesh_indices.is_empty() or mesh_indices.size() % 3 != 0:
+                    _fail("chunk %s contains invalid indexed culled surface geometry" % str(key), 62)
                     return
+                for index_offset in range(0, mesh_indices.size(), 3):
+                    var ia := mesh_indices[index_offset]
+                    var ib := mesh_indices[index_offset + 1]
+                    var ic := mesh_indices[index_offset + 2]
+                    if ia >= mesh_vertices.size() or ib >= mesh_vertices.size() or ic >= mesh_vertices.size():
+                        _fail("chunk %s index buffer references an invalid vertex" % str(key), 66)
+                        return
+                    var geometric_normal := (mesh_vertices[ib] - mesh_vertices[ia]).cross(mesh_vertices[ic] - mesh_vertices[ia])
+                    if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(mesh_normals[ia]) > -0.99:
+                        _fail("chunk %s indexed surface winding disagrees with outward normals" % str(key), 65)
+                        return
                 var surface_material := child.material_override as StandardMaterial3D
                 if surface_material == null or surface_material.cull_mode != BaseMaterial3D.CULL_BACK:
                     _fail("chunk %s surface material must retain efficient back-face culling" % str(key), 64)
