@@ -544,6 +544,11 @@ func _generate_world() -> void:
 		if not changed:
 			break
 
+	for debug_x in range(8, 14):
+		for debug_z in range(-8, 2):
+			var debug_info: Dictionary = heights[Vector2i(debug_x, debug_z)]
+			if debug_x in [9, 10, 11, 12] and debug_z in [-7, -6, -5, -4, -3, -2, -1, 0]:
+				print("TERRAIN_DEBUG x=", debug_x, " z=", debug_z, " h=", debug_info["h"], " river=", debug_info["river"], " water=", debug_info["h"] < 2)
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var info: Dictionary = heights[Vector2i(x, z)]
