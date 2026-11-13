@@ -40,11 +40,11 @@ jobs:
       - name: Verify gameplay HUD layout at desktop and phone sizes
         run: godot --headless --path . --script res://tools/test_gameplay_ui_layout.gd
       - name: Verify main menu structure, interactions, and responsive layout
-        run: godot --headless --path . --script res://tools/test_main_menu_acceptance.gd
+        run: godot --headless --verbose --path . --script res://tools/test_main_menu_acceptance.gd
       - name: Verify raw Android touch movement and action controls
         run: timeout 60s godot --headless --path . --script res://tools/test_touch_controls.gd
       - name: Verify gameplay world interactions and persistence
-        run: godot --headless --path . --script res://tools/test_gameplay_acceptance.gd
+        run: godot --headless --verbose --path . --script res://tools/test_gameplay_acceptance.gd
       - name: Save world and inventory before simulated process restart
         timeout-minutes: 3
         run: timeout 120s godot --headless --path . --script res://tools/test_save_process_restart.gd -- --write
