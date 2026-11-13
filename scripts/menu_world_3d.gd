@@ -75,7 +75,7 @@ func _setup_environment() -> void:
 	sky_material.ground_bottom_color = Color("#172b2d")
 	sky_material.ground_horizon_color = Color("#b77f58")
 	sky_material.sky_energy_multiplier = 1.2
-	sky_material.sky_curve = 0.22
+	sky_material.sky_curve = 0.05
 	sky_material.sun_angle_max = 22.0
 	sky.sky_material = sky_material
 	environment.sky = sky
@@ -226,7 +226,11 @@ func _build_sky_clouds() -> void:
 		[Vector3(38.0, 20.5, -52.0), Vector3(5.0, 0.7, 1.8)]
 	]
 	for spec in cloud_specs:
-		_box(clouds, spec[0], spec[1], Color("#ffe0bd"), 0.2)
+		var base_position: Vector3 = spec[0]
+		var base_size: Vector3 = spec[1]
+		_box(clouds, base_position, base_size, Color("#ffe8d2"), 0.25)
+		_box(clouds, base_position + Vector3(-base_size.x * 0.28, 0.32, 0.0), base_size * Vector3(0.52, 0.72, 0.9), Color("#fff0df"), 0.28)
+		_box(clouds, base_position + Vector3(base_size.x * 0.24, 0.22, 0.05), base_size * Vector3(0.48, 0.62, 0.82), Color("#f4d9c0"), 0.3)
 
 func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
 	var spire := MeshInstance3D.new()
@@ -280,6 +284,8 @@ func _build_river_and_bridge() -> void:
 func _build_village() -> void:
 	var village := Node3D.new()
 	village.name = "Village"
+	village.position = Vector3(-1.5, 0.0, 0.5)
+	village.scale = Vector3.ONE * 1.18
 	add_child(village)
 	for i in range(9):
 		var hx := 8.0 + i * 2.5
@@ -298,6 +304,9 @@ func _build_village() -> void:
 		_box(village, Vector3(hx, 1.1, hz + 1.05), Vector3(0.5, 0.7, 0.1), MAT_WOOD)
 		_box(village, Vector3(hx - 0.58, 1.05, hz + 0.15), Vector3(0.12, 0.62, 0.12), MAT_WOOD)
 		_box(village, Vector3(hx + 0.58, 1.05, hz + 0.15), Vector3(0.12, 0.62, 0.12), MAT_WOOD)
+		# Chimney cap and warm side lantern make each house readable at panorama scale.
+		_box(village, Vector3(hx - 0.72, 2.55, hz - 0.55), Vector3(0.42, 0.95, 0.42), Color("#765344"))
+		_box(village, Vector3(hx + 1.14, 1.35, hz + 0.98), Vector3(0.24, 0.34, 0.12), Color("#ffd28a"), 0.25)
 
 func _build_village_details() -> void:
 	var details := Node3D.new()
@@ -366,6 +375,11 @@ func _build_gatehouse_castle() -> void:
 	var dark := Color("#4a5550")
 	var roof := MAT_ROOF
 	var glow := Color("#ffd98a")
+	# Two visible heraldic banners add a focal point to the front towers.
+	for side_x in [-4.8, 4.8]:
+		_box(root, Vector3(side_x, 10.8, 4.8), Vector3(0.12, 2.6, 0.12), Color("#5c4430"))
+		_box(root, Vector3(side_x + 0.52, 10.45, 4.8), Vector3(0.95, 1.25, 0.08), Color("#a83e35"))
+		_box(root, Vector3(side_x + 0.52, 10.45, 4.74), Vector3(0.22, 0.82, 0.06), Color("#e8c46f"))
 	_box(root, Vector3(0, 1.5, -2), Vector3(16, 3.2, 12), MAT_STONE)
 	_box(root, Vector3(0, 3.2, -2), Vector3(14, 0.5, 10), MAT_GRASS)
 	_box(root, Vector3(0, 5.0, 3.5), Vector3(12, 3.5, 1.4), stone)
