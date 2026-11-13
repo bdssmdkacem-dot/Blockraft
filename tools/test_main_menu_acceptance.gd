@@ -163,12 +163,28 @@ func _run_checks() -> void:
 		_fail("Play button signal did not transition to scenes/main.tscn", 13)
 		return
 
+	# Let the deferred gameplay bootstrap finish before releasing the scene.
+	# Freeing it on the first transition frame leaves queued world-generation
+	# callbacks and resources alive at process shutdown.
+	var gameplay_scene := current_scene
+	var world_ready := false
+	for attempt in range(180):
+		if gameplay_scene == null or not is_instance_valid(gameplay_scene):
+			break
+		if bool(gameplay_scene.get("world_initialized")):
+			world_ready = true
+			break
+		await process_frame
+	if not world_ready:
+		_fail("gameplay scene did not finish deferred initialization after Play", 45)
+		return
+
 	print("MENU_ACCEPTANCE_PASS: 3D world, six feature cards, primary actions, dialogs, and gameplay transition verified")
-	# Release the transitioned gameplay scene and its generated nodes before
-	# quitting the headless acceptance process; otherwise ObjectDB reports a
-	# false-positive leak from the still-live SceneTree.
-	if current_scene != null and is_instance_valid(current_scene):
-		current_scene.queue_free()
+	if gameplay_scene != null and is_instance_valid(gameplay_scene):
+		gameplay_scene.queue_free()
+	if scene != null and is_instance_valid(scene):
+		scene.queue_free()
 	await process_frame
 	await process_frame
+	await physics_frame
 	quit(0)
