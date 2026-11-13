@@ -562,7 +562,6 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 					blocks[p] = "leaves"
 
 func _ensure_spawn_pad() -> void:
-func _ensure_spawn_pad() -> void:
 	# Reserve a clear, level landing area so trees/old edits cannot leave the
 	# player trapped inside terrain or looking out into the sky.
 	for x in range(-3, 4):
