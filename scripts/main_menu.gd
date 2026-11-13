@@ -537,6 +537,9 @@ func _open_settings_panel() -> void:
 	dialog_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dialog_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dialog_layer)
+	# Keep the settings controller in the dialog's ownership tree. The dialog
+	# frees it on Save/Cancel and when replaced, avoiding an orphan Node at exit.
+	dialog_layer.add_child(cfg_node)
 	var dim := ColorRect.new()
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.color = Color(0, 0, 0, 0.55)
