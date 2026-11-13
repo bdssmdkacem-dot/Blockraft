@@ -362,4 +362,6 @@ func _run_checks() -> void:
     await process_frame
     await process_frame
     await physics_frame
+    # Let the audio server retire stopped WAV playback handles before process exit.
+    await create_timer(0.35).timeout
     quit(0)
