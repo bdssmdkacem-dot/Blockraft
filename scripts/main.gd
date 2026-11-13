@@ -888,7 +888,13 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		var instance := MeshInstance3D.new()
 		instance.name = "Surface_" + kind
 		instance.mesh = mesh
-		instance.material_override = block_materials.get(kind, block_materials["stone"])
+		# Voxel quads are assembled explicitly. Keep both sides visible so the
+		# renderer's front-face convention cannot make terrain disappear when
+		# viewing steep slopes or the underside of overhangs. Each exposed face
+		# is emitted once, so this does not duplicate geometry.
+		var surface_material := (block_materials.get(kind, block_materials["stone"]) as StandardMaterial3D).duplicate() as StandardMaterial3D
+		surface_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		instance.material_override = surface_material
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(instance)
 
