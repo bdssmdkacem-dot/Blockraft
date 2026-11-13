@@ -39,6 +39,22 @@ func _run() -> void:
 		player.call("_build_touch_controls")
 	await process_frame
 
+	# Confirm the voxel avatar faces its movement direction instead of moonwalking.
+	var body_root := player.get("body_root") as Node3D
+	if body_root == null or absf(absf(body_root.rotation.y) - PI) > 0.05:
+		_fail("avatar default facing is not aligned with the camera's forward travel direction", 13)
+		return
+	player.set("_in_water", true)
+	player.call("_update_body_anim", 1.0, Vector3(1.0, 0.0, 0.0))
+	if absf(wrapf(body_root.rotation.y - PI * 0.5, -PI, PI)) > 0.05:
+		_fail("avatar did not turn to face positive-X movement", 14)
+		return
+	player.call("_update_body_anim", 1.0, Vector3(0.0, 0.0, -1.0))
+	if absf(absf(body_root.rotation.y) - PI) > 0.05:
+		_fail("avatar did not turn back to face negative-Z movement", 15)
+		return
+	player.set("_in_water", false)
+
 	var viewport_size: Vector2 = player.get_viewport().get_visible_rect().size
 	# Deliberately touch above the fixed on-screen stick: movement should be floating,
 	# not dependent on a fixed rectangle or a specific screen density.
@@ -72,6 +88,27 @@ func _run() -> void:
 		_fail("releasing the movement finger did not reset the stick", 4)
 		return
 
+	# The right-side look surface must rotate both camera axes and release cleanly.
+	var look_start := Vector2(viewport_size.x * 0.75, viewport_size.y * 0.28)
+	var yaw_before: float = player.get("_yaw_target")
+	var pitch_before: float = player.get("_pitch_target")
+	_send_touch(player, 9, look_start, true)
+	if str(player.get("_touch_roles").get(9, "")) != "look":
+		_fail("right-side touch did not acquire the camera-look surface", 10)
+		return
+	var look_drag := InputEventScreenDrag.new()
+	look_drag.index = 9
+	look_drag.position = look_start + Vector2(42.0, -24.0)
+	look_drag.relative = Vector2(42.0, -24.0)
+	player.call("_input", look_drag)
+	if is_equal_approx(float(player.get("_yaw_target")), yaw_before) or is_equal_approx(float(player.get("_pitch_target")), pitch_before):
+		_fail("camera-look drag did not update yaw and pitch", 11)
+		return
+	_send_touch(player, 9, look_drag.position, false)
+	if int(player.get("look_touch_index")) != -1 or player.get("_touch_roles").has(9):
+		_fail("releasing the look finger did not clear its touch role", 12)
+		return
+
 	var action_origin := Vector2(viewport_size.x - 142.0, viewport_size.y - 205.0)
 	var jump_pos := action_origin + Vector2(58.0, 29.0)
 	_send_touch(player, 6, jump_pos, true)
@@ -99,5 +136,5 @@ func _run() -> void:
 		_fail("PLACE touch did not invoke the place action", 9)
 		return
 	_send_touch(player, 8, place_pos, false)
-	print("TOUCH_CONTROLS_ACCEPTANCE_PASS: character moved, stick release reset, and jump/mine/place touch states passed")
+	print("TOUCH_CONTROLS_ACCEPTANCE_PASS: character moved, camera yaw/pitch responded, movement/look releases reset, and jump/mine/place touch states passed")
 	quit(0)

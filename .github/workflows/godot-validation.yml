@@ -13,7 +13,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     container:
       image: barichello/godot-ci:4.4.1
     steps:
@@ -21,16 +21,39 @@ jobs:
         uses: actions/checkout@v4
       - name: Import project and parse scripts
         run: godot --headless --path . --editor --quit
+      - name: Verify configured launcher icon
+        run: godot --headless --path . --script res://tests/project_icon_test.gd
+      - name: Fail on any GDScript parse error
+        run: godot --headless --path . --script res://tests/script_parse_test.gd
+      - name: Validate inventory save schema and rejection safety
+        run: godot --headless --path . --script res://tools/test_inventory_validation.gd
       - name: Launch main menu scene headlessly
         run: godot --headless --path . --quit-after 3
       - name: Launch gameplay scene headlessly
-        run: godot --headless --path . res://scenes/main.tscn --quit-after 5
+        run: godot --headless --verbose --path . res://scenes/main.tscn --quit-after 5
+      - name: Test deterministic spawn and fall recovery
+        timeout-minutes: 5
+        run: godot --headless --path . --script res://tests/spawn_safety_test.gd
+      - name: Verify generated terrain has walkable adjacent slopes
+        timeout-minutes: 5
+        run: godot --headless --path . --script res://tools/test_terrain_walkability.gd
+      - name: Verify gameplay HUD layout at desktop and phone sizes
+        run: godot --headless --path . --script res://tools/test_gameplay_ui_layout.gd
       - name: Verify main menu structure, interactions, and responsive layout
-        run: godot --headless --path . --script res://tools/test_main_menu_acceptance.gd
+        run: godot --headless --verbose --path . --script res://tools/test_main_menu_acceptance.gd
       - name: Verify raw Android touch movement and action controls
         run: timeout 60s godot --headless --path . --script res://tools/test_touch_controls.gd
       - name: Verify gameplay world interactions and persistence
-        run: godot --headless --path . --script res://tools/test_gameplay_acceptance.gd
+        run: godot --headless --verbose --path . --script res://tools/test_gameplay_acceptance.gd
+      - name: Save world and inventory before simulated process restart
+        timeout-minutes: 3
+        run: timeout 120s godot --headless --path . --script res://tools/test_save_process_restart.gd -- --write
+      - name: Reopen world in a fresh process and verify backup recovery
+        timeout-minutes: 3
+        run: timeout 120s godot --headless --path . --script res://tools/test_save_process_restart.gd -- --verify
+      - name: Stress chunk streaming during extended navigation and sample memory
+        timeout-minutes: 5
+        run: timeout 300s godot --headless --path . --script res://tools/test_long_session_acceptance.gd
       - name: Verify reference-aligned asset prototypes
         run: godot --headless --path . --script res://tools/test_reference_assets.gd
       - name: Verify animal size and visible geometry
@@ -39,12 +62,23 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends xvfb
+
+      - name: Capture four-species animal visual gallery
+        run: timeout 45s xvfb-run -a godot --audio-driver Dummy --path . --rendering-method gl_compatibility --script res://tools/capture_animal_gallery.gd
+      - name: Verify animal gallery screenshot was generated
+        run: test -s animal_gallery_capture.png
+      - name: Upload animal visual gallery
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockraft-animal-gallery
+          path: animal_gallery_capture.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Capture rendered gameplay world at 1280x720
-        run: timeout 60s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_gameplay_world.gd
+        run: timeout 60s xvfb-run -a godot --audio-driver Dummy --path . --rendering-method gl_compatibility --script res://tools/capture_gameplay_world.gd
       - name: Verify gameplay world screenshot was generated
         run: test -s gameplay_world_capture.png
       - name: Upload rendered gameplay world screenshot
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-gameplay-world-capture
@@ -52,11 +86,10 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Capture rendered main menu at 1280x720
-        run: timeout 45s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_main_menu.gd
+        run: timeout 45s xvfb-run -a godot --audio-driver Dummy --path . --rendering-method gl_compatibility --script res://tools/capture_main_menu.gd
       - name: Verify screenshot was generated
         run: test -s main_menu_capture.png
       - name: Upload rendered menu screenshot
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-main-menu-capture
@@ -64,11 +97,10 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Capture rendered reference asset gallery at 1280x720
-        run: timeout 45s xvfb-run -a godot --path . --rendering-method gl_compatibility --script res://tools/capture_reference_assets.gd
+        run: timeout 45s xvfb-run -a godot --audio-driver Dummy --path . --rendering-method gl_compatibility --script res://tools/capture_reference_assets.gd
       - name: Verify reference asset screenshot was generated
         run: test -s reference_assets_capture.png
       - name: Upload rendered reference asset screenshot
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-reference-assets-capture

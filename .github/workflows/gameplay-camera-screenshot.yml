@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - "scripts/player.gd"
+      - "scripts/main.gd"
+      - "scripts/animal.gd"
+      - "scripts/flora_fauna.gd"
+      - "scripts/inventory.gd"
       - "scripts/capture_gameplay.gd"
       - "scenes/**"
       - "project.godot"
@@ -36,15 +40,14 @@ jobs:
       - name: Capture actual gameplay frame
         run: |
           mkdir -p artifacts
-          xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 godot --path . --script res://scripts/capture_gameplay.gd
+          xvfb-run -a env LIBGL_ALWAYS_SOFTWARE=1 godot --audio-driver Dummy --path . --script res://scripts/capture_gameplay.gd
           test -s artifacts/gameplay-camera.png
           file artifacts/gameplay-camera.png
 
       - name: Upload actual screenshot
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: blockraft-gameplay-camera-screenshot
-          path: artifacts/gameplay-camera.png
+          path: artifacts/*.png
           if-no-files-found: warn
           retention-days: 7

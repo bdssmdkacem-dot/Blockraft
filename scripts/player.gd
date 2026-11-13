@@ -24,7 +24,7 @@ const TOUCH_LOOK_SMOOTH := 0.28
 const TOUCH_JOY_RADIUS := 104.0
 const TOUCH_JOY_DEADZONE := 0.08
 const TOUCH_MOVE_SMOOTH := 14.0
-const CAMERA_DISTANCE := 4.2
+const CAMERA_DISTANCE := 5.8
 const CAMERA_MIN_PITCH := deg_to_rad(-55.0)
 const CAMERA_MAX_PITCH := deg_to_rad(25.0)
 const LOOK_SMOOTH := 18.0
@@ -43,12 +43,12 @@ const MAT_HANDLE := Color("#8b5a2b")
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var camera: Camera3D
 var yaw := 0.0
-var pitch := deg_to_rad(-18.0)
+var pitch := deg_to_rad(-27.0)
 var touch_controls_enabled := false
 var touch_move := Vector2.ZERO
 var _touch_move_target := Vector2.ZERO
 var _yaw_target := 0.0
-var _pitch_target := deg_to_rad(-18.0)
+var _pitch_target := deg_to_rad(-27.0)
 var _cam_pos := Vector3.ZERO
 var _cam_ready := false
 var touch_jump_pressed := false
@@ -115,10 +115,13 @@ func _ready() -> void:
 	_init_footsteps()
 	_yaw_target = yaw
 	_pitch_target = pitch
-	var snode = load("res://scripts/settings.gd").new()
-	snode.load_settings()
-	_look_sens_mult = float(snode.look_sensitivity)
-	snode.apply_audio()
+	# Read settings through a short-lived helper and free it immediately.
+	# Leaving this unattached Node alive leaked one GDScript/Node on every scene exit.
+	var settings_helper = load("res://scripts/settings.gd").new()
+	settings_helper.load_settings()
+	_look_sens_mult = float(settings_helper.look_sensitivity)
+	settings_helper.apply_audio()
+	settings_helper.free()
 	var platform_name := OS.get_name().to_lower()
 	touch_controls_enabled = platform_name == "android" or platform_name == "ios" or OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
 	print("BLOCKRAFT_INPUT platform=", platform_name, " touch_controls=", touch_controls_enabled)
@@ -147,6 +150,9 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: 
 func _build_character_body() -> void:
 	body_root = Node3D.new()
 	body_root.name = "VoxelBody"
+	# The camera begins behind the avatar on +Z, so the default facing direction
+	# is -Z even before the first movement input arrives.
+	body_root.rotation.y = PI
 	add_child(body_root)
 	leg_l_pivot = Node3D.new()
 	leg_l_pivot.position = Vector3(-0.17, 0.85, 0.0)
@@ -594,7 +600,8 @@ func _physics_land(delta: float, direction: Vector3, want_jump: bool) -> void:
 
 func _update_body_anim(delta: float, direction: Vector3) -> void:
 	if body_root and direction.length() > 0.05 and (is_on_floor() or _in_water):
-		body_root.rotation.y = lerp_angle(body_root.rotation.y, atan2(-direction.x, -direction.z), 1.0 - exp(-12.0 * delta))
+		# The avatar mesh faces local +Z; rotate that axis toward the movement vector.
+		body_root.rotation.y = lerp_angle(body_root.rotation.y, atan2(direction.x, direction.z), 1.0 - exp(-12.0 * delta))
 		walk_phase += delta * (9.0 if _in_water else 12.0)
 		var swing := sin(walk_phase) * (0.35 if _in_water else 0.55)
 		if leg_l_pivot: leg_l_pivot.rotation.x = swing
@@ -623,6 +630,39 @@ func _block_hardness(kind: String) -> float:
 		_:
 			return 0.4
 
+## Resolve a ray hit against either a legacy per-block body or a batched
+## chunk collider. Batched chunk bodies expose their voxel surface but do not
+## carry per-block metadata, so sample just inside the hit face and map it back
+## to the authoritative world block dictionary.
+func _resolve_hit_block(hit: Dictionary, world: Node) -> Dictionary:
+	var collider = hit.get("collider")
+	if collider == null or world == null:
+		return {}
+	var world_blocks: Variant = world.get("blocks")
+	if typeof(world_blocks) != TYPE_DICTIONARY:
+		return {}
+	if collider.has_meta("block_position"):
+		var legacy_pos: Vector3i = collider.get_meta("block_position")
+		if not world_blocks.has(legacy_pos):
+			return {}
+		return {
+			"position": legacy_pos,
+			"kind": str(world_blocks[legacy_pos])
+		}
+	if not collider.has_meta("chunk_key"):
+		return {}
+	var normal: Vector3 = hit.get("normal", Vector3.ZERO)
+	if normal.length_squared() < 0.25:
+		return {}
+	var sample: Vector3 = hit.get("position", Vector3.ZERO) - normal.normalized() * 0.02
+	var voxel := Vector3i(floori(sample.x), floori(sample.y), floori(sample.z))
+	if not world_blocks.has(voxel):
+		return {}
+	return {
+		"position": voxel,
+		"kind": str(world_blocks[voxel])
+	}
+
 func _tick_mining(delta: float) -> void:
 	var world = get_parent()
 	if world == null:
@@ -648,11 +688,12 @@ func _tick_mining(delta: float) -> void:
 				if world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
 					world.mining_fx.play_hit(hit.get("position", global_position))
 		return
-	if not collider.has_meta("block_position"):
+	var block_hit := _resolve_hit_block(hit, world)
+	if block_hit.is_empty():
 		_mine_progress = 0.0
 		return
-	var pos: Vector3i = collider.get_meta("block_position")
-	var kind := str(collider.get_meta("block_kind")) if collider.has_meta("block_kind") else "dirt"
+	var pos: Vector3i = block_hit["position"]
+	var kind := str(block_hit["kind"])
 	if pos != _mine_pos:
 		_mine_pos = pos
 		_mine_progress = 0.0
@@ -691,9 +732,10 @@ func _interact(place: bool) -> void:
 			if world and world.get("mining_fx") and world.mining_fx.has_method("play_hit"):
 				world.mining_fx.play_hit(hit.get("position", global_position))
 		return
-	if not collider.has_meta("block_position"):
+	var block_hit := _resolve_hit_block(hit, world)
+	if block_hit.is_empty():
 		return
-	var pos: Vector3i = collider.get_meta("block_position")
+	var pos: Vector3i = block_hit["position"]
 	if place:
 		var normal: Vector3 = hit.get("normal")
 		var target := pos + Vector3i(roundi(normal.x), roundi(normal.y), roundi(normal.z))

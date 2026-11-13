@@ -15,6 +15,7 @@ func setup(world: Node3D, blocks: Dictionary, seed_value: int = 82417) -> void:
 	_blocks = blocks
 	_rng.seed = seed_value + 99
 	_spawn_plants()
+	_spawn_spawn_meadow()
 	_spawn_animals()
 
 func _process(delta: float) -> void:
@@ -92,6 +93,27 @@ func _spawn_plants() -> void:
 			_make_tall_grass(plant)
 		count += 1
 
+func _spawn_spawn_meadow() -> void:
+	# A restrained ring of flowers and grass breaks up the protected flat
+	# landing area while leaving the central player/camera corridor unobstructed.
+	var positions := [
+		Vector2i(-10, -8), Vector2i(-9, -3), Vector2i(-10, 3), Vector2i(-9, 8),
+		Vector2i(10, -8), Vector2i(9, -3), Vector2i(10, 3), Vector2i(9, 8),
+		Vector2i(-7, 10), Vector2i(7, 10), Vector2i(-7, -10), Vector2i(7, -10)
+	]
+	for i in range(positions.size()):
+		var cell: Vector2i = positions[i]
+		var sy := _surface_y(cell.x, cell.y)
+		if sy < 0:
+			continue
+		var plant := Node3D.new()
+		plant.position = Vector3(float(cell.x) + 0.5, float(sy) + 1.0, float(cell.y) + 0.5)
+		_flora_root.add_child(plant)
+		if i % 3 == 0:
+			_make_flower(plant)
+		else:
+			_make_tall_grass(plant)
+
 func _make_flower(p: Node3D) -> void:
 	_box_at(p, Vector3(0, 0.18, 0), Vector3(0.05, 0.36, 0.05), Color("#2a6b2a"))
 	var petals := [Color("#e85a8a"), Color("#f0c040"), Color("#7ec8f0"), Color("#e070e0"), Color("#ff8060")]
@@ -139,7 +161,12 @@ func _spawn_animals() -> void:
 		attempts += 1
 		var x := _rng.randi_range(-50, 50)
 		var z := _rng.randi_range(-50, 50)
-		if abs(x) < 6 and abs(z) < 6:
+		# Keep wildlife out of the immediate spawn meadow and the forward
+		# third-person sightline. Nearby aggressive chickens/foxes previously
+		# rushed into the player before the opening view could be read.
+		if Vector2(float(x) - 0.5, float(z) - 0.5).length() < 18.0:
+			continue
+		if z < -12 and z > -42 and abs(x) < 18:
 			continue
 		if _is_water(x, z):
 			continue
@@ -159,3 +186,31 @@ func _spawn_animals() -> void:
 			k = AnimalScript.Kind.FOX
 		animal.setup(k, Vector3(float(x) + 0.5, float(sy) + 1.05, float(z) + 0.5))
 		spawned += 1
+
+	# Keep two peaceful animals in the near gameplay vista so the world does
+	# not feel empty around spawn. Random wildlife remains distributed farther
+	# out, while these candidates are checked against the actual generated land.
+	var nearby_positions := [
+		Vector2i(-8, -10), Vector2i(8, -10),
+		Vector2i(-10, -8), Vector2i(10, -8),
+		Vector2i(-12, -6), Vector2i(12, -6),
+		Vector2i(-6, -12), Vector2i(6, -12)
+	]
+	var nearby_spawned := 0
+	for cell in nearby_positions:
+		if nearby_spawned >= 2:
+			break
+		if Vector2(float(cell.x), float(cell.y)).length() < 12.0 or _is_water(cell.x, cell.y):
+			continue
+		var nearby_y := _surface_y(cell.x, cell.y)
+		if nearby_y < 3 or nearby_y > 8:
+			continue
+		var nearby_kind := str(_blocks.get(Vector3i(cell.x, nearby_y, cell.y), ""))
+		if nearby_kind not in ["grass", "dirt"]:
+			continue
+		var peaceful: CharacterBody3D = AnimalScript.new()
+		peaceful.name = "Animal_NearSpawn_%d" % nearby_spawned
+		_world.add_child(peaceful)
+		peaceful.setup(AnimalScript.Kind.SHEEP, Vector3(float(cell.x) + 0.5, float(nearby_y) + 1.05, float(cell.y) + 0.5))
+		nearby_spawned += 1
+	print("BLOCKRAFT_NEAR_SPAWN_FAUNA count=", nearby_spawned)

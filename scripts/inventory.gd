@@ -7,6 +7,7 @@ signal backpack_changed(tier: String)
 signal storage_changed
 
 const SLOT_COUNT := 9
+const ITEM_IDS := ["grass", "dirt", "stone", "wood", "sand", "gravel", "rock", "coal", "iron", "gold", "crystal", "chest", "meat", "leaves"]
 
 const BACKPACKS := {
 	"leather": {"label": "Leather Bag", "max_stack": 64, "color": Color("#8b5a2b")},
@@ -252,3 +253,126 @@ func storage_summary(max_kinds: int = 6) -> String:
 		if n >= max_kinds:
 			break
 	return "Depot: " + ", ".join(parts)
+
+
+## Compact, JSON-safe inventory snapshot. Colors are reconstructed from item IDs.
+func export_state() -> Dictionary:
+	var saved_slots: Array = []
+	for slot in slots:
+		saved_slots.append({
+			"id": str(slot.get("id", "")),
+			"count": maxi(0, int(slot.get("count", 0))),
+			"is_tool": bool(slot.get("is_tool", false))
+		})
+	var saved_storage: Dictionary = {}
+	for key in storage:
+		var amount := maxi(0, int(storage[key]))
+		if amount > 0:
+			saved_storage[str(key)] = amount
+	return {
+		"slots": saved_slots,
+		"selected": clampi(selected, 0, SLOT_COUNT - 1),
+		"backpack_tier": backpack_tier,
+		"storage": saved_storage
+	}
+
+func _is_integral_number(value: Variant) -> bool:
+	if typeof(value) == TYPE_INT:
+		return true
+	if typeof(value) != TYPE_FLOAT:
+		return false
+	var number := float(value)
+	return is_finite(number) and floorf(number) == number
+
+func validate_state(data: Variant) -> bool:
+	if typeof(data) != TYPE_DICTIONARY:
+		return false
+	# Validate the complete schema before import so malformed saves cannot
+	# silently turn into unknown items, duplicate tools, or clamped selections.
+	if not data.has("slots") or not data.has("selected") or not data.has("backpack_tier") or not data.has("storage"):
+		return false
+	var incoming_slots: Variant = data.get("slots")
+	if typeof(incoming_slots) != TYPE_ARRAY or incoming_slots.size() != SLOT_COUNT:
+		return false
+	var selected_value: Variant = data.get("selected")
+	if not _is_integral_number(selected_value) or int(selected_value) < 0 or int(selected_value) >= SLOT_COUNT:
+		return false
+	var tier_value: Variant = data.get("backpack_tier")
+	if typeof(tier_value) != TYPE_STRING or not BACKPACKS.has(str(tier_value)):
+		return false
+	var tier := str(tier_value)
+	var max_stack := int(BACKPACKS[tier]["max_stack"])
+	var tool_count := 0
+	for slot_index in range(incoming_slots.size()):
+		var entry: Variant = incoming_slots[slot_index]
+		if typeof(entry) != TYPE_DICTIONARY:
+			return false
+		if not entry.has("id") or not entry.has("count") or not entry.has("is_tool"):
+			return false
+		var id_value: Variant = entry.get("id")
+		var count_value: Variant = entry.get("count")
+		var tool_value: Variant = entry.get("is_tool")
+		if typeof(id_value) != TYPE_STRING or not _is_integral_number(count_value) or typeof(tool_value) != TYPE_BOOL:
+			return false
+		var item_id := str(id_value)
+		var count := int(count_value)
+		var is_tool := bool(tool_value)
+		if count < 0 or count > 1000000:
+			return false
+		if item_id == "":
+			if count != 0 or is_tool:
+				return false
+		elif item_id == "pickaxe":
+			if not is_tool or count != 1 or slot_index != 0:
+				return false
+			tool_count += 1
+		elif ITEM_IDS.has(item_id):
+			if is_tool or count < 1 or count > max_stack:
+				return false
+		else:
+			return false
+	if tool_count != 1:
+		return false
+	var incoming_storage: Variant = data.get("storage")
+	if typeof(incoming_storage) != TYPE_DICTIONARY:
+		return false
+	for key in incoming_storage:
+		var amount_value: Variant = incoming_storage[key]
+		if not ITEM_IDS.has(str(key)) or not _is_integral_number(amount_value):
+			return false
+		var amount := int(amount_value)
+		if amount < 1 or amount > 10000000:
+			return false
+	return true
+
+func import_state(data: Variant) -> bool:
+	if not validate_state(data):
+		return false
+	var incoming_slots: Array = data.get("slots", [])
+	var restored_slots: Array = []
+	for entry in incoming_slots:
+		var item_id := str(entry.get("id", ""))
+		var count := int(entry.get("count", 0))
+		var is_tool := bool(entry.get("is_tool", false))
+		restored_slots.append({
+			"id": item_id,
+			"count": count,
+			"color": Color("#6af0f5") if is_tool else _color_for(item_id),
+			"is_tool": is_tool
+		})
+	var tier := str(data.get("backpack_tier", "leather"))
+	var incoming_storage: Dictionary = data.get("storage", {})
+	var restored_storage: Dictionary = {}
+	for key in incoming_storage:
+		var amount := int(incoming_storage[key])
+		if amount > 0:
+			restored_storage[str(key)] = amount
+	slots = restored_slots
+	selected = clampi(int(data.get("selected", 0)), 0, SLOT_COUNT - 1)
+	backpack_tier = tier
+	storage = restored_storage
+	selection_changed.emit(selected)
+	counts_changed.emit()
+	storage_changed.emit()
+	backpack_changed.emit(backpack_tier)
+	return true

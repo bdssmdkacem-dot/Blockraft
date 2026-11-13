@@ -40,4 +40,11 @@ func _capture() -> void:
         return
 
     print("MAIN_MENU_CAPTURE=", output_path, " size=", image.get_width(), "x", image.get_height())
+    # Release the 3D SubViewport world and its generated resources before exit.
+    scene.queue_free()
+    await process_frame
+    await process_frame
+    await RenderingServer.frame_post_draw
+    packed = null
+    scene = null
     quit(0)

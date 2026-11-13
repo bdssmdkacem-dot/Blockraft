@@ -43,11 +43,58 @@ func _run_checks() -> void:
 	if camera.rotation.x > -0.05:
 		_fail("menu camera is not pitched down toward the voxel landscape", 29)
 		return
+	if world.find_child("SunsetDisc", true, false) == null or world.find_child("SkyClouds", true, false) == null:
+		_fail("menu sunset focal light or cloud layers are missing", 39)
+		return
 	if world.find_child("GoldenHourSun", true, false) == null:
 		_fail("3D menu world has no key light", 27)
 		return
+	if world.find_child("MountainBackdrop", true, false) == null:
+		_fail("menu panorama is missing layered mountain and waterfall backdrop", 34)
+		return
+	var environment_nodes := world.find_children("*", "WorldEnvironment", true, false)
+	var world_environment: WorldEnvironment = environment_nodes[0] as WorldEnvironment if not environment_nodes.is_empty() else null
+	if world_environment == null or world_environment.environment == null:
+		_fail("menu panorama has no controlled environment/tonemapping", 35)
+		return
+	if world_environment.environment.tonemap_exposure > 0.9 or world_environment.environment.ambient_light_energy > 0.32:
+		_fail("menu lighting exceeds the visual exposure budget", 36)
+		return
+	var village := world.find_child("Village", true, false) as Node3D
+	if village == null or village.get_child_count() < 35:
+		_fail("village has no layered gabled house silhouettes", 37)
+		return
+	if world.find_child("River", true, false) == null:
+		_fail("menu panorama is missing its river and bridge", 38)
+		return
 	if world.find_child("FloatingIsland", true, false) == null:
 		_fail("3D menu world is missing its floating island landmark", 28)
+		return
+
+	var hero := world.find_child("Protagonist", true, false) as Node3D
+	if hero == null:
+		_fail("menu protagonist is missing", 31)
+		return
+	if hero.get_child_count() < 24 or hero.find_child("DiamondPickaxe", true, false) == null:
+		_fail("menu protagonist silhouette is missing layered clothing, backpack or pickaxe detail", 32)
+		return
+	if hero.position.x < -10.0:
+		_fail("menu protagonist remains underneath the left action-button column", 42)
+		return
+	var rounded_peaks := 0
+	for mountain_part in world.find_children("*", "MeshInstance3D", true, false):
+		var mountain_mesh := (mountain_part as MeshInstance3D).mesh
+		if mountain_mesh is CylinderMesh and mountain_mesh.radial_segments >= 7 and mountain_mesh.top_radius > 0.0:
+			rounded_peaks += 1
+	if rounded_peaks < 9:
+		_fail("mountain backdrop still uses sharp pyramid peaks instead of softened ridges", 43)
+		return
+	var castle := world.find_child("GatehouseCastle", true, false) as Node3D
+	if castle == null or castle.get_child_count() < 120:
+		_fail("menu castle lacks the layered facade and landmark detail pass", 33)
+		return
+	if castle.scale.x > 1.15:
+		_fail("castle scale clips the upper landmark at menu framing", 44)
 		return
 
 	var strip := scene.find_child("FeatureStrip", true, false) as HBoxContainer
@@ -116,5 +163,28 @@ func _run_checks() -> void:
 		_fail("Play button signal did not transition to scenes/main.tscn", 13)
 		return
 
+	# Let the deferred gameplay bootstrap finish before releasing the scene.
+	# Freeing it on the first transition frame leaves queued world-generation
+	# callbacks and resources alive at process shutdown.
+	var gameplay_scene := current_scene
+	var world_ready := false
+	for attempt in range(180):
+		if gameplay_scene == null or not is_instance_valid(gameplay_scene):
+			break
+		if bool(gameplay_scene.get("world_initialized")):
+			world_ready = true
+			break
+		await process_frame
+	if not world_ready:
+		_fail("gameplay scene did not finish deferred initialization after Play", 45)
+		return
+
 	print("MENU_ACCEPTANCE_PASS: 3D world, six feature cards, primary actions, dialogs, and gameplay transition verified")
+	if gameplay_scene != null and is_instance_valid(gameplay_scene):
+		gameplay_scene.queue_free()
+	if scene != null and is_instance_valid(scene):
+		scene.queue_free()
+	await process_frame
+	await process_frame
+	await physics_frame
 	quit(0)

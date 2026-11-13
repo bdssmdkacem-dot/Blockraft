@@ -227,6 +227,7 @@ func _build_ui() -> void:
 	_ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_ui_root)
 	_top_bar = PanelContainer.new()
+	_top_bar.name = "TopBar"
 	_top_bar.position = Vector2(0, 0)
 	var top_style := StyleBoxFlat.new()
 	top_style.bg_color = Color(0.05, 0.07, 0.1, 0.82)
@@ -256,6 +257,7 @@ func _build_ui() -> void:
 	phase_detail.add_theme_color_override("font_color", Color("#9ab0c0"))
 	top_h.add_child(phase_detail)
 	var panel := PanelContainer.new()
+	panel.name = "SurvivalStatusPanel"
 	panel.position = Vector2(12, 48)
 	var ps := StyleBoxFlat.new()
 	ps.bg_color = Color(0.06, 0.08, 0.1, 0.88)
@@ -342,14 +344,24 @@ func _build_ui() -> void:
 	_layout_ui()
 	host.get_viewport().size_changed.connect(_layout_ui)
 
-func _layout_ui() -> void:
-	var vs := host.get_viewport().get_visible_rect().size
+func _layout_ui(viewport_size: Vector2 = Vector2.ZERO) -> void:
+	var vs := viewport_size if viewport_size.x > 0.0 else host.get_viewport().get_visible_rect().size
+	var compact := vs.x < 700.0
 	if _top_bar:
 		_top_bar.custom_minimum_size = Vector2(vs.x, 36)
+	var meter_width := 160.0
+	if compact:
+		meter_width = clampf(vs.x * 0.38, 110.0, 160.0)
+	for meter in [clock_bar, health_bar, hunger_bar]:
+		if meter:
+			meter.custom_minimum_size = Vector2(meter_width, meter.custom_minimum_size.y)
 	if night_banner:
-		night_banner.position = Vector2(vs.x * 0.5 - 180.0, 52)
+		night_banner.position = Vector2(vs.x * 0.5 - 180.0, 350.0 if compact else 52.0)
 	if hint_label:
-		hint_label.position = Vector2(vs.x * 0.5 - 240.0, vs.y - 28)
+		hint_label.visible = not compact
+		hint_label.size = Vector2(maxf(0.0, vs.x - 24.0), 18.0)
+		hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hint_label.position = Vector2(12.0, vs.y - 120.0)
 
 func tick(delta: float) -> void:
 	_invuln = maxf(0.0, _invuln - delta)
@@ -381,7 +393,7 @@ func _update_day_night(delta: float) -> void:
 		else:
 			sun_col = day_col
 		sun_light.light_color = sun_col * wtint
-		var energy := lerpf(0.05, 1.25, factor * factor)
+		var energy := lerpf(0.04, 0.95, factor * factor)
 		if _lightning_t > 0.0:
 			energy = maxf(energy, 2.2)
 		sun_light.light_energy = energy * wmult
@@ -399,11 +411,19 @@ func _update_day_night(delta: float) -> void:
 			sky = sky_day
 		sky = sky * wtint
 		world_env.background_color = sky
+		# The compatibility renderer uses BG_COLOR for a deterministic, correctly
+		# tinted sky. Keep the procedural material in sync for forward renderers.
+		if world_env.sky != null and world_env.sky.sky_material is ProceduralSkyMaterial:
+			var procedural_sky := world_env.sky.sky_material as ProceduralSkyMaterial
+			procedural_sky.sky_top_color = sky.darkened(0.32)
+			procedural_sky.sky_horizon_color = sky.lightened(0.08)
+			procedural_sky.ground_bottom_color = Color(0.10, 0.16, 0.15).lerp(sky.darkened(0.55), factor * 0.25)
+			procedural_sky.ground_horizon_color = sky.darkened(0.12)
 		world_env.ambient_light_color = sky.lerp(Color(0.78, 0.82, 0.9), factor * 0.7)
-		world_env.ambient_light_energy = lerpf(0.15, 0.58, factor) * lerpf(1.0, 0.7, 1.0 - wmult)
+		world_env.ambient_light_energy = lerpf(0.12, 0.36, factor) * lerpf(1.0, 0.72, 1.0 - wmult)
 		world_env.fog_enabled = true
 		world_env.fog_light_color = sky
-		var base_fog := lerpf(0.0048, 0.0018, factor)
+		var base_fog := lerpf(0.0014, 0.00035, factor)
 		world_env.fog_density = base_fog + _weather_fog_add() * _weather_blend
 	var hour := int(time_of_day * 24.0) % 24
 	var minute := int(fmod(time_of_day * 24.0, 1.0) * 60.0)
