@@ -479,6 +479,38 @@ func _generate_world() -> void:
 		var final_info: Dictionary = heights[key]
 		final_info["h"] = clampi(int(round(float(final_info["hf"]))), MIN_Y + 2, 13)
 		heights[key] = final_info
+	# Quantization can turn two compliant floating-point slopes into a two-voxel
+	# cliff. Relax the final integer surface as well, while keeping river floors
+	# fixed so the water channels remain recessed and readable.
+	for _integer_pass in range(16):
+		var integer_updates: Dictionary = {}
+		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+				var key := Vector2i(x, z)
+				var info: Dictionary = heights[key]
+				if bool(info["river"]):
+					continue
+				var current_height := int(info["h"])
+				var lower_bound := MIN_Y + 2
+				var upper_bound := 13
+				for ox in [-1, 0, 1]:
+					for oz in [-1, 0, 1]:
+						if ox == 0 and oz == 0:
+							continue
+						var neighbor_key := Vector2i(x + ox, z + oz)
+						if not heights.has(neighbor_key):
+							continue
+						var neighbor: Dictionary = heights[neighbor_key]
+						if bool(neighbor["river"]):
+							continue
+						var neighbor_height := int(neighbor["h"])
+						lower_bound = maxi(lower_bound, neighbor_height - 1)
+						upper_bound = mini(upper_bound, neighbor_height + 1)
+				integer_updates[key] = clampi(current_height, lower_bound, upper_bound) if lower_bound <= upper_bound else int(round((lower_bound + upper_bound) * 0.5))
+		for key in integer_updates:
+			var info: Dictionary = heights[key]
+			info["h"] = int(integer_updates[key])
+			heights[key] = info
 
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
@@ -616,8 +648,10 @@ func _ensure_spawn_pad() -> void:
 			# saved roof/tree/platform can make the spawn selection land in mid-air.
 			for y in range(5, SPAWN_CLEAR_MAX_Y + 1):
 				blocks.erase(Vector3i(x, y, z))
-			blocks[Vector3i(x, 3, z)] = "dirt"
-			blocks[Vector3i(x, 4, z)] = "grass"
+			var border_cell := absi(x) == 3 or absi(z) == 3
+			var surface_y := 3 if border_cell else 4
+			blocks[Vector3i(x, surface_y - 1, z)] = "dirt"
+			blocks[Vector3i(x, surface_y, z)] = "grass"
 
 func _clear_spawn_camera_corridor() -> void:
 	# Flatten only the freshly generated spawn plateau; never touch restored
