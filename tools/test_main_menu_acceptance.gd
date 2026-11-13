@@ -93,7 +93,7 @@ func _run_checks() -> void:
 	if castle == null or castle.get_child_count() < 120:
 		_fail("menu castle lacks the layered facade and landmark detail pass", 33)
 		return
-	if castle.scale.x > 1.30:
+	if castle.scale.x > 1.15:
 		_fail("castle scale clips the upper landmark at menu framing", 44)
 		return
 
