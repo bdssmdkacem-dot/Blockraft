@@ -296,14 +296,14 @@ func _generate_world() -> void:
 			var fz := float(z)
 			var dist := sqrt(fx * fx + fz * fz)
 			var h := 4.6
-			h += sin(fx * 0.045) * cos(fz * 0.04) * 3.2
-			h += sin(fx * 0.09 + 1.7) * 1.25 + cos(fz * 0.085 + 0.6) * 1.15
-			h += sin(fx * 0.18 + fz * 0.09) * 0.48
+			h += sin(fx * 0.045) * cos(fz * 0.04) * 2.2
+			h += sin(fx * 0.09 + 1.7) * 0.9 + cos(fz * 0.085 + 0.6) * 0.85
+			h += sin(fx * 0.18 + fz * 0.09) * 0.35
 			# A broad, broken ridge beyond the starter valley creates a visible
 			# mountain skyline without raising the spawn corridor or walk paths.
 			var ridge_wave := maxf(0.0, cos((fx + fz * 0.38) * 0.072))
 			if dist > 24.0:
-				h += pow(ridge_wave, 2.8) * 3.6
+				h += pow(ridge_wave, 2.8) * 2.4
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
 			if dist < 12.0:
@@ -326,12 +326,12 @@ func _generate_world() -> void:
 			if in_lake:
 				h = mini(h, 1.0)
 			heights[Vector2i(x, z)] = {
-				"hf": clampf(h, float(MIN_Y + 2), 15.5),
+				"hf": clampf(h, float(MIN_Y + 2), 12.5),
 				"river": in_river or in_lake,
 				"river_d": mini(river_d if in_main else (trib_d if in_trib else 99.0), 99.0),
 				"lake": in_lake,
 			}
-	for _pass in range(3):
+	for _pass in range(6):
 		var next_map: Dictionary = {}
 		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
@@ -369,7 +369,7 @@ func _generate_world() -> void:
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var key := Vector2i(x, z)
 			var info: Dictionary = heights[key]
-			var hi := clampi(int(round(float(info["hf"]))), MIN_Y + 2, 16)
+			var hi := clampi(int(round(float(info["hf"]))), MIN_Y + 2, 13)
 			info["h"] = hi
 			var dist2 := sqrt(float(x * x + z * z))
 			var path := false
