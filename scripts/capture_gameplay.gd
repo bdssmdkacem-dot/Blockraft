@@ -108,29 +108,22 @@ func _capture_gameplay() -> void:
 	# Use a temporary observer camera inside the same live gameplay world.
 	# Frame the four animals nearest the player so their movement is visible
 	# instead of relying on tiny distant silhouettes in the third-person view.
-	var remaining_animals: Array = animals.duplicate()
-	var focus_animals: Array = []
-	for _pick in range(mini(4, remaining_animals.size())):
-		var nearest = remaining_animals[0]
-		var nearest_distance := player.global_position.distance_to(nearest.global_position)
-		for candidate in remaining_animals:
-			var candidate_distance := player.global_position.distance_to(candidate.global_position)
-			if candidate_distance < nearest_distance:
-				nearest = candidate
-				nearest_distance = candidate_distance
-		focus_animals.append(nearest)
-		remaining_animals.erase(nearest)
-	var fauna_center := Vector3.ZERO
-	for animal in focus_animals:
-		fauna_center += animal.global_position
-	fauna_center /= float(maxi(1, focus_animals.size()))
+	# Frame the single animal nearest the player at a readable distance.
+	# A centroid of several widely separated animals previously aimed the camera
+	# at empty ground, making the movement capture useless despite a passing test.
+	var focus_animal: CharacterBody3D = animals[0] as CharacterBody3D
+	for candidate in animals:
+		var candidate_animal := candidate as CharacterBody3D
+		if candidate_animal.global_position.distance_squared_to(player.global_position) < focus_animal.global_position.distance_squared_to(player.global_position):
+			focus_animal = candidate_animal
 	var fauna_camera := Camera3D.new()
 	fauna_camera.name = "FaunaObservationCamera"
-	fauna_camera.fov = 62.0
+	fauna_camera.fov = 48.0
 	gameplay.add_child(fauna_camera)
-	fauna_camera.global_position = fauna_center + Vector3(0.0, 8.5, 11.0)
-	fauna_camera.look_at(fauna_center, Vector3.UP)
+	fauna_camera.global_position = focus_animal.global_position + Vector3(0.0, 2.8, 5.2)
+	fauna_camera.look_at(focus_animal.global_position + Vector3(0.0, 0.72, 0.0), Vector3.UP)
 	fauna_camera.make_current()
+	print("GAMEPLAY_FAUNA_FOCUS name=", focus_animal.name, " kind=", focus_animal.get("kind"), " start=", focus_animal.global_position, " camera=", fauna_camera.global_position)
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var before_image := root.get_texture().get_image()
