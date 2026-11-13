@@ -298,9 +298,9 @@ func _generate_world() -> void:
 	var terrain_noise := FastNoiseLite.new()
 	terrain_noise.seed = 82417
 	terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	terrain_noise.frequency = 0.035
+	terrain_noise.frequency = 0.045
 	terrain_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
-	terrain_noise.fractal_octaves = 3
+	terrain_noise.fractal_octaves = 4
 	terrain_noise.fractal_gain = 0.48
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
@@ -312,7 +312,7 @@ func _generate_world() -> void:
 			h += sin(fx * 0.09 + 1.7) * 0.62 + cos(fz * 0.085 + 0.6) * 0.58
 			h += sin(fx * 0.18 + fz * 0.09) * 0.28
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
-			h += local_relief * 1.8
+			h += local_relief * 2.0
 			# Higher outer ridges are made from local noise peaks rather than one
 			# broad cosine band, giving the skyline varied saddles and rounded hills.
 			if dist > 22.0:
@@ -363,7 +363,6 @@ func _generate_world() -> void:
 					continue
 				var sum := hf * 2.0
 				var wsum := 2.0
-				var near_water := false
 				for ox in [-1, 0, 1]:
 					for oz in [-1, 0, 1]:
 						if ox == 0 and oz == 0:
@@ -372,15 +371,10 @@ func _generate_world() -> void:
 						if not heights.has(nkey):
 							continue
 						var neighbor: Dictionary = heights[nkey]
-						if bool(neighbor["river"]):
-							near_water = true
 						var nw := 1.0 if (ox == 0 or oz == 0) else 0.55
 						sum += float(neighbor["hf"]) * nw
 						wsum += nw
-				if near_water or hf < 2.6:
-					next_map[key] = hf
-				else:
-					next_map[key] = lerpf(hf, sum / wsum, 0.55)
+				next_map[key] = lerpf(hf, sum / wsum, 0.55)
 		for key in next_map.keys():
 			var info2: Dictionary = heights[key]
 			info2["hf"] = next_map[key]
@@ -437,7 +431,7 @@ func _generate_world() -> void:
 	# near-water exemption preserved abrupt river cliffs, and the rounded voxel
 	# heights then turned modest height differences into vertical rock faces.
 	# This bounded-neighbour relaxation limits each grid step before voxelizing.
-	const MAX_WALKABLE_HEIGHT_STEP := 0.90
+	const MAX_WALKABLE_HEIGHT_STEP := 0.65
 	for _slope_pass in range(32):
 		var slope_updates: Dictionary = {}
 		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
