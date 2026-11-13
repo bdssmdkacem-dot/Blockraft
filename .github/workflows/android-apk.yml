@@ -108,6 +108,11 @@ jobs:
           ANDROID_SDK_ROOT: /usr/lib/android-sdk
         run: godot --headless --path . --editor --quit
 
+      - name: Verify configured launcher icon
+        env:
+          HOME: /root
+        run: godot --headless --path . --script res://tests/project_icon_test.gd
+
       - name: Fail on any GDScript parse error
         env:
           HOME: /root
@@ -143,6 +148,7 @@ jobs:
           test -s "$APK"
           unzip -t "$APK"
           /usr/lib/android-sdk/build-tools/33.0.2/apksigner verify --verbose "$APK"
+          /usr/lib/android-sdk/build-tools/33.0.2/aapt dump badging "$APK" | grep -q '^application-icon'
           unzip -l "$APK" | grep -q 'AndroidManifest.xml'
           unzip -l "$APK" | grep -q 'lib/arm64-v8a/'
           unzip -l "$APK" | grep -q 'lib/armeabi-v7a/'
