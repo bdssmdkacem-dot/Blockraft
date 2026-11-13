@@ -544,11 +544,6 @@ func _generate_world() -> void:
 		if not changed:
 			break
 
-	for debug_x in range(8, 14):
-		for debug_z in range(-8, 2):
-			var debug_info: Dictionary = heights[Vector2i(debug_x, debug_z)]
-			if debug_x in [9, 10, 11, 12] and debug_z in [-7, -6, -5, -4, -3, -2, -1, 0]:
-				print("TERRAIN_DEBUG x=", debug_x, " z=", debug_z, " h=", debug_info["h"], " river=", debug_info["river"], " water=", debug_info["h"] < 2)
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var info: Dictionary = heights[Vector2i(x, z)]
@@ -691,19 +686,9 @@ func _ensure_spawn_pad() -> void:
 			blocks[Vector3i(x, surface_y, z)] = "grass"
 
 func _clear_spawn_camera_corridor() -> void:
-	# Flatten only the freshly generated spawn plateau; never touch restored
-	# player-built blocks during respawn or save recovery. Distant hills remain
-	# beyond this radius and form the visible landscape around the starting area.
-	var cleared := 0
-	for x in range(-12, 13):
-		for z in range(-12, 13):
-			if Vector2(float(x), float(z)).length() > 12.0:
-				continue
-			for y in range(5, 31):
-				var pos := Vector3i(x, y, z)
-				if blocks.has(pos):
-					blocks.erase(pos)
-					cleared += 1
+	# Preserve every generated terrain column around spawn. Only remove foliage
+	# from the camera corridor; deleting blocks above y=4 here cut through the
+	# surrounding hills and recreated the very cliffs the terrain pass removed.
 	# Keep the immediate 360-degree spawn view open, not just the narrow
 	# forward cone. This removes near trees that otherwise dominate the
 	# third-person frame from its left/right edges. Ground and structures remain.
@@ -732,9 +717,8 @@ func _clear_spawn_camera_corridor() -> void:
 				if kind in ["wood", "leaves"]:
 					blocks.erase(pos)
 					forward_removed += 1
-	if cleared > 0 or near_foliage_removed > 0 or forward_removed > 0:
-		print("BLOCKRAFT_CAMERA_CORRIDOR_CLEAR removed_spawn_blocks=", cleared,
-			" removed_near_foliage=", near_foliage_removed,
+	if near_foliage_removed > 0 or forward_removed > 0:
+		print("BLOCKRAFT_CAMERA_CORRIDOR_CLEAR removed_near_foliage=", near_foliage_removed,
 			" removed_forward_foliage=", forward_removed)
 
 func _snap_player_to_surface() -> void:
