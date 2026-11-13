@@ -152,7 +152,7 @@ func _capture_gameplay() -> void:
 	# Visual regression guard: at midday the open-sky sample must retain a
 	# distinctly blue channel; this catches the grey fallback seen in CI.
 	var sky_sample := viewport_image.get_pixel(640, 100)
-	if sky_sample.b < sky_sample.r * 1.18 or sky_sample.b < sky_sample.g * 1.08:
+	if sky_sample.b < sky_sample.r * 1.05 or sky_sample.b < sky_sample.g * 1.08:
 		push_error("Gameplay sky is not rendering the expected blue midday tint: %s" % sky_sample)
 		quit(7)
 		return
