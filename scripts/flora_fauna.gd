@@ -186,3 +186,31 @@ func _spawn_animals() -> void:
 			k = AnimalScript.Kind.FOX
 		animal.setup(k, Vector3(float(x) + 0.5, float(sy) + 1.05, float(z) + 0.5))
 		spawned += 1
+
+	# Keep two peaceful animals in the near gameplay vista so the world does
+	# not feel empty around spawn. Random wildlife remains distributed farther
+	# out, while these candidates are checked against the actual generated land.
+	var nearby_positions := [
+		Vector2i(-8, -10), Vector2i(8, -10),
+		Vector2i(-10, -8), Vector2i(10, -8),
+		Vector2i(-12, -6), Vector2i(12, -6),
+		Vector2i(-6, -12), Vector2i(6, -12)
+	]
+	var nearby_spawned := 0
+	for cell in nearby_positions:
+		if nearby_spawned >= 2:
+			break
+		if Vector2(float(cell.x), float(cell.y)).length() < 12.0 or _is_water(cell.x, cell.y):
+			continue
+		var nearby_y := _surface_y(cell.x, cell.y)
+		if nearby_y < 3 or nearby_y > 8:
+			continue
+		var nearby_kind := str(_blocks.get(Vector3i(cell.x, nearby_y, cell.y), ""))
+		if nearby_kind not in ["grass", "dirt"]:
+			continue
+		var peaceful: CharacterBody3D = AnimalScript.new()
+		peaceful.name = "Animal_NearSpawn_%d" % nearby_spawned
+		_world.add_child(peaceful)
+		peaceful.setup(AnimalScript.Kind.SHEEP, Vector3(float(cell.x) + 0.5, float(nearby_y) + 1.05, float(cell.y) + 0.5))
+		nearby_spawned += 1
+	print("BLOCKRAFT_NEAR_SPAWN_FAUNA count=", nearby_spawned)
