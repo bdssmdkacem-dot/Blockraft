@@ -16,6 +16,10 @@ func _run() -> void:
 	if game == null:
 		_fail("Gameplay scene root is not Node3D")
 		return
+	# Each acceptance script shares Godot's user:// directory inside the CI
+	# container. Remove any snapshot written by an earlier test so this check
+	# measures the current procedural generator, not an older saved world.
+	game.call("_clear_old_save")
 	root.add_child(game)
 	var ready := false
 	for _frame in range(900):
