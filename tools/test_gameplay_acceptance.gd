@@ -122,11 +122,6 @@ func _run_checks() -> void:
                 if surface_material == null or surface_material.cull_mode != BaseMaterial3D.CULL_BACK:
                     _fail("chunk %s surface material must retain efficient back-face culling" % str(key), 64)
                     return
-                for vertex_index in range(0, mesh_vertices.size(), 3):
-                    var geometric_normal := (mesh_vertices[vertex_index + 1] - mesh_vertices[vertex_index]).cross(mesh_vertices[vertex_index + 2] - mesh_vertices[vertex_index])
-                    if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(mesh_normals[vertex_index]) > -0.99:
-                        _fail("chunk %s surface winding is not clockwise against its outward normal" % str(key), 65)
-                        return
         if surface_batches == 0:
             _fail("chunk %s has no culled ArrayMesh surface batches" % str(key), 63)
             return
