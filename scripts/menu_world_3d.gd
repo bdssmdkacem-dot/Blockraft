@@ -402,8 +402,8 @@ func _build_floating_islands() -> void:
 func _build_gatehouse_castle() -> void:
 	var root := Node3D.new()
 	root.name = "GatehouseCastle"
-	root.position = Vector3(30.0, 0.8, -18.0)
-	root.scale = Vector3(1.25, 1.25, 1.25)
+	root.position = Vector3(30.0, 0.2, -18.0)
+	root.scale = Vector3(1.12, 1.12, 1.12)
 	add_child(root)
 	var stone := MAT_STONE_CASTLE
 	var light := Color("#a8b4ae")
