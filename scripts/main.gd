@@ -413,6 +413,49 @@ func _generate_world() -> void:
 			path_info["h"] = clampi(int(round(float(path_updates[key]))), 3, 6)
 			heights[key] = path_info
 
+	# Erode every non-water terrain edge into a walkable slope. The earlier
+	# near-water exemption preserved abrupt river cliffs, and the rounded voxel
+	# heights then turned modest height differences into vertical rock faces.
+	# This bounded-neighbour relaxation limits each grid step before voxelizing.
+	const MAX_WALKABLE_HEIGHT_STEP := 0.90
+	for _slope_pass in range(16):
+		var slope_updates: Dictionary = {}
+		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+				var key := Vector2i(x, z)
+				var info: Dictionary = heights[key]
+				var current_height := float(info["hf"])
+				if bool(info["river"]):
+					slope_updates[key] = current_height
+					continue
+				var lower_bound := -INF
+				var upper_bound := INF
+				for ox in [-1, 0, 1]:
+					for oz in [-1, 0, 1]:
+						if ox == 0 and oz == 0:
+							continue
+						var neighbor_key := Vector2i(x + ox, z + oz)
+						if not heights.has(neighbor_key):
+							continue
+						var neighbor: Dictionary = heights[neighbor_key]
+						var neighbor_height := float(neighbor["hf"])
+						lower_bound = maxf(lower_bound, neighbor_height - MAX_WALKABLE_HEIGHT_STEP)
+						upper_bound = minf(upper_bound, neighbor_height + MAX_WALKABLE_HEIGHT_STEP)
+				var constrained_height: float
+				if lower_bound <= upper_bound:
+					constrained_height = clampf(current_height, lower_bound, upper_bound)
+				else:
+					constrained_height = (lower_bound + upper_bound) * 0.5
+				slope_updates[key] = lerpf(current_height, constrained_height, 0.72)
+		for key in slope_updates:
+			var slope_info: Dictionary = heights[key]
+			slope_info["hf"] = float(slope_updates[key])
+			heights[key] = slope_info
+	for key in heights:
+		var final_info: Dictionary = heights[key]
+		final_info["h"] = clampi(int(round(float(final_info["hf"]))), MIN_Y + 2, 13)
+		heights[key] = final_info
+
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var info: Dictionary = heights[Vector2i(x, z)]
@@ -426,7 +469,7 @@ func _generate_world() -> void:
 					var nkey := Vector2i(x + ox, z + oz)
 					if heights.has(nkey):
 						max_dh = maxi(max_dh, absi(height - int(heights[nkey]["h"])))
-			var steep := max_dh >= 3
+			var steep := max_dh >= 1 and height >= 8
 			var water_level := 2
 			for y in range(MIN_Y, height + 1):
 				var kind := "stone"
