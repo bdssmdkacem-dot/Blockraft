@@ -37,6 +37,33 @@ func _run_checks() -> void:
         _fail("day/night system did not bind to the active WorldEnvironment", 49)
         return
 
+    # Two adjacent solid voxels must emit ten outer quads (60 vertices),
+    # not twelve quads: the shared internal face is culled.
+    var face_test_origin := Vector3i(1000, 100, 1000)
+    var face_test_neighbor := face_test_origin + Vector3i(1, 0, 0)
+    var old_origin: Variant = scene.blocks.get(face_test_origin, null)
+    var old_neighbor: Variant = scene.blocks.get(face_test_neighbor, null)
+    scene.blocks[face_test_origin] = "stone"
+    scene.blocks[face_test_neighbor] = "stone"
+    var face_test_groups: Dictionary = {}
+    scene.call("_append_exposed_render_faces", face_test_groups, face_test_origin, "stone")
+    scene.call("_append_exposed_render_faces", face_test_groups, face_test_neighbor, "stone")
+    var face_test_group: Dictionary = face_test_groups["stone"]
+    var face_test_vertices: PackedVector3Array = face_test_group["vertices"]
+    var face_test_normals: PackedVector3Array = face_test_group["normals"]
+    if face_test_vertices.size() != 60 or face_test_normals.size() != 60:
+        _fail("greedy face culling did not remove the shared internal voxel face: vertices=%d" % face_test_vertices.size(), 60)
+        return
+    if old_origin == null:
+        scene.blocks.erase(face_test_origin)
+    else:
+        scene.blocks[face_test_origin] = old_origin
+    if old_neighbor == null:
+        scene.blocks.erase(face_test_neighbor)
+    else:
+        scene.blocks[face_test_neighbor] = old_neighbor
+    print("CULLED_SURFACE_MESH_ACCEPTANCE_PASS: two adjacent blocks emit ten boundary quads, with the shared face removed")
+
     # Chunk rendering should use a handful of draw batches and one static collision
     # shape, not hundreds of physics bodies for individual voxel blocks.
     var collision_chunk: Node = null
@@ -49,12 +76,27 @@ func _run_checks() -> void:
             _fail("chunk %s has too many direct nodes: %d" % [str(key), chunk.get_child_count()], 21)
             return
         var static_bodies := 0
+        var surface_batches := 0
         for child in chunk.get_children():
             if child is StaticBody3D and child.has_meta("chunk_key"):
                 static_bodies += 1
                 collision_chunk = chunk
                 collision_body = child as StaticBody3D
                 collision_key = key
+            elif child is MeshInstance3D and child.name.begins_with("Surface_"):
+                surface_batches += 1
+                if not (child.mesh is ArrayMesh) or child.mesh.get_surface_count() != 1:
+                    _fail("chunk %s contains a non-ArrayMesh terrain surface batch" % str(key), 61)
+                    return
+                var mesh_arrays: Array = child.mesh.surface_get_arrays(0)
+                var mesh_vertices: PackedVector3Array = mesh_arrays[Mesh.ARRAY_VERTEX]
+                var mesh_normals: PackedVector3Array = mesh_arrays[Mesh.ARRAY_NORMAL]
+                if mesh_vertices.is_empty() or mesh_vertices.size() != mesh_normals.size() or mesh_vertices.size() % 3 != 0:
+                    _fail("chunk %s contains invalid culled surface geometry" % str(key), 62)
+                    return
+        if surface_batches == 0:
+            _fail("chunk %s has no culled ArrayMesh surface batches" % str(key), 63)
+            return
         if static_bodies > 1:
             _fail("chunk %s has more than one batched collision body" % str(key), 22)
             return
@@ -70,7 +112,7 @@ func _run_checks() -> void:
     if collision_faces.size() < 6 or collision_faces.size() % 3 != 0:
         _fail("batched concave collision has no valid triangle faces", 25)
         return
-    print("CHUNK_COLLISION_ACCEPTANCE_PASS: chunks use <=10 nodes, one static concave collision body, and valid exposed-face triangles")
+    print("CHUNK_COLLISION_ACCEPTANCE_PASS: chunks use <=10 nodes, culled ArrayMesh surfaces, one static concave collision body, and valid exposed-face triangles")
     if scene.blocks.size() < 20000:
         _fail("generated map is incomplete: %d blocks" % scene.blocks.size(), 16)
         return
