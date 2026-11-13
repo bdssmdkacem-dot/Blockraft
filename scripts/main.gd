@@ -333,8 +333,8 @@ func _generate_world() -> void:
 			# transition the finite map ends in a continuous 10+ block cliff
 			# visible from the spawn camera, even when interior slopes are smooth.
 			var edge_distance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
-			if edge_distance < 16.0:
-				h = lerpf(float(MIN_Y + 2), h, smoothstep(0.0, 16.0, edge_distance))
+			if edge_distance < 24.0:
+				h = lerpf(float(MIN_Y + 2), h, smoothstep(0.0, 24.0, edge_distance))
 			heights[Vector2i(x, z)] = {
 				"hf": clampf(h, float(MIN_Y + 2), 12.5),
 				"river": in_river or in_lake,
@@ -596,8 +596,24 @@ func _force_solid_spawn_island() -> void:
 func _ensure_spawn_pad() -> void:
 	# Always repair the spawn surface, including restored saves. A save can be
 	# structurally valid while its spawn columns are missing or obstructed.
-	for x in range(-6, 7):
-		for z in range(-6, 7):
+	for x in range(-4, 5):
+		for z in range(-4, 5):
+			if Vector2(float(x), float(z)).length() > 4.0:
+				continue
+			# Do not extend the emergency spawn pad into a nearby river bank.
+			var near_water := false
+			for ox in [-1, 0, 1]:
+				for oz in [-1, 0, 1]:
+					for y in range(0, 3):
+						if str(blocks.get(Vector3i(x + ox, y, z + oz), "")) == "water":
+							near_water = true
+							break
+					if near_water:
+						break
+				if near_water:
+					break
+			if near_water:
+				continue
 			var top := MIN_Y
 			for y in range(MIN_Y, 30):
 				if blocks.has(Vector3i(x, y, z)) and str(blocks[Vector3i(x, y, z)]) != "water":
