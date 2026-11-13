@@ -34,7 +34,7 @@ func _ready() -> void:
 	_build_village()
 	_build_village_details()
 	_build_forests()
-	_build_floating_islands()
+	# Floating islands were removed: they read as disconnected debris in the menu skyline.
 	_build_gatehouse_castle()
 	_build_castle_surface_details()
 	_build_landmark_details()
