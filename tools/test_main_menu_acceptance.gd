@@ -164,4 +164,11 @@ func _run_checks() -> void:
 		return
 
 	print("MENU_ACCEPTANCE_PASS: 3D world, six feature cards, primary actions, dialogs, and gameplay transition verified")
+	# Release the transitioned gameplay scene and its generated nodes before
+	# quitting the headless acceptance process; otherwise ObjectDB reports a
+	# false-positive leak from the still-live SceneTree.
+	if current_scene != null and is_instance_valid(current_scene):
+		current_scene.queue_free()
+	await process_frame
+	await process_frame
 	quit(0)
