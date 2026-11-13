@@ -70,8 +70,8 @@ func _setup_environment() -> void:
 	environment.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color("#2a5a9a")
-	sky_material.sky_horizon_color = Color("#ffb060")
+	sky_material.sky_top_color = Color("#315f96")
+	sky_material.sky_horizon_color = Color("#f2a45f")
 	sky_material.ground_bottom_color = Color("#1a2b2a")
 	sky_material.ground_horizon_color = Color("#e0a868")
 	sky_material.sun_angle_max = 22.0
@@ -81,9 +81,9 @@ func _setup_environment() -> void:
 	environment.ambient_light_color = Color("#8199a8")
 	environment.ambient_light_energy = 0.28
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_exposure = 0.84
+	environment.tonemap_exposure = 0.78
 	environment.glow_enabled = true
-	environment.glow_intensity = 0.16
+	environment.glow_intensity = 0.09
 	environment.fog_enabled = true
 	environment.fog_light_color = Color("#b6a080")
 	environment.fog_density = 0.00030
@@ -133,13 +133,21 @@ func _build_landscape() -> void:
 	_box(ground, Vector3(-8, 2.0, 3), Vector3(4, 1.2, 3), MAT_GRASS_LIGHT)
 
 func _build_horizon_layers() -> void:
+	# Keep the horizon low and broken: the old continuous block wall hid the
+	# ridgelines and read as an inaccessible cliff across the whole panorama.
 	var far := Node3D.new()
 	far.name = "Horizon"
 	add_child(far)
-	_box(far, Vector3(25, 6, -40), Vector3(30, 14, 8), MAT_STONE)
-	_box(far, Vector3(35, 10, -45), Vector3(12, 18, 6), MAT_STONE_LIGHT)
-	_box(far, Vector3(-20, 5, -38), Vector3(18, 12, 7), MAT_STONE)
-	_box(far, Vector3(0, 3, -35), Vector3(40, 6, 5), MAT_GRASS)
+	var foothill_colors := [Color("#486858"), Color("#587663"), Color("#6b8064")]
+	for i in range(9):
+		var x := -42.0 + float(i) * 10.5
+		var depth := -38.0 - float(i % 3) * 3.0
+		var height := 5.0 + float((i * 5) % 4) * 1.35
+		_box(far, Vector3(x, height * 0.34, depth), Vector3(12.0, height * 0.68, 9.0), foothill_colors[i % foothill_colors.size()])
+		_pyramid(far, Vector3(x, height * 0.72, depth - 0.2), 6.8, height * 0.72, foothill_colors[(i + 1) % foothill_colors.size()])
+	# A low valley saddle leaves a visible gap between the foothills and the
+	# taller snow ridges behind them.
+	_box(far, Vector3(0.0, 1.4, -34.0), Vector3(34.0, 2.8, 5.0), Color("#527454"))
 
 
 func _build_mountain_backdrop() -> void:
@@ -188,9 +196,9 @@ func _build_sunset_disc() -> void:
 	mesh.radial_segments = 20
 	mesh.rings = 10
 	sun.mesh = mesh
-	sun.position = Vector3(8.5, 15.5, -48.0)
+	sun.position = Vector3(13.0, 16.5, -50.0)
 	sun.scale = Vector3.ONE * 1.35
-	var material := _emissive(Color("#ffd47a"), 1.45)
+	var material := _emissive(Color("#ffbd55"), 0.82)
 	sun.material_override = material
 	add_child(sun)
 
