@@ -33,11 +33,14 @@ func _run() -> void:
 
 	var blocks: Dictionary = game.get("blocks")
 	var surface_heights: Dictionary = {}
+	var water_columns: Dictionary = {}
 	for position in blocks:
 		var kind := str(blocks[position])
+		var p: Vector3i = position
+		if kind == "water":
+			water_columns[Vector2i(p.x, p.z)] = true
 		if kind not in GROUND_KINDS:
 			continue
-		var p: Vector3i = position
 		var key := Vector2i(p.x, p.z)
 		if not surface_heights.has(key) or p.y > int(surface_heights[key]):
 			surface_heights[key] = p.y
@@ -54,6 +57,10 @@ func _run() -> void:
 		for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
 			var neighbor_key: Vector2i = key + offset
 			if not surface_heights.has(neighbor_key):
+				continue
+			# Water channels are intentionally below the walking surface; their
+			# banks are not adjacent walkable ground columns.
+			if water_columns.has(key) or water_columns.has(neighbor_key):
 				continue
 			var neighbor_height := int(surface_heights[neighbor_key])
 			var step := absi(height - neighbor_height)
