@@ -67,8 +67,11 @@ func _run_checks() -> void:
 	if world.find_child("River", true, false) == null:
 		_fail("menu panorama is missing its river and bridge", 38)
 		return
-	if world.find_child("FloatingIsland", true, false) == null:
-		_fail("3D menu world is missing its floating island landmark", 28)
+	# The former floating-island landmark was removed because it read as
+	# disconnected debris in the menu skyline. Keep the grounded mountain,
+	# castle, village and river landmarks as the panorama's focal composition.
+	if world.find_child("FloatingIsland", true, false) != null:
+		_fail("menu panorama still contains distracting floating-island debris", 28)
 		return
 
 	var hero := world.find_child("Protagonist", true, false) as Node3D
