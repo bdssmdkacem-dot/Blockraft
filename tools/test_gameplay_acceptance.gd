@@ -34,7 +34,7 @@ func _run_checks() -> void:
 
     # Every spawned plant must sit on a continuous, exposed terrain column.
     var flora := scene.get_node_or_null("FloraFauna")
-    var flora_root := flora.get_node_or_null("Flora") as Node3D if flora != null else null
+    var flora_root := scene.get_node_or_null("Flora") as Node3D if flora != null else null
     if flora_root == null:
         _fail("flora root is missing after world initialization", 68)
         return
