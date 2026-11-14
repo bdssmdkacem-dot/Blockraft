@@ -516,16 +516,16 @@ func _build_river_and_bridge() -> void:
 		for side in [-1.0, 1.0]:
 			var edge_x: float = center_x + float(side) * half_width
 			var ripple := sin(t * TAU * 3.0 + side) * 0.018
-			river_vertices.append(Vector3(edge_x, 0.065 + ripple, z))
+			river_vertices.append(Vector3(edge_x, 0.22 + ripple, z))
 			river_normals.append(Vector3.UP)
 			var depth_tint := 0.5 + 0.5 * sin(t * TAU * 2.0 + side * 0.35)
 			river_colors.append(Color(0.10 + depth_tint * 0.025, 0.42 + depth_tint * 0.08, 0.62 + depth_tint * 0.10, 0.94))
 			river_uvs.append(Vector2(0.0 if side < 0.0 else 1.0, t * 8.0))
 			# Each bank is a narrow, irregular sand-to-grass transition strip.
-			bank_vertices.append(Vector3(edge_x, 0.055, z))
+			bank_vertices.append(Vector3(edge_x, 0.18, z))
 			bank_normals.append(Vector3.UP)
 			bank_colors.append(Color("#c6ae7c"))
-			bank_vertices.append(Vector3(edge_x + side * (0.9 + sin(t * TAU * 1.7) * 0.12), 0.025, z))
+			bank_vertices.append(Vector3(edge_x + side * (0.9 + sin(t * TAU * 1.7) * 0.12), 0.11, z))
 			bank_normals.append(Vector3.UP)
 			bank_colors.append(Color("#6f9856"))
 		if segment < SEGMENTS:
@@ -589,7 +589,7 @@ func _build_river_and_bridge() -> void:
 		var streak_mesh := BoxMesh.new()
 		streak_mesh.size = Vector3(0.9 + float(foam_index % 2) * 0.45, 0.025, 0.12)
 		streak.mesh = streak_mesh
-		streak.position = Vector3(foam_x + sin(float(foam_index)) * 0.55, 0.015, foam_z)
+		streak.position = Vector3(foam_x + sin(float(foam_index)) * 0.55, 0.16, foam_z)
 		streak.rotation.y = deg_to_rad(-8.0 + float(foam_index) * 5.0)
 		streak.material_override = foam_material
 		streak.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
