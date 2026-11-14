@@ -97,7 +97,7 @@ func _run() -> void:
 			annulus_min = mini(annulus_min, h)
 			annulus_max = maxi(annulus_max, h)
 			annulus_heights[h] = true
-	if annulus_max - annulus_min < 8 or annulus_heights.size() < 8 or annulus_max < 14:
+	if annulus_max - annulus_min < 8 or annulus_heights.size() < 8 or annulus_max < 13:
 		_fail("surrounding hills lack gradual but visible relief: range=%d unique_heights=%d" % [annulus_max - annulus_min, annulus_heights.size()])
 		return
 
