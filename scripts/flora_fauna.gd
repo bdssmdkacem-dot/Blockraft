@@ -88,7 +88,7 @@ func _spawn_plants() -> void:
 			continue
 		# Preserve the opening camera corridor to the river crossing. Tiny
 		# distant plant silhouettes here were visually detached from the ridge.
-		if z < -12 and z > -36 and abs(x) < 18:
+		if z < -6 and z > -42 and abs(x) < 28:
 			continue
 		var sy := _surface_y(x, z)
 		# Keep decorative flora inside the readable playable landscape. Plants
