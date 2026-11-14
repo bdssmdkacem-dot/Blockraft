@@ -506,7 +506,10 @@ func _generate_world() -> void:
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 				var key := Vector2i(x, z)
 				var info: Dictionary = heights[key]
-				if bool(info["river"]):
+				# Only columns that actually contain water are exempt from dry-land
+				# slope relaxation. A river-marked column at/above water level is a
+				# dry bank and must obey the same one-block traversal limit.
+				if bool(info["river"]) and int(info["h"]) < 2:
 					continue
 				var current_height := int(info["h"])
 				var lower_bound := MIN_Y + 2
@@ -519,7 +522,7 @@ func _generate_world() -> void:
 						if not heights.has(neighbor_key):
 							continue
 						var neighbor: Dictionary = heights[neighbor_key]
-						if bool(neighbor["river"]):
+						if bool(neighbor["river"]) and int(neighbor["h"]) < 2:
 							continue
 						var neighbor_height := int(neighbor["h"])
 						lower_bound = maxi(lower_bound, neighbor_height - 1)
@@ -540,14 +543,14 @@ func _generate_world() -> void:
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 				var key := Vector2i(x, z)
 				var info: Dictionary = heights[key]
-				if bool(info["river"]):
+				if bool(info["river"]) and int(info["h"]) < 2:
 					continue
 				for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
 					var neighbor_key: Vector2i = key + offset
 					if not heights.has(neighbor_key):
 						continue
 					var neighbor: Dictionary = heights[neighbor_key]
-					if bool(neighbor["river"]):
+					if bool(neighbor["river"]) and int(neighbor["h"]) < 2:
 						continue
 					var current_height := int(info["h"])
 					var neighbor_height := int(neighbor["h"])
