@@ -562,34 +562,6 @@ func _generate_world() -> void:
 	# single source of truth for walkable one-block terrain transitions. Avoid
 	# the former 32-pass in-place lowering sweep, which flattened distant ridges.
 
-	# A short final edge sweep repairs only residual two-block seams left by
-	# quantization. Four passes are enough after bounded float/integer relaxation;
-	# unlike the old 32-pass sweep this does not flatten distant ridges.
-	for _edge_pass in range(4):
-		var edge_changed := false
-		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
-			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
-				var current_key := Vector2i(x, z)
-				var current_info: Dictionary = heights[current_key]
-				var current_height := int(round(float(current_info["h"])))
-				for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
-					var neighbor_key: Vector2i = current_key + offset
-					if not heights.has(neighbor_key):
-						continue
-					var neighbor_info: Dictionary = heights[neighbor_key]
-					var neighbor_height := int(round(float(neighbor_info["h"])))
-					if current_height > neighbor_height + 1:
-						current_info["h"] = neighbor_height + 1
-						current_height = neighbor_height + 1
-						heights[current_key] = current_info
-						edge_changed = true
-					elif neighbor_height > current_height + 1:
-						neighbor_info["h"] = current_height + 1
-						heights[neighbor_key] = neighbor_info
-						edge_changed = true
-		if not edge_changed:
-			break
-
 	var voxel_fill_started_usec := Time.get_ticks_usec()
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
@@ -704,6 +676,9 @@ func _generate_world() -> void:
 	# A compact timber footbridge crosses the new forward tributary. It is
 	# placed after terrain generation so the deck remains stable and collision-
 	# backed even when the river's procedural banks change.
+	# One-block wooden approaches connect the elevated deck to both river banks.
+	blocks[Vector3i(0, 2, -21)] = "wood"
+	blocks[Vector3i(0, 2, -12)] = "wood"
 	for z in range(-20, -12):
 		blocks[Vector3i(0, 3, z)] = "wood"
 		if z % 2 == 0:
@@ -750,12 +725,12 @@ func _ensure_spawn_pad() -> void:
 	# player trapped inside terrain or looking out into the sky.
 	for x in range(-3, 4):
 		for z in range(-3, 4):
-			# Clear the full buildable height, not just a few blocks. Otherwise a
-			# saved roof/tree/platform can make the spawn selection land in mid-air.
-			for y in range(5, SPAWN_CLEAR_MAX_Y + 1):
-				blocks.erase(Vector3i(x, y, z))
 			var border_cell := absi(x) == 3 or absi(z) == 3
 			var surface_y := 3 if border_cell else 4
+			# Clear from the chosen surface upward. Leaving an old y=4 block on
+			# the lower border created a hidden two-block lip around the spawn pad.
+			for y in range(surface_y, SPAWN_CLEAR_MAX_Y + 1):
+				blocks.erase(Vector3i(x, y, z))
 			blocks[Vector3i(x, surface_y - 1, z)] = "dirt"
 			blocks[Vector3i(x, surface_y, z)] = "grass"
 
