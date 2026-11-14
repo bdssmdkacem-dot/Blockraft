@@ -2,7 +2,7 @@ name: Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, "fix/player-spawn-ground-safety"]
     paths:
       - "project.godot"
       - "export_presets.cfg"

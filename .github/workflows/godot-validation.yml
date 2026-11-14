@@ -2,7 +2,7 @@ name: Godot validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, "fix/player-spawn-ground-safety"]
   pull_request:
   workflow_dispatch:
 

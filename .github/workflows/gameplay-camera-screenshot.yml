@@ -1,6 +1,18 @@
 name: Gameplay camera screenshot
 
 on:
+  push:
+    branches: [main, "fix/player-spawn-ground-safety"]
+    paths:
+      - "scripts/player.gd"
+      - "scripts/main.gd"
+      - "scripts/animal.gd"
+      - "scripts/flora_fauna.gd"
+      - "scripts/inventory.gd"
+      - "scripts/capture_gameplay.gd"
+      - "scenes/**"
+      - "project.godot"
+      - ".github/workflows/gameplay-camera-screenshot.yml"
   pull_request:
     branches: [main]
     paths:
