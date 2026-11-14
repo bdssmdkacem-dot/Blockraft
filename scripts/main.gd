@@ -1059,8 +1059,8 @@ func _append_exposed_collision_faces(faces: PackedVector3Array, pos: Vector3i) -
 	var z := float(pos.z)
 	var count := 0
 	var kind := str(blocks.get(pos, ""))
-		var terrain_column := Vector2i(pos.x, pos.z)
-		var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
+	var terrain_column := Vector2i(pos.x, pos.z)
+	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
 	# Build only boundary faces. The smoothed render top and collision top use
 	# the same shared corner heights, so the player does not float or sink.
 	if not blocks.has(pos + Vector3i(1, 0, 0)) or str(blocks.get(pos + Vector3i(1, 0, 0), "")) == "water":
