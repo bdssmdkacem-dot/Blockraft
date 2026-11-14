@@ -218,12 +218,19 @@ func _run_checks() -> void:
     var rounded_animal_parts := 0
     for animal_node in animals:
         var animal := animal_node as CharacterBody3D
+        var animal_mesh_parts := 0
+        var rounded_mesh_parts := 0
         for part in animal.find_children("*", "MeshInstance3D", true, false):
-            if part is MeshInstance3D and (part as MeshInstance3D).mesh is SphereMesh:
-                rounded_animal_parts += 1
-                break
+            if not part is MeshInstance3D:
+                continue
+            animal_mesh_parts += 1
+            var mesh_part := part as MeshInstance3D
+            if mesh_part.mesh is SphereMesh and mesh_part.has_meta("animal_rounded_part"):
+                rounded_mesh_parts += 1
+        if animal_mesh_parts > 0 and float(rounded_mesh_parts) / float(animal_mesh_parts) >= 0.80:
+            rounded_animal_parts += 1
     if rounded_animal_parts < animals.size():
-        _fail("one or more animals are missing rounded core geometry: %d/%d" % [rounded_animal_parts, animals.size()], 78)
+        _fail("one or more animals still rely on box-heavy anatomy: rounded=%d/%d" % [rounded_animal_parts, animals.size()], 78)
         return
     # No spawned animal may begin inside a water voxel. Also exercise the
     # explicit water-avoidance steering path against a deterministic water cell.
