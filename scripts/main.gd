@@ -991,20 +991,26 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var c: Vector3 = face[3]
 		var d: Vector3 = face[4]
 		var normal: Vector3 = face[5]
-		var vertex_normal := normal
+		var smoothed_face := false
 		# Natural ground surface blocks share corner heights across neighbouring
 		# columns. Render and collision therefore agree on the same gentle slopes.
 		if smooth_surface:
-			if is_equal_approx(a.y, y + 1.0): a = _smooth_terrain_vertex(a)
-			if is_equal_approx(b.y, y + 1.0): b = _smooth_terrain_vertex(b)
-			if is_equal_approx(c.y, y + 1.0): c = _smooth_terrain_vertex(c)
-			if is_equal_approx(d.y, y + 1.0): d = _smooth_terrain_vertex(d)
-			var geometric_normal := (c - a).cross(b - a) + (d - a).cross(c - a)
-			if geometric_normal.length_squared() > 0.0001:
-				vertex_normal = -geometric_normal.normalized()
-		var base_index := vertices.size()
-		vertices.append_array(PackedVector3Array([a, b, c, d]))
-		normals.append_array(PackedVector3Array([vertex_normal, vertex_normal, vertex_normal, vertex_normal]))
+			if is_equal_approx(a.y, y + 1.0):
+				var next_a := _smooth_terrain_vertex(a)
+				smoothed_face = smoothed_face or not is_equal_approx(next_a.y, a.y)
+				a = next_a
+			if is_equal_approx(b.y, y + 1.0):
+				var next_b := _smooth_terrain_vertex(b)
+				smoothed_face = smoothed_face or not is_equal_approx(next_b.y, b.y)
+				b = next_b
+			if is_equal_approx(c.y, y + 1.0):
+				var next_c := _smooth_terrain_vertex(c)
+				smoothed_face = smoothed_face or not is_equal_approx(next_c.y, c.y)
+				c = next_c
+			if is_equal_approx(d.y, y + 1.0):
+				var next_d := _smooth_terrain_vertex(d)
+				smoothed_face = smoothed_face or not is_equal_approx(next_d.y, d.y)
+				d = next_d
 		# Deterministic per-voxel/per-face tinting adds subtle material breakup
 		# without texture lookups or extra draw calls. Top faces are slightly
 		# brighter; vertical rock faces remain naturally shaded.
@@ -1015,8 +1021,23 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		elif absf(normal.y) < 0.5:
 			variation *= 0.94
 		var tint := Color(variation, variation, variation, 1.0)
-		colors.append_array(PackedColorArray([tint, tint, tint, tint]))
-		indices.append_array(PackedInt32Array([base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]))
+		var base_index := vertices.size()
+		if smoothed_face:
+			# A warped quad is two non-coplanar triangles. Give each triangle its
+			# own three vertices/normals so the mesh winding test and lighting stay exact.
+			var first_normal := (c - a).cross(b - a)
+			var second_normal := (d - a).cross(c - a)
+			if first_normal.length_squared() < 0.0001 or second_normal.length_squared() < 0.0001:
+				continue
+			vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
+			normals.append_array(PackedVector3Array([-first_normal.normalized(), -first_normal.normalized(), -first_normal.normalized(), -second_normal.normalized(), -second_normal.normalized(), -second_normal.normalized()]))
+			colors.append_array(PackedColorArray([tint, tint, tint, tint, tint, tint]))
+			indices.append_array(PackedInt32Array([base_index, base_index + 1, base_index + 2, base_index + 3, base_index + 4, base_index + 5]))
+		else:
+			vertices.append_array(PackedVector3Array([a, b, c, d]))
+			normals.append_array(PackedVector3Array([normal, normal, normal, normal]))
+			colors.append_array(PackedColorArray([tint, tint, tint, tint]))
+			indices.append_array(PackedInt32Array([base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]))
 	group["vertices"] = vertices
 	group["normals"] = normals
 	group["colors"] = colors
