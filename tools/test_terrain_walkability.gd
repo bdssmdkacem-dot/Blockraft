@@ -49,7 +49,8 @@ func _run() -> void:
 			var water_key := Vector2i(p.x, p.z)
 			water_columns[water_key] = int(water_columns.get(water_key, 0)) + 1
 		var key := Vector2i(p.x, p.z)
-		if kind not in GROUND_KINDS:
+		var is_bridge_surface := kind == "wood" and p.x == 0 and ((p.y == 3 and p.z >= -20 and p.z <= -13) or (p.y == 2 and (p.z == -21 or p.z == -12)))
+		if kind not in GROUND_KINDS and not is_bridge_surface:
 			continue
 		if not surface_heights.has(key) or p.y > int(surface_heights[key]):
 			surface_heights[key] = p.y
@@ -97,6 +98,19 @@ func _run() -> void:
 	if bridge_deck_cells != 8 or str(blocks.get(Vector3i(0, 2, -21), "")) != "wood" or str(blocks.get(Vector3i(0, 2, -12), "")) != "wood":
 		_fail("Timber bridge deck or its one-block bank approaches are incomplete: deck=%d" % bridge_deck_cells)
 		return
+	for pad_x in range(-6, 7):
+		for pad_z in range(-6, 7):
+			var pad_distance := maxi(absi(pad_x), absi(pad_z))
+			var expected_pad_height := 4
+			if pad_distance == 3:
+				expected_pad_height = 3
+			elif pad_distance == 5:
+				expected_pad_height = 5
+			elif pad_distance >= 6:
+				expected_pad_height = 6
+			if int(surface_heights.get(Vector2i(pad_x, pad_z), -999)) != expected_pad_height:
+				_fail("Spawn landing pad/ramp ring is not level at (%d,%d)" % [pad_x, pad_z])
+				return
 
 	var annulus_min := 999
 	var annulus_max := -999
