@@ -349,26 +349,29 @@ func _generate_world() -> void:
 			elif dist < 7.5:
 				h = lerpf(4.0, h, smoothstep(3.5, 7.5, dist))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
-			# A visible tributary passes beyond the protected spawn pad so the
-			# normal third-person starting view has water, banks and a crossing.
+			# The forward scenic tributary gives the spawn view a visible crossing.
 			var scenic_river_d := absf(fz + 15.0 + sin(fx * 0.12) * 3.0)
 			if dist > 12.0 and dist < 48.0:
 				river_d = minf(river_d, scenic_river_d)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
-			var in_main := river_d < 1.55 and dist > 7.0
-			var in_trib := trib_d < 1.15 and dist > 11.0 and fz > 0.0
+			# A gently varying channel width avoids the ruler-straight, uniformly
+			# narrow trench. Width modulation is low-frequency and deterministic.
+			var main_river_width := 1.75 + sin(fx * 0.17 + fz * 0.08) * 0.28 + cos(fz * 0.21) * 0.12
+			var in_main := river_d < main_river_width and dist > 7.0
+			var in_trib := trib_d < 1.25 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
 				h = mini(h, 1.2)
 			else:
-				# Shape a broad, traversable bank rather than leaving a two-to-four
-				# block vertical cut beside the water surface. River floors remain
-				# unchanged; only dry approach columns are raised/lowered gradually.
+				# Shape each shoreline from its own water edge into a broad, gently
+				# rising bank. The inner edge follows the actual channel width.
 				var bank_distance := river_d
-				if dist > 11.0 and fz > 0.0:
-					bank_distance = minf(bank_distance, trib_d)
-				if bank_distance < 7.5 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(1.55, 7.5, bank_distance))
+				var bank_inner_width := main_river_width
+				if dist > 11.0 and fz > 0.0 and trib_d < bank_distance:
+					bank_distance = trib_d
+					bank_inner_width = 1.25
+				if bank_distance < 8.5 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 8.5, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
