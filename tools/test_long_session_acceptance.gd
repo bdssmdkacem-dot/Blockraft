@@ -31,7 +31,7 @@ func _run() -> void:
 	# This acceptance run must exercise a genuine first-generation world, not a
 	# restored user snapshot. The test runs in an isolated CI user-data directory.
 	for save_name in ["world_blocks.json", "world_blocks.json.bak"]:
-		var save_path := "user://" + save_name
+		var save_path: String = "user://" + str(save_name)
 		if FileAccess.file_exists(save_path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 	var scene := packed.instantiate() as Node3D
