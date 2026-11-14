@@ -191,7 +191,7 @@ func _setup_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.name = "WorldEnvironment"
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
+	env.background_mode = Environment.BG_SKY
 	env.background_color = Color("#7aa8d8")
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
@@ -204,9 +204,9 @@ func _setup_environment() -> void:
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color("#91a8b8")
-	env.ambient_light_energy = 0.31
+	env.ambient_light_energy = 0.36
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 0.90
+	env.tonemap_exposure = 0.94
 	env.fog_enabled = true
 	env.fog_light_color = Color("#9aabb0")
 	env.fog_density = 0.00034
@@ -218,7 +218,7 @@ func _setup_materials() -> void:
 	var colors := {
 		"grass": Color(0.15, 0.29, 0.16), "dirt": Color(0.39, 0.26, 0.16),
 		"stone": Color(0.48, 0.50, 0.52), "wood": Color(0.42, 0.25, 0.11),
-		"sand": Color(0.82, 0.72, 0.48), "water": Color(0.22, 0.48, 0.72),
+		"sand": Color(0.82, 0.72, 0.48), "water": Color(0.10, 0.39, 0.66),
 		"gravel": Color(0.55, 0.52, 0.48), "rock": Color(0.35, 0.36, 0.38),
 		"coal": Color(0.12, 0.12, 0.14), "iron": Color(0.72, 0.58, 0.48),
 		"gold": Color(0.92, 0.78, 0.22), "crystal": Color(0.45, 0.85, 0.95),
@@ -230,7 +230,12 @@ func _setup_materials() -> void:
 		mat.roughness = 0.92
 		if key == "water":
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			mat.albedo_color.a = 0.72
+			mat.albedo_color.a = 0.68
+			mat.roughness = 0.18
+			mat.metallic = 0.12
+			mat.emission_enabled = true
+			mat.emission = Color(0.025, 0.10, 0.16)
+			mat.emission_energy_multiplier = 0.07
 		block_materials[key] = mat
 
 func _clear_old_save() -> void:
@@ -302,7 +307,7 @@ func _generate_world() -> void:
 	var terrain_noise := FastNoiseLite.new()
 	terrain_noise.seed = 82417
 	terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	terrain_noise.frequency = 0.030
+	terrain_noise.frequency = 0.026
 	terrain_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	terrain_noise.fractal_octaves = 4
 	terrain_noise.fractal_gain = 0.48
@@ -312,16 +317,16 @@ func _generate_world() -> void:
 			var fz := float(z)
 			var dist := sqrt(fx * fx + fz * fz)
 			var h := 4.6
-			h += sin(fx * 0.032) * cos(fz * 0.032) * 1.65
-			h += sin(fx * 0.060 + 1.7) * 0.68 + cos(fz * 0.058 + 0.6) * 0.64
+			h += sin(fx * 0.032) * cos(fz * 0.032) * 1.35
+			h += sin(fx * 0.060 + 1.7) * 0.52 + cos(fz * 0.058 + 0.6) * 0.48
 			h += sin(fx * 0.12 + fz * 0.06) * 0.20
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
-			h += local_relief * 2.6
+			h += local_relief * 2.0
 			# Higher outer ridges are made from local noise peaks rather than one
 			# broad cosine band, giving the skyline varied saddles and rounded hills.
 			if dist > 22.0:
 				var ridge_peak := maxf(0.0, terrain_noise.get_noise_2d(fx * 0.72 + 91.0, fz * 0.72 - 47.0))
-				h += pow(ridge_peak, 1.65) * 2.8
+				h += pow(ridge_peak, 1.65) * 2.1
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
 			# Keep only the protected spawn pad level. Blend into the nearby
@@ -363,7 +368,7 @@ func _generate_world() -> void:
 			if edge_distance < 32.0:
 				h = lerpf(float(MIN_Y + 2), h, smoothstep(0.0, 32.0, edge_distance))
 			heights[Vector2i(x, z)] = {
-				"hf": clampf(h, float(MIN_Y + 2), 12.5),
+				"hf": clampf(h, float(MIN_Y + 2), 11.5),
 				"river": in_river or in_lake,
 				"river_d": mini(river_d if in_main else (trib_d if in_trib else 99.0), 99.0),
 				"lake": in_lake,
