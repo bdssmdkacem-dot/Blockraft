@@ -55,8 +55,8 @@ func _capture() -> void:
 		label.modulate = Color("#17232d")
 		animal.add_child(label)
 	var camera := Camera3D.new()
-	camera.position = Vector3(0, 3.4, 9.5)
-	camera.fov = 40.0
+	camera.position = Vector3(2.6, 3.3, 10.0)
+	camera.fov = 39.0
 	world.add_child(camera)
 	camera.look_at(Vector3(0, 0.9, 0), Vector3.UP)
 	camera.make_current()
