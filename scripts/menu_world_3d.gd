@@ -516,16 +516,16 @@ func _build_river_and_bridge() -> void:
 		for side in [-1.0, 1.0]:
 			var edge_x: float = center_x + float(side) * half_width
 			var ripple := sin(t * TAU * 3.0 + side) * 0.018
-			river_vertices.append(Vector3(edge_x, -0.035 + ripple, z))
+			river_vertices.append(Vector3(edge_x, 0.065 + ripple, z))
 			river_normals.append(Vector3.UP)
 			var depth_tint := 0.5 + 0.5 * sin(t * TAU * 2.0 + side * 0.35)
 			river_colors.append(Color(0.10 + depth_tint * 0.025, 0.42 + depth_tint * 0.08, 0.62 + depth_tint * 0.10, 0.94))
 			river_uvs.append(Vector2(0.0 if side < 0.0 else 1.0, t * 8.0))
 			# Each bank is a narrow, irregular sand-to-grass transition strip.
-			bank_vertices.append(Vector3(edge_x, 0.035, z))
+			bank_vertices.append(Vector3(edge_x, 0.055, z))
 			bank_normals.append(Vector3.UP)
 			bank_colors.append(Color("#c6ae7c"))
-			bank_vertices.append(Vector3(edge_x + side * (0.9 + sin(t * TAU * 1.7) * 0.12), 0.045, z))
+			bank_vertices.append(Vector3(edge_x + side * (0.9 + sin(t * TAU * 1.7) * 0.12), 0.025, z))
 			bank_normals.append(Vector3.UP)
 			bank_colors.append(Color("#6f9856"))
 		if segment < SEGMENTS:
