@@ -74,8 +74,35 @@ func _run_checks() -> void:
 	if village == null or village.get_child_count() < 120:
 		_fail("village has no layered gabled house silhouettes", 37)
 		return
-	if world.find_child("River", true, false) == null:
+	var river_root := world.find_child("River", true, false) as Node3D
+	if river_root == null:
 		_fail("menu panorama is missing its river and bridge", 38)
+		return
+	var river_surface := river_root.get_node_or_null("RiverSurface") as MeshInstance3D
+	var river_banks := river_root.get_node_or_null("RiverBanks") as MeshInstance3D
+	if river_surface == null or river_banks == null or not (river_surface.mesh is ArrayMesh) or not (river_banks.mesh is ArrayMesh):
+		_fail("menu river must use curved water and bank ArrayMesh surfaces", 54)
+		return
+	var river_arrays: Array = river_surface.mesh.surface_get_arrays(0)
+	var river_vertices: PackedVector3Array = river_arrays[Mesh.ARRAY_VERTEX]
+	var river_indices: PackedInt32Array = river_arrays[Mesh.ARRAY_INDEX]
+	if river_vertices.size() != 146 or river_indices.size() != 432:
+		_fail("menu river surface exceeds or misses its bounded ribbon geometry", 55)
+		return
+	var river_center_min := INF
+	var river_center_max := -INF
+	for vertex_index in range(0, river_vertices.size(), 2):
+		var center_x := (river_vertices[vertex_index].x + river_vertices[vertex_index + 1].x) * 0.5
+		river_center_min = minf(river_center_min, center_x)
+		river_center_max = maxf(river_center_max, center_x)
+	if river_center_max - river_center_min < 1.0:
+		_fail("menu river centerline is still a straight rectangular channel", 56)
+		return
+	var bank_arrays: Array = river_banks.mesh.surface_get_arrays(0)
+	var bank_vertices: PackedVector3Array = bank_arrays[Mesh.ARRAY_VERTEX]
+	var bank_indices: PackedInt32Array = bank_arrays[Mesh.ARRAY_INDEX]
+	if bank_vertices.size() != 292 or bank_indices.size() != 864:
+		_fail("menu river banks are missing their low-cost paired shoreline ribbons", 57)
 		return
 	# The former floating-island landmark was removed because it read as
 	# disconnected debris in the menu skyline. Keep the grounded mountain,
