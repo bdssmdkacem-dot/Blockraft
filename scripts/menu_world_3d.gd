@@ -514,7 +514,7 @@ func _build_river_and_bridge() -> void:
 		var center_x := 4.5 + sin((z - 3.0) * 0.065) * 1.35 + sin((z - 3.0) * 0.13) * 0.30
 		var half_width := 2.75 + sin(t * TAU * 1.15) * 0.22 + cos(t * TAU * 2.1) * 0.12
 		for side in [-1.0, 1.0]:
-			var edge_x := center_x + side * half_width
+			var edge_x: float = center_x + float(side) * half_width
 			var ripple := sin(t * TAU * 3.0 + side) * 0.018
 			river_vertices.append(Vector3(edge_x, -0.035 + ripple, z))
 			river_normals.append(Vector3.UP)
