@@ -491,33 +491,116 @@ func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, c
 	return spire
 
 func _build_river_and_bridge() -> void:
+	# The menu river is a single curved, vertex-coloured ribbon rather than a
+	# rectangular water slab. A modest segment count keeps this panorama cheap.
 	var water := Node3D.new()
 	water.name = "River"
 	add_child(water)
-	var wmat := _material(Color(0.10, 0.40, 0.62, 0.82), 0.10, 0.18)
-	wmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	wmat.emission_enabled = true
-	wmat.emission = Color(0.08, 0.2, 0.3)
-	wmat.emission_energy_multiplier = 0.05
+	const SEGMENTS := 72
+	var river_vertices := PackedVector3Array()
+	var river_normals := PackedVector3Array()
+	var river_colors := PackedColorArray()
+	var river_uvs := PackedVector2Array()
+	var river_indices := PackedInt32Array()
+	var bank_vertices := PackedVector3Array()
+	var bank_normals := PackedVector3Array()
+	var bank_colors := PackedColorArray()
+	var bank_indices := PackedInt32Array()
+	for segment in range(SEGMENTS + 1):
+		var t := float(segment) / float(SEGMENTS)
+		var z := 18.0 - t * 52.0
+		# Keep the bridge crossing centred while the channel bends gently away
+		# from it in both directions.
+		var center_x := 4.5 + sin((z - 3.0) * 0.065) * 1.35 + sin((z - 3.0) * 0.13) * 0.30
+		var half_width := 2.75 + sin(t * TAU * 1.15) * 0.22 + cos(t * TAU * 2.1) * 0.12
+		for side in [-1.0, 1.0]:
+			var edge_x := center_x + side * half_width
+			var ripple := sin(t * TAU * 3.0 + side) * 0.018
+			river_vertices.append(Vector3(edge_x, -0.035 + ripple, z))
+			river_normals.append(Vector3.UP)
+			var depth_tint := 0.5 + 0.5 * sin(t * TAU * 2.0 + side * 0.35)
+			river_colors.append(Color(0.10 + depth_tint * 0.025, 0.42 + depth_tint * 0.08, 0.62 + depth_tint * 0.10, 0.94))
+			river_uvs.append(Vector2(0.0 if side < 0.0 else 1.0, t * 8.0))
+			# Each bank is a narrow, irregular sand-to-grass transition strip.
+			bank_vertices.append(Vector3(edge_x, 0.035, z))
+			bank_normals.append(Vector3.UP)
+			bank_colors.append(Color("#c6ae7c"))
+			bank_vertices.append(Vector3(edge_x + side * (0.9 + sin(t * TAU * 1.7) * 0.12), 0.045, z))
+			bank_normals.append(Vector3.UP)
+			bank_colors.append(Color("#6f9856"))
+		if segment < SEGMENTS:
+			var a := segment * 2
+			var b := a + 1
+			var c := a + 2
+			var d := a + 3
+			river_indices.append_array(PackedInt32Array([a, b, c, b, d, c]))
+			# Two independent bank ribbons share one mesh and one draw call.
+			var bank_a := segment * 4
+			var bank_b := bank_a + 1
+			var bank_c := bank_a + 2
+			var bank_d := bank_a + 3
+			var bank_e := bank_a + 4
+			var bank_f := bank_a + 5
+			var bank_g := bank_a + 6
+			var bank_h := bank_a + 7
+			bank_indices.append_array(PackedInt32Array([bank_a, bank_c, bank_b, bank_b, bank_c, bank_d]))
+			bank_indices.append_array(PackedInt32Array([bank_e, bank_f, bank_g, bank_f, bank_h, bank_g]))
+	var river_arrays := []
+	river_arrays.resize(Mesh.ARRAY_MAX)
+	river_arrays[Mesh.ARRAY_VERTEX] = river_vertices
+	river_arrays[Mesh.ARRAY_NORMAL] = river_normals
+	river_arrays[Mesh.ARRAY_COLOR] = river_colors
+	river_arrays[Mesh.ARRAY_TEX_UV] = river_uvs
+	river_arrays[Mesh.ARRAY_INDEX] = river_indices
+	var river_mesh := ArrayMesh.new()
+	river_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, river_arrays)
 	var river := MeshInstance3D.new()
-	var rm := BoxMesh.new()
-	rm.size = Vector3(9.5, 0.28, 66)
-	river.mesh = rm
-	river.position = Vector3(4.5, -0.05, -8)
-	river.material_override = wmat
+	river.name = "RiverSurface"
+	river.mesh = river_mesh
+	var water_material := _material(Color.WHITE, 0.12, 0.16)
+	water_material.vertex_color_use_as_albedo = true
+	water_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	water_material.emission_enabled = true
+	water_material.emission = Color(0.035, 0.11, 0.16)
+	water_material.emission_energy_multiplier = 0.08
+	river.material_override = water_material
+	river.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	water.add_child(river)
-	_box(water, Vector3(-0.8, 0.15, -6), Vector3(1.6, 0.25, 50), Color("#d4c090"))
-	_box(water, Vector3(8.0, 0.15, -6), Vector3(1.6, 0.25, 50), Color("#d4c090"))
-	var foam := _material(Color(0.75, 0.9, 0.95, 0.45), 0.2)
-	foam.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	for z in [-15.0, -5.0, 5.0, 12.0]:
-		var f := MeshInstance3D.new()
-		var fm := BoxMesh.new()
-		fm.size = Vector3(6.5, 0.08, 1.2)
-		f.mesh = fm
-		f.position = Vector3(3.5, 0.12, z)
-		f.material_override = foam
-		water.add_child(f)
+	var bank_arrays := []
+	bank_arrays.resize(Mesh.ARRAY_MAX)
+	bank_arrays[Mesh.ARRAY_VERTEX] = bank_vertices
+	bank_arrays[Mesh.ARRAY_NORMAL] = bank_normals
+	bank_arrays[Mesh.ARRAY_COLOR] = bank_colors
+	bank_arrays[Mesh.ARRAY_INDEX] = bank_indices
+	var bank_mesh := ArrayMesh.new()
+	bank_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, bank_arrays)
+	var banks := MeshInstance3D.new()
+	banks.name = "RiverBanks"
+	banks.mesh = bank_mesh
+	var bank_material := _material(Color.WHITE, 0.96)
+	bank_material.vertex_color_use_as_albedo = true
+	bank_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	banks.material_override = bank_material
+	banks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	water.add_child(banks)
+	# Four low-profile foam streaks follow the channel instead of spanning it
+	# as full-width rectangular bars.
+	var foam_material := _material(Color(0.82, 0.94, 0.98, 0.42), 0.22)
+	foam_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	for foam_index in range(4):
+		var foam_t := 0.18 + float(foam_index) * 0.19
+		var foam_z := 18.0 - foam_t * 52.0
+		var foam_x := 4.5 + sin((foam_z - 3.0) * 0.065) * 1.35 + sin((foam_z - 3.0) * 0.13) * 0.30
+		var streak := MeshInstance3D.new()
+		var streak_mesh := BoxMesh.new()
+		streak_mesh.size = Vector3(0.9 + float(foam_index % 2) * 0.45, 0.025, 0.12)
+		streak.mesh = streak_mesh
+		streak.position = Vector3(foam_x + sin(float(foam_index)) * 0.55, 0.015, foam_z)
+		streak.rotation.y = deg_to_rad(-8.0 + float(foam_index) * 5.0)
+		streak.material_override = foam_material
+		streak.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		water.add_child(streak)
+	# The timber crossing remains aligned with the river's centreline.
 	_box(water, Vector3(1.2, 0.45, 3), Vector3(1.0, 0.18, 7), MAT_WOOD)
 	_box(water, Vector3(5.8, 0.45, 3), Vector3(1.0, 0.18, 7), MAT_WOOD)
 	_box(water, Vector3(3.5, 0.6, 3), Vector3(5.5, 0.14, 1.8), MAT_WOOD)
