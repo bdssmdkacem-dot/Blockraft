@@ -965,6 +965,8 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 	var x := float(pos.x)
 	var y := float(pos.y)
 	var z := float(pos.z)
+	var terrain_column := Vector2i(pos.x, pos.z)
+	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
 	var faces := [
 		[Vector3i(1, 0, 0), Vector3(x + 1, y, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y, z + 1), Vector3.RIGHT],
 		[Vector3i(-1, 0, 0), Vector3(x, y, z), Vector3(x, y, z + 1), Vector3(x, y + 1, z + 1), Vector3(x, y + 1, z), Vector3.LEFT],
@@ -989,20 +991,17 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var c: Vector3 = face[3]
 		var d: Vector3 = face[4]
 		var normal: Vector3 = face[5]
-		# Only natural ground surface blocks receive shared corner heights.
-		# Their top edges form continuous low-poly slopes while collision,
-		# mining and placement remain on the original voxel grid.
-		var terrain_column := Vector2i(pos.x, pos.z)
-		var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
+		var vertex_normal := normal
+		# Natural ground surface blocks share corner heights across neighbouring
+		# columns. Render and collision therefore agree on the same gentle slopes.
 		if smooth_surface:
 			if is_equal_approx(a.y, y + 1.0): a = _smooth_terrain_vertex(a)
 			if is_equal_approx(b.y, y + 1.0): b = _smooth_terrain_vertex(b)
 			if is_equal_approx(c.y, y + 1.0): c = _smooth_terrain_vertex(c)
 			if is_equal_approx(d.y, y + 1.0): d = _smooth_terrain_vertex(d)
-		# Store four shared quad vertices and six indices instead of six
-		# duplicated vertices. Recompute outward normals after slope shaping.
-		var geometric_normal := (c - a).cross(b - a) + (d - a).cross(c - a)
-		var vertex_normal := -geometric_normal.normalized() if geometric_normal.length_squared() > 0.0001 else normal
+			var geometric_normal := (c - a).cross(b - a) + (d - a).cross(c - a)
+			if geometric_normal.length_squared() > 0.0001:
+				vertex_normal = -geometric_normal.normalized()
 		var base_index := vertices.size()
 		vertices.append_array(PackedVector3Array([a, b, c, d]))
 		normals.append_array(PackedVector3Array([vertex_normal, vertex_normal, vertex_normal, vertex_normal]))
