@@ -49,7 +49,8 @@ func _run() -> void:
 			var water_key := Vector2i(p.x, p.z)
 			water_columns[water_key] = int(water_columns.get(water_key, 0)) + 1
 		var key := Vector2i(p.x, p.z)
-		if kind not in GROUND_KINDS:
+		var is_bridge_approach := kind == "wood" and p.x == 0 and p.y == 2 and (p.z == -21 or p.z == -12)
+		if kind not in GROUND_KINDS and not is_bridge_approach:
 			continue
 		if not surface_heights.has(key) or p.y > int(surface_heights[key]):
 			surface_heights[key] = p.y
