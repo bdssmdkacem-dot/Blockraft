@@ -361,17 +361,49 @@ func _build_sky_clouds() -> void:
 			clouds.add_child(puff)
 
 func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
+	# Faceted multi-ring mountain mesh: broad shoulders, broken ridge lines and
+	# irregular rock facets replace the old straight-sided cone silhouette.
 	var spire := MeshInstance3D.new()
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius * 0.40
-	mesh.bottom_radius = radius
-	mesh.height = height
-	mesh.radial_segments = 12
-	mesh.rings = 4
+	spire.name = "FacetedLandform"
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	const SEGMENTS := 18
+	var ring_radii := [1.0, 0.84, 0.62, 0.39, 0.17]
+	var ring_heights := [0.0, 0.20, 0.46, 0.73, 1.0]
+	for ring in range(ring_radii.size() - 1):
+		for segment in range(SEGMENTS):
+			var angle_a := TAU * float(segment) / float(SEGMENTS)
+			var angle_b := TAU * float(segment + 1) / float(SEGMENTS)
+			var jitter_a := 1.0 + sin(float(segment) * 4.13 + position.x * 0.17) * 0.055
+			var jitter_b := 1.0 + sin(float(segment + 1) * 4.13 + position.x * 0.17) * 0.055
+			var lower_a := Vector3(cos(angle_a) * radius * ring_radii[ring] * jitter_a, height * ring_heights[ring], sin(angle_a) * radius * ring_radii[ring] * jitter_a)
+			var lower_b := Vector3(cos(angle_b) * radius * ring_radii[ring] * jitter_b, height * ring_heights[ring], sin(angle_b) * radius * ring_radii[ring] * jitter_b)
+			var upper_a := Vector3(cos(angle_a) * radius * ring_radii[ring + 1] * jitter_a, height * ring_heights[ring + 1], sin(angle_a) * radius * ring_radii[ring + 1] * jitter_a)
+			var upper_b := Vector3(cos(angle_b) * radius * ring_radii[ring + 1] * jitter_b, height * ring_heights[ring + 1], sin(angle_b) * radius * ring_radii[ring + 1] * jitter_b)
+			var facet := color.darkened(float((segment + ring * 3) % 5) * 0.035)
+			if segment % 6 == 0:
+				facet = facet.lightened(0.10)
+			surface.set_color(facet)
+			surface.add_vertex(lower_a)
+			surface.set_color(facet.darkened(0.025))
+			surface.add_vertex(lower_b)
+			surface.set_color(facet.lightened(0.035))
+			surface.add_vertex(upper_b)
+			surface.set_color(facet)
+			surface.add_vertex(lower_a)
+			surface.set_color(facet.lightened(0.035))
+			surface.add_vertex(upper_b)
+			surface.set_color(facet.lightened(0.06))
+			surface.add_vertex(upper_a)
+	var mesh := surface.commit()
 	spire.mesh = mesh
 	spire.position = position
 	spire.rotation.y = PI * 0.25
-	spire.material_override = _material(color, 0.62)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color.WHITE
+	material.vertex_color_use_as_albedo = true
+	material.roughness = 0.94
+	spire.material_override = material
 	parent.add_child(spire)
 	return spire
 
