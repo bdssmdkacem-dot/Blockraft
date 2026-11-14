@@ -352,7 +352,7 @@ func _build_mesh(data: Dictionary) -> void:
 	_animated_wings.clear()
 	_tail_mesh = null
 	var leg_y := 0.12 * s if kind == Kind.CHICKEN else (0.14 * s if kind == Kind.FOX else (0.20 * s if kind == Kind.COW else 0.16 * s))
-	var leg_height := 0.22 * s if kind == Kind.CHICKEN else (0.26 * s if kind == Kind.FOX else (0.40 * s if kind == Kind.COW else 0.28 * s))
+	var leg_height := 0.22 * s if kind == Kind.CHICKEN else (0.26 * s if kind == Kind.FOX else (0.40 * s if kind == Kind.COW else 0.30 * s))
 	for part in _body_root.get_children():
 		if not (part is MeshInstance3D) or not part.has_meta("animal_part_size"):
 			continue
