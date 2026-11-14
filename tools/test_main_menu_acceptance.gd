@@ -107,6 +107,21 @@ func _run_checks() -> void:
 	if rounded_peaks < 9:
 		_fail("mountain backdrop is missing faceted multi-ring ridge meshes", 43)
 		return
+	var connected_ridges := world.find_child("ConnectedMountainRidges", true, false) as Node3D
+	if connected_ridges == null or connected_ridges.get_child_count() != 3:
+		_fail("menu panorama is missing three connected alpine ridgelines", 50)
+		return
+	for ridge_part in connected_ridges.get_children():
+		if not ridge_part is MeshInstance3D or not ((ridge_part as MeshInstance3D).mesh is ArrayMesh):
+			_fail("connected alpine ridge is not a generated mesh", 51)
+			return
+		var ridge_arrays: Array = (ridge_part as MeshInstance3D).mesh.surface_get_arrays(0)
+		var ridge_vertices: PackedVector3Array = ridge_arrays[Mesh.ARRAY_VERTEX]
+		var ridge_normals: PackedVector3Array = ridge_arrays[Mesh.ARRAY_NORMAL]
+		var ridge_colors: PackedColorArray = ridge_arrays[Mesh.ARRAY_COLOR]
+		if ridge_vertices.size() < 300 or ridge_normals.size() != ridge_vertices.size() or ridge_colors.size() != ridge_vertices.size():
+			_fail("connected alpine ridge lacks complete vertex, normal or colour buffers", 52)
+			return
 	var cloud_root := world.find_child("SkyClouds", true, false) as Node3D
 	if cloud_root == null or cloud_root.get_child_count() < 15:
 		_fail("menu sky does not contain the complete soft-cloud layer", 46)
@@ -121,6 +136,9 @@ func _run_checks() -> void:
 		return
 	if castle.scale.x > 1.15:
 		_fail("castle scale clips the upper landmark at menu framing", 44)
+		return
+	if castle.get_child_count() < 180:
+		_fail("castle is missing its expanded multi-wing architecture pass", 53)
 		return
 
 	var strip := scene.find_child("FeatureStrip", true, false) as HBoxContainer
