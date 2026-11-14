@@ -547,37 +547,9 @@ func _generate_world() -> void:
 			info["h"] = int(integer_updates[key])
 			heights[key] = info
 
-	# A pairwise in-place pass guarantees the final integer grid cannot retain
-	# a two-block dry-land edge after local constraints converge or conflict.
-	# It only lowers the higher side, preserving river cuts and avoiding new
-	# raised shelves. Repeat until no adjacent dry pair violates the limit.
-	for _edge_pass in range(32):
-		var changed := false
-		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
-			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
-				var key := Vector2i(x, z)
-				var info: Dictionary = heights[key]
-				if bool(info["river"]) and int(info["h"]) < 2:
-					continue
-				for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
-					var neighbor_key: Vector2i = key + offset
-					if not heights.has(neighbor_key):
-						continue
-					var neighbor: Dictionary = heights[neighbor_key]
-					if bool(neighbor["river"]) and int(neighbor["h"]) < 2:
-						continue
-					var current_height := int(info["h"])
-					var neighbor_height := int(neighbor["h"])
-					if current_height > neighbor_height + 1:
-						info["h"] = neighbor_height + 1
-						heights[key] = info
-						changed = true
-					elif neighbor_height > current_height + 1:
-						neighbor["h"] = current_height + 1
-						heights[neighbor_key] = neighbor
-						changed = true
-		if not changed:
-			break
+	# The bounded float-slope and simultaneous integer passes above are the
+	# single source of truth for walkable one-block terrain transitions. Avoid
+	# the former 32-pass in-place lowering sweep, which flattened distant ridges.
 
 	var voxel_fill_started_usec := Time.get_ticks_usec()
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
