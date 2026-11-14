@@ -609,7 +609,7 @@ func _generate_world() -> void:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			var camera_clearance := Vector2(float(x), float(z)).length()
 			var tree_edge_clearance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
-			var opening_camera_corridor: bool = z < -6 and z > -42 and abs(x) < 28
+			var opening_camera_corridor: bool = z < -4 and z > -40 and abs(x) < 30
 			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5 and camera_clearance <= 30.0 and tree_edge_clearance > 16.0 and not opening_camera_corridor:
 				# Keep tree crowns grounded within the visible playable basin.
 				# Trees on the far perimeter or central horizon were technically
