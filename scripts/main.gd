@@ -723,14 +723,13 @@ func _clear_spawn_camera_corridor() -> void:
 				if kind in ["wood", "leaves"]:
 					blocks.erase(pos)
 					near_foliage_removed += 1
-	# Keep the bridge approach readable without carving away the distant
-	# forest: a tapered 5-to-9-block corridor is enough for the camera.
+	# Keep a broad, readable opening toward the river. Remove only tree wood
+	# and leaves above the terrain; the low footbridge deck at y=3..4 remains.
+	# Clearing the complete canopy envelope also prevents trunk tips or
+	# overhanging leaves from appearing as isolated blocks on the horizon.
 	var forward_removed := 0
-	for x in range(-10, 11):
-		for z in range(-28, -8):
-			var view_half_width := lerpf(2.5, 4.5, inverse_lerp(-9.0, -28.0, float(z)))
-			if absf(float(x) - 0.5) > view_half_width:
-				continue
+	for x in range(-28, 29):
+		for z in range(-42, -5):
 			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
 				var kind := str(blocks.get(pos, ""))
