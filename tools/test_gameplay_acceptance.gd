@@ -31,6 +31,19 @@ func _run_checks() -> void:
     if scene.loaded_chunks.size() < 5:
         _fail("nearby world chunks did not stream in", 15)
         return
+    var surface_cache: Dictionary = scene.get("terrain_surface_heights")
+    var corner_cache: Dictionary = scene.get("terrain_corner_heights")
+    if surface_cache.size() < 10000 or corner_cache.size() < 10000:
+        _fail("smoothed terrain surface/corner cache is incomplete: surfaces=%d corners=%d" % [surface_cache.size(), corner_cache.size()], 79)
+        return
+    var fractional_terrain_corners := 0
+    for corner_height in corner_cache.values():
+        if not is_equal_approx(float(corner_height), roundf(float(corner_height))):
+            fractional_terrain_corners += 1
+    if fractional_terrain_corners < 100:
+        _fail("terrain renderer did not create enough blended low-poly slope corners: %d" % fractional_terrain_corners, 80)
+        return
+    print("TERRAIN_SMOOTH_MESH_PASS: cached surface columns=", surface_cache.size(), " shared corners=", corner_cache.size(), " fractional slope corners=", fractional_terrain_corners)
 
     # Every spawned plant must sit on a continuous, exposed terrain column.
     var flora := scene.get_node_or_null("FloraFauna")
@@ -124,7 +137,7 @@ func _run_checks() -> void:
             _fail("indexed voxel surface references a vertex outside its buffer", 66)
             return
         var geometric_normal := (face_test_vertices[ib] - face_test_vertices[ia]).cross(face_test_vertices[ic] - face_test_vertices[ia])
-        if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(face_test_normals[ia]) > -0.99:
+        if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(face_test_normals[ia]) > -0.90:
             _fail("indexed voxel triangle winding disagrees with outward normals", 67)
             return
     if old_origin == null:
@@ -178,7 +191,7 @@ func _run_checks() -> void:
                         _fail("chunk %s index buffer references an invalid vertex" % str(key), 66)
                         return
                     var geometric_normal := (mesh_vertices[ib] - mesh_vertices[ia]).cross(mesh_vertices[ic] - mesh_vertices[ia])
-                    if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(mesh_normals[ia]) > -0.99:
+                    if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(mesh_normals[ia]) > -0.90:
                         _fail("chunk %s indexed surface winding disagrees with outward normals" % str(key), 65)
                         return
                 var surface_material := child.material_override as StandardMaterial3D
