@@ -992,7 +992,8 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		# Only natural ground surface blocks receive shared corner heights.
 		# Their top edges form continuous low-poly slopes while collision,
 		# mining and placement remain on the original voxel grid.
-		var smooth_surface := kind in TERRAIN_SURFACE_KINDS and not blocks.has(pos + Vector3i.UP)
+		var terrain_column := Vector2i(pos.x, pos.z)
+		var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
 		if smooth_surface:
 			if is_equal_approx(a.y, y + 1.0): a = _smooth_terrain_vertex(a)
 			if is_equal_approx(b.y, y + 1.0): b = _smooth_terrain_vertex(b)
@@ -1058,7 +1059,8 @@ func _append_exposed_collision_faces(faces: PackedVector3Array, pos: Vector3i) -
 	var z := float(pos.z)
 	var count := 0
 	var kind := str(blocks.get(pos, ""))
-	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and not blocks.has(pos + Vector3i.UP)
+		var terrain_column := Vector2i(pos.x, pos.z)
+		var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
 	# Build only boundary faces. The smoothed render top and collision top use
 	# the same shared corner heights, so the player does not float or sink.
 	if not blocks.has(pos + Vector3i(1, 0, 0)) or str(blocks.get(pos + Vector3i(1, 0, 0), "")) == "water":
