@@ -165,13 +165,38 @@ func _run() -> void:
 		_fail("generated terrain still has %d two-cell rises sharper than one voxel; worst difference is %d blocks" % [steep_two_cell_edges, worst_two_cell_step])
 		return
 
+	# A one-block voxel rise should be spread over at least three horizontal
+	# cells, not appear as a short staircase beside the player's walking route.
+	var worst_three_cell_step := 0
+	var steep_three_cell_edges := 0
+	var three_cell_samples: Array[String] = []
+	for key in surface_heights:
+		if water_columns.has(key):
+			continue
+		var height := int(surface_heights[key])
+		for offset in [Vector2i(3, 0), Vector2i(0, 3)]:
+			var neighbor_key: Vector2i = key + offset
+			if not surface_heights.has(neighbor_key) or water_columns.has(neighbor_key):
+				continue
+			var step := absi(height - int(surface_heights[neighbor_key]))
+			worst_three_cell_step = maxi(worst_three_cell_step, step)
+			if step > 1:
+				steep_three_cell_edges += 1
+				if three_cell_samples.size() < 16:
+					three_cell_samples.append("%s=%d -> %s=%d" % [key, height, neighbor_key, int(surface_heights[neighbor_key])])
+	if steep_three_cell_edges > 0:
+		push_error("Three-cell terrain edge samples: " + str(three_cell_samples))
+		_fail("generated terrain still has %d three-cell rises sharper than one voxel; worst difference is %d blocks" % [steep_three_cell_edges, worst_three_cell_step])
+		return
+	print("TERRAIN_SLOPE_SPACING_PASS max_three_cell_height_step=", worst_three_cell_step)
+
 	# After the 0.45-block slope relaxation, adjacent dry ground must round to
 	# at most one voxel step; any two-block edge is a real traversal defect.
 	if worst_step > 1 or steep_edges > 0:
 		push_error("Terrain edge samples: " + str(samples))
 		_fail("Generated terrain still contains %d abrupt edges; worst adjacent height difference is %d blocks at %s" % [steep_edges, worst_step, worst_edge])
 		return
-	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " max_two_cell_height_step=", worst_two_cell_step, " two_block_edges=", steep_edges, " hill_relief=", annulus_max - annulus_min, " distinct_hill_heights=", annulus_heights.size())
+	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " max_two_cell_height_step=", worst_two_cell_step, " max_three_cell_height_step=", worst_three_cell_step, " two_block_edges=", steep_edges, " hill_relief=", annulus_max - annulus_min, " distinct_hill_heights=", annulus_heights.size())
 	quit(0)
 
 func _fail(message: String) -> void:

@@ -528,9 +528,9 @@ func _generate_world() -> void:
 			info["h"] = int(integer_updates[key])
 			heights[key] = info
 
-	# A bounded in-place gradient pass constrains both adjacent columns and
-	# columns two cells apart. This spreads each voxel-height change over at
-	# least two horizontal cells instead of leaving long one-block risers.
+	# A bounded in-place gradient pass constrains dry columns one, two and
+	# three cells apart. A one-voxel rise therefore occupies at least three
+	# horizontal cells, reducing broad, abrupt terraces in the rendered world.
 	# It only lowers the higher side, preserving river cuts and avoiding shelves.
 	for _edge_pass in range(64):
 		var changed := false
@@ -540,7 +540,7 @@ func _generate_world() -> void:
 				var info: Dictionary = heights[key]
 				if bool(info["river"]):
 					continue
-				for offset in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(2, 0), Vector2i(0, 2)]:
+				for offset in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(2, 0), Vector2i(0, 2), Vector2i(3, 0), Vector2i(0, 3)]:
 					var neighbor_key: Vector2i = key + offset
 					if not heights.has(neighbor_key):
 						continue
