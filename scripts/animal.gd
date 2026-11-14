@@ -222,6 +222,7 @@ func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, rough
 	mi.position = pos
 	mi.scale = size
 	mi.set_meta("animal_rounded_part", true)
+	mi.set_meta("animal_part_size", size)
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.roughness = roughness
