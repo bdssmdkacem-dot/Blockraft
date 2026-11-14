@@ -51,6 +51,26 @@ func _run() -> void:
 		_fail("Too few terrain columns were generated: %d" % surface_heights.size())
 		return
 
+	# The forward river must be a real, modestly varied channel rather than a
+	# one-cell slit or an oversized flooded plain. Sample its visible approach.
+	var river_rows := 0
+	var widest_river_run := 0
+	for z in range(-22, -10):
+		var current_run := 0
+		var row_widest := 0
+		for x in range(-12, 13):
+			if water_columns.has(Vector2i(x, z)):
+				current_run += 1
+				row_widest = maxi(row_widest, current_run)
+			else:
+				current_run = 0
+		if row_widest > 0:
+			river_rows += 1
+			widest_river_run = maxi(widest_river_run, row_widest)
+	if river_rows < 5 or widest_river_run < 3 or widest_river_run > 7:
+		_fail("Forward river channel is not a traversable, varied-width stream: wet_rows=%d widest_run=%d" % [river_rows, widest_river_run])
+		return
+
 	var annulus_min := 999
 	var annulus_max := -999
 	var annulus_heights: Dictionary = {}
@@ -95,7 +115,7 @@ func _run() -> void:
 		push_error("Terrain edge samples: " + str(samples))
 		_fail("Generated terrain still contains %d abrupt edges; worst adjacent height difference is %d blocks at %s" % [steep_edges, worst_step, worst_edge])
 		return
-	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " two_block_edges=", steep_edges, " hill_relief=", annulus_max - annulus_min, " distinct_hill_heights=", annulus_heights.size())
+	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " two_block_edges=", steep_edges, " hill_relief=", annulus_max - annulus_min, " distinct_hill_heights=", annulus_heights.size(), " river_wet_rows=", river_rows, " river_widest_run=", widest_river_run)
 	quit(0)
 
 func _fail(message: String) -> void:
