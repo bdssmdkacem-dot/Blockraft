@@ -26,6 +26,7 @@ func _ready() -> void:
 	_setup_lighting()
 	_setup_camera()
 	_build_landscape()
+	_build_terrain_art_pass()
 	_build_horizon_layers()
 	_build_mountain_backdrop()
 	_build_sunset_disc()
@@ -172,6 +173,83 @@ func _build_landscape() -> void:
 		_box(ground, Vector3(ox, 0.2, oz), Vector3(6.0 + (i % 3), 0.4, 5.0), MAT_GRASS_LIGHT if i % 2 == 0 else MAT_GRASS)
 	_box(ground, Vector3(-10, 1.2, 4), Vector3(8, 2.5, 6), MAT_GRASS)
 	_box(ground, Vector3(-8, 2.0, 3), Vector3(4, 1.2, 3), MAT_GRASS_LIGHT)
+
+func _build_terrain_art_pass() -> void:
+	# A vertex-coloured rolling terrain mesh replaces the broad flat green menu slab.
+	# It stays deliberately low relief so landmarks remain grounded and the river
+	# and village retain their established composition.
+	var terrain := MeshInstance3D.new()
+	terrain.name = "TerrainArtPass"
+	var vertices := PackedVector3Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	const GRID := 42
+	const EXTENT := 40.0
+	for z in range(GRID + 1):
+		for x in range(GRID + 1):
+			var px := -EXTENT + float(x) * (EXTENT * 2.0 / float(GRID))
+			var pz := -EXTENT + float(z) * (EXTENT * 2.0 / float(GRID))
+			var rolling := sin(px * 0.19 + pz * 0.08) * 0.12 + cos(pz * 0.16 - px * 0.05) * 0.10
+			var bank := exp(-pow((px - 4.5) / 7.5, 2.0) - pow((pz + 8.0) / 25.0, 2.0)) * 0.13
+			vertices.append(Vector3(px, 0.025 + rolling + bank, pz))
+			var variation := sin(px * 0.31) * cos(pz * 0.27)
+			var base := Color("#3b7545").lerp(Color("#5c914c"), clampf(0.5 + variation * 0.28, 0.0, 1.0))
+			if absf(pz - (sin(px * 0.11) * 8.0 + cos(px * 0.04) * 3.0)) < 5.0:
+				base = base.lerp(Color("#7e9460"), 0.24)
+			colors.append(base)
+	for z in range(GRID):
+		for x in range(GRID):
+			var a := z * (GRID + 1) + x
+			var b := a + 1
+			var d := a + GRID + 1
+			var e := d + 1
+			indices.append_array(PackedInt32Array([a, d, b, b, d, e]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	terrain.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 1.0
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	terrain.material_override = mat
+	terrain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(terrain)
+
+	# A layered dirt-and-stone footpath ties the village to the bridge.
+	var path := Node3D.new()
+	path.name = "VillageFootpath"
+	path.position = Vector3(13.0, 0.18, -3.5)
+	path.rotation.y = deg_to_rad(-8.0)
+	add_child(path)
+	for i in range(13):
+		var z := float(i) * 1.25
+		var width := 1.35 + sin(float(i) * 0.55) * 0.18
+		_box(path, Vector3(sin(float(i) * 0.22) * 0.42, 0.0, z), Vector3(width, 0.10, 1.05), Color("#a98a62") if i % 3 else Color("#c1a477"))
+		if i % 2 == 0:
+			_box(path, Vector3(-0.9 + sin(float(i)) * 0.2, 0.04, z + 0.28), Vector3(0.24, 0.12, 0.30), Color("#8a8a78"))
+
+	# Low rock clusters and ground cover provide scale transitions at the meadow edge.
+	for i in range(18):
+		var x := -25.0 + float((i * 17) % 47)
+		var z := 4.0 + float((i * 11) % 24)
+		if absf(x + 9.0) < 4.0 and z > 10.0:
+			continue
+		var rock := MeshInstance3D.new()
+		var rock_mesh := SphereMesh.new()
+		rock_mesh.radius = 0.5
+		rock_mesh.height = 0.72
+		rock_mesh.radial_segments = 8
+		rock_mesh.rings = 5
+		rock.mesh = rock_mesh
+		rock.position = Vector3(x, 0.18, z)
+		rock.scale = Vector3(0.55 + float(i % 3) * 0.16, 0.55, 0.7 + float(i % 2) * 0.18)
+		rock.material_override = _material(Color("#68736c") if i % 2 == 0 else Color("#817e70"), 0.96)
+		add_child(rock)
 
 func _build_horizon_layers() -> void:
 	# Keep the horizon low and broken: the old continuous block wall hid the
