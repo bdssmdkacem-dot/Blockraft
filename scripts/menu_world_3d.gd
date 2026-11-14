@@ -34,6 +34,7 @@ func _ready() -> void:
 	_build_river_and_bridge()
 	_build_village()
 	_build_village_details()
+	_build_village_architecture_pass()
 	_build_forests()
 	# Floating islands were removed: they read as disconnected debris in the menu skyline.
 	_build_gatehouse_castle()
@@ -452,6 +453,48 @@ func _build_village_details() -> void:
 		_box(details, Vector3(x, 3.2, -12.0), Vector3(1.05, 0.85, 1.05), MAT_LEAF_LIGHT)
 		_box(details, Vector3(x + 1.25, 1.3, -5.0), Vector3(0.08, 1.2, 0.08), MAT_WOOD)
 		_box(details, Vector3(x + 1.25, 1.85, -5.0), Vector3(0.34, 0.24, 0.12), Color("#ffd58a"), 0.25)
+
+func _build_village_architecture_pass() -> void:
+	var village := get_node_or_null("Village") as Node3D
+	if village == null:
+		return
+	var stone := Color("#8c8875")
+	var trim := Color("#e0c99d")
+	var dark_wood := Color("#543a2a")
+	for i in range(9):
+		var hx := 8.0 + float(i) * 2.5
+		var hz := -2.0 - float(i % 3) * 2.8
+		# Raised stone plinth, timber framing and window surrounds give each
+		# cottage a readable base-to-roof architectural rhythm.
+		_box(village, Vector3(hx, 0.12, hz), Vector3(2.42, 0.24, 2.22), stone)
+		for side_x in [-0.92, 0.92]:
+			_box(village, Vector3(hx + side_x, 1.02, hz + 1.04), Vector3(0.10, 1.72, 0.12), dark_wood)
+			_box(village, Vector3(hx + side_x, 1.42, hz + 1.13), Vector3(0.52, 0.08, 0.08), trim)
+		_box(village, Vector3(hx, 0.36, hz + 1.16), Vector3(0.92, 0.12, 0.08), trim)
+		_box(village, Vector3(hx - 0.48, 1.45, hz + 1.19), Vector3(0.055, 0.48, 0.06), dark_wood)
+		_box(village, Vector3(hx - 0.48, 1.45, hz + 1.20), Vector3(0.38, 0.055, 0.06), dark_wood)
+		# Roof eaves and alternating dormers break the repeated roof silhouette.
+		_box(village, Vector3(hx, 2.08, hz - 1.20), Vector3(2.72, 0.12, 0.12), Color("#6e4536"))
+		if i % 3 == 0:
+			_box(village, Vector3(hx, 2.58, hz - 0.35), Vector3(0.62, 0.46, 0.46), Color("#d4bd91"))
+			_box(village, Vector3(hx, 2.84, hz - 0.35), Vector3(0.82, 0.12, 0.62), Color("#8e4c39"))
+		if i % 3 == 1:
+			# Small timber balcony and flower box distinguish the middle cottages.
+			_box(village, Vector3(hx, 1.98, hz + 1.28), Vector3(1.25, 0.12, 0.36), dark_wood)
+			for rail_x in [-0.55, -0.18, 0.18, 0.55]:
+				_box(village, Vector3(hx + rail_x, 2.20, hz + 1.38), Vector3(0.055, 0.42, 0.055), trim)
+			_box(village, Vector3(hx, 2.39, hz + 1.38), Vector3(1.28, 0.06, 0.06), trim)
+		# Warm inset lanterns are mounted below the eaves, not floating beside walls.
+		var lantern := MeshInstance3D.new()
+		var lantern_mesh := SphereMesh.new()
+		lantern_mesh.radius = 0.13
+		lantern_mesh.height = 0.26
+		lantern_mesh.radial_segments = 8
+		lantern_mesh.rings = 5
+		lantern.mesh = lantern_mesh
+		lantern.position = Vector3(hx + 0.82, 1.55, hz + 1.20)
+		lantern.material_override = _emissive(Color("#ffd28a"), 0.35)
+		village.add_child(lantern)
 
 func _build_forests() -> void:
 	var forest := Node3D.new()
