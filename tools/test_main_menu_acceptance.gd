@@ -60,8 +60,18 @@ func _run_checks() -> void:
 	if world_environment.environment.tonemap_exposure > 0.9 or world_environment.environment.ambient_light_energy > 0.32:
 		_fail("menu lighting exceeds the visual exposure budget", 36)
 		return
+	var terrain_art := world.find_child("TerrainArtPass", true, false) as MeshInstance3D
+	if terrain_art == null or not (terrain_art.mesh is ArrayMesh):
+		_fail("menu panorama is missing the vertex-coloured rolling terrain art pass", 48)
+		return
+	var terrain_arrays: Array = terrain_art.mesh.surface_get_arrays(0)
+	var terrain_vertices: PackedVector3Array = terrain_arrays[Mesh.ARRAY_VERTEX]
+	var terrain_colors: PackedColorArray = terrain_arrays[Mesh.ARRAY_COLOR]
+	if terrain_vertices.size() < 1500 or terrain_colors.size() != terrain_vertices.size():
+		_fail("menu terrain art pass lacks dense vertex-colour detail", 49)
+		return
 	var village := world.find_child("Village", true, false) as Node3D
-	if village == null or village.get_child_count() < 35:
+	if village == null or village.get_child_count() < 120:
 		_fail("village has no layered gabled house silhouettes", 37)
 		return
 	if world.find_child("River", true, false) == null:
