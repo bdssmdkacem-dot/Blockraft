@@ -28,7 +28,14 @@ func _run() -> void:
 	if packed == null:
 		_fail("gameplay scene could not load", 2)
 		return
+	# This acceptance run must exercise a genuine first-generation world, not a
+	# restored user snapshot. The test runs in an isolated CI user-data directory.
+	for save_name in ["world_blocks.json", "world_blocks.json.bak"]:
+		var save_path := "user://" + save_name
+		if FileAccess.file_exists(save_path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 	var scene := packed.instantiate() as Node3D
+	var cold_start_started_usec := Time.get_ticks_usec()
 	root.add_child(scene)
 	var player := scene.get_node_or_null("Player") as CharacterBody3D
 	if player == null:
@@ -43,6 +50,21 @@ func _run() -> void:
 	if not ready:
 		_fail("world did not initialize before stress route", 4)
 		return
+	var cold_start_ms := float(Time.get_ticks_usec() - cold_start_started_usec) / 1000.0
+	var generation_ms := float(scene.world_generation_ms)
+	var heightfield_ms := float(scene.world_generation_heightfield_ms)
+	var voxel_fill_ms := float(scene.world_generation_voxel_fill_ms)
+	if generation_ms <= 0.0 or scene.world_generation_block_count != scene.blocks.size():
+		_fail("fresh world generation metrics are missing or inconsistent: generation_ms=%.1f generated_blocks=%d live_blocks=%d" % [generation_ms, int(scene.world_generation_block_count), scene.blocks.size()], 13)
+		return
+	if heightfield_ms <= 0.0 or voxel_fill_ms <= 0.0 or absf(generation_ms - heightfield_ms - voxel_fill_ms) > maxf(5.0, generation_ms * 0.10):
+		_fail("world generation stage timings are invalid: total=%.1f heightfield=%.1f voxel_fill=%.1f" % [generation_ms, heightfield_ms, voxel_fill_ms], 14)
+		return
+	print("WORLD_COLD_START_METRICS total_ready_ms=", snappedf(cold_start_ms, 0.1),
+		" terrain_generation_ms=", snappedf(generation_ms, 0.1),
+		" heightfield_and_relaxation_ms=", snappedf(heightfield_ms, 0.1),
+		" voxel_fill_and_decoration_ms=", snappedf(voxel_fill_ms, 0.1),
+		" blocks=", scene.blocks.size(), " loaded_chunks=", scene.loaded_chunks.size())
 
 	var memory_start := int(Performance.get_monitor(Performance.MEMORY_STATIC))
 	var memory_peak := memory_start
