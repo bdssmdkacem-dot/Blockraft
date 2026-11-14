@@ -527,11 +527,11 @@ func _generate_world() -> void:
 			info["h"] = int(integer_updates[key])
 			heights[key] = info
 
-	# A pairwise in-place pass guarantees the final integer grid cannot retain
-	# a two-block dry-land edge after local constraints converge or conflict.
-	# It only lowers the higher side, preserving river cuts and avoiding new
-	# raised shelves. Repeat until no adjacent dry pair violates the limit.
-	for _edge_pass in range(32):
+	# A bounded in-place gradient pass constrains both adjacent columns and
+	# columns two cells apart. This spreads each voxel-height change over at
+	# least two horizontal cells instead of leaving long one-block risers.
+	# It only lowers the higher side, preserving river cuts and avoiding shelves.
+	for _edge_pass in range(64):
 		var changed := false
 		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
@@ -539,7 +539,7 @@ func _generate_world() -> void:
 				var info: Dictionary = heights[key]
 				if bool(info["river"]):
 					continue
-				for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
+				for offset in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(2, 0), Vector2i(0, 2)]:
 					var neighbor_key: Vector2i = key + offset
 					if not heights.has(neighbor_key):
 						continue
