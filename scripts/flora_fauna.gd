@@ -2,6 +2,7 @@ extends Node
 ## Higher-detail flora + fauna spawn.
 
 const AnimalScript = preload("res://scripts/animal.gd")
+const CHUNK_SIZE := 16
 
 var _world: Node3D
 var _blocks: Dictionary
@@ -9,6 +10,7 @@ var _rng := RandomNumberGenerator.new()
 var _wind_t := 0.0
 var _flora_root: Node3D
 var _wind_step := 0
+var _animals: Array[CharacterBody3D] = []
 
 func setup(world: Node3D, blocks: Dictionary, seed_value: int = 82417) -> void:
 	_world = world
@@ -17,19 +19,56 @@ func setup(world: Node3D, blocks: Dictionary, seed_value: int = 82417) -> void:
 	_spawn_plants()
 	_spawn_spawn_meadow()
 	_spawn_animals()
+	_sync_chunk_visibility()
 
 func _process(delta: float) -> void:
 	_wind_t += delta
 	_wind_step += 1
+	_sync_chunk_visibility()
 	if _flora_root == null or (_wind_step % 2) != 0:
 		return
 	var i := 0
 	for child in _flora_root.get_children():
-		if child is Node3D:
+		if child is Node3D and child.visible:
 			var phase := float(i) * 0.37
 			child.rotation.z = sin(_wind_t * 1.4 + phase) * 0.05
 			child.rotation.x = cos(_wind_t * 1.1 + phase) * 0.035
 			i += 1
+
+func _chunk_key_for_position(position: Vector3) -> Vector2i:
+	return Vector2i(floori(position.x / float(CHUNK_SIZE)), floori(position.z / float(CHUNK_SIZE)))
+
+func _sync_chunk_visibility() -> void:
+	if _world == null:
+		return
+	var loaded_chunks: Dictionary = _world.get("loaded_chunks")
+	if _flora_root:
+		for plant in _flora_root.get_children():
+			if plant is Node3D:
+				plant.visible = loaded_chunks.has(_chunk_key_for_position(plant.global_position))
+	for animal in _animals:
+		if not is_instance_valid(animal):
+			continue
+		var active := loaded_chunks.has(_chunk_key_for_position(animal.global_position))
+		animal.visible = active
+		if animal.is_physics_processing() != active:
+			animal.set_physics_process(active)
+
+func is_chunk_visibility_consistent() -> bool:
+	if _world == null:
+		return false
+	var loaded_chunks: Dictionary = _world.get("loaded_chunks")
+	if _flora_root:
+		for plant in _flora_root.get_children():
+			if plant is Node3D and plant.visible != loaded_chunks.has(_chunk_key_for_position(plant.global_position)):
+				return false
+	for animal in _animals:
+		if not is_instance_valid(animal):
+			continue
+		var active := loaded_chunks.has(_chunk_key_for_position(animal.global_position))
+		if animal.visible != active or animal.is_physics_processing() != active:
+			return false
+	return true
 
 func _surface_y(x: int, z: int) -> int:
 	for y in range(30, -5, -1):
@@ -185,6 +224,7 @@ func _spawn_animals() -> void:
 		elif _rng.randf() < 0.2:
 			k = AnimalScript.Kind.FOX
 		animal.setup(k, Vector3(float(x) + 0.5, float(sy) + 1.05, float(z) + 0.5))
+		_animals.append(animal)
 		spawned += 1
 
 	# Keep two peaceful animals in the near gameplay vista so the world does
@@ -212,5 +252,6 @@ func _spawn_animals() -> void:
 		peaceful.name = "Animal_NearSpawn_%d" % nearby_spawned
 		_world.add_child(peaceful)
 		peaceful.setup(AnimalScript.Kind.SHEEP, Vector3(float(cell.x) + 0.5, float(nearby_y) + 1.05, float(cell.y) + 0.5))
+		_animals.append(peaceful)
 		nearby_spawned += 1
 	print("BLOCKRAFT_NEAR_SPAWN_FAUNA count=", nearby_spawned)

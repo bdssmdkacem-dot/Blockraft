@@ -82,6 +82,11 @@ func _run_checks() -> void:
     if animals.is_empty():
         _fail("generated world has no animal assets", 18)
         return
+    fauna.call("_sync_chunk_visibility")
+    if not bool(fauna.call("is_chunk_visibility_consistent")):
+        _fail("flora/fauna remained visible or active outside loaded terrain chunks", 55)
+        return
+    print("CHUNK_FLORA_VISIBILITY_PASS: decorative plants and wildlife follow resident terrain chunks")
     # No spawned animal may begin inside a water voxel. Also exercise the
     # explicit water-avoidance steering path against a deterministic water cell.
     for animal_node in animals:

@@ -714,13 +714,19 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 					blocks[p] = "leaves"
 
 func _ensure_spawn_transition_ring() -> void:
-	# The protected 7x7 spawn pad is one block above its border. Add one
-	# intermediate dry-ground ring so the first natural terrain column does
-	# not jump two voxels across the two-cell acceptance span.
+	# The protected 7x7 landing pad sits one block above its border. Two
+	# dry transition rings spread that rise across four cells instead of
+	# leaving a two-voxel jump in the first natural terrain columns.
 	# This runs only for a freshly generated world; restored player edits stay intact.
-	for x in range(-4, 5):
-		for z in range(-4, 5):
-			if maxi(absi(x), absi(z)) != 4:
+	for x in range(-6, 7):
+		for z in range(-6, 7):
+			var ring_distance := maxi(absi(x), absi(z))
+			var minimum_surface := 0
+			if ring_distance == 4:
+				minimum_surface = 3
+			elif ring_distance == 6:
+				minimum_surface = 2
+			else:
 				continue
 			var has_water := false
 			for y in range(MIN_Y, WATER_LEVEL + 1):
@@ -734,10 +740,10 @@ func _ensure_spawn_transition_ring() -> void:
 				var kind := str(blocks.get(Vector3i(x, y, z), ""))
 				if kind in ["grass", "dirt", "stone", "rock", "sand", "gravel"]:
 					top_ground = y
-			if top_ground < 3:
-				for y in range(top_ground + 1, 3):
+			if top_ground < minimum_surface:
+				for y in range(top_ground + 1, minimum_surface):
 					blocks[Vector3i(x, y, z)] = "dirt"
-				blocks[Vector3i(x, 3, z)] = "grass"
+				blocks[Vector3i(x, minimum_surface, z)] = "grass"
 
 func _ensure_spawn_pad() -> void:
 	# Reserve a clear, level landing area so trees/old edits cannot leave the

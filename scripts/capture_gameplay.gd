@@ -36,6 +36,14 @@ func _capture_gameplay() -> void:
 		quit(2)
 		return
 
+	var fauna_system := gameplay.get_node_or_null("FloraFauna")
+	if fauna_system:
+		fauna_system.call("_sync_chunk_visibility")
+		if not bool(fauna_system.call("is_chunk_visibility_consistent")):
+			push_error("Gameplay camera capture found flora/fauna outside resident terrain chunks")
+			quit(13)
+			return
+
 	# Regression guard: keep the immediate landing pocket clear and the
 	# actual narrow bridge sightline unobstructed, while allowing the nearby
 	# forest to remain visible outside the player's close camera envelope.
@@ -104,7 +112,8 @@ func _capture_gameplay() -> void:
 		return
 	var animal_start_positions: Dictionary = {}
 	for animal in animals:
-		animal_start_positions[animal.get_instance_id()] = animal.global_position
+		if animal.visible:
+			animal_start_positions[animal.get_instance_id()] = animal.global_position
 
 	# Use a temporary observer camera inside the same live gameplay world.
 	# Frame the four animals nearest the player so their movement is visible
@@ -112,11 +121,17 @@ func _capture_gameplay() -> void:
 	# Frame the single animal nearest the player at a readable distance.
 	# A centroid of several widely separated animals previously aimed the camera
 	# at empty ground, making the movement capture useless despite a passing test.
-	var focus_animal: CharacterBody3D = animals[0] as CharacterBody3D
+	var focus_animal: CharacterBody3D = null
 	for candidate in animals:
 		var candidate_animal := candidate as CharacterBody3D
-		if candidate_animal.global_position.distance_squared_to(player.global_position) < focus_animal.global_position.distance_squared_to(player.global_position):
+		if not candidate_animal.visible:
+			continue
+		if focus_animal == null or candidate_animal.global_position.distance_squared_to(player.global_position) < focus_animal.global_position.distance_squared_to(player.global_position):
 			focus_animal = candidate_animal
+	if focus_animal == null:
+		push_error("No visible gameplay animal is inside the loaded terrain window.")
+		quit(14)
+		return
 	var fauna_camera := Camera3D.new()
 	fauna_camera.name = "FaunaObservationCamera"
 	fauna_camera.fov = 48.0
@@ -148,7 +163,9 @@ func _capture_gameplay() -> void:
 	for animal in animals:
 		if not is_instance_valid(animal):
 			continue
-		var start_position: Vector3 = animal_start_positions.get(animal.get_instance_id(), animal.global_position)
+		if not animal_start_positions.has(animal.get_instance_id()):
+			continue
+		var start_position: Vector3 = animal_start_positions[animal.get_instance_id()]
 		if Vector2(animal.global_position.x - start_position.x, animal.global_position.z - start_position.z).length() >= 0.15:
 			moved_animals += 1
 	if moved_animals == 0:

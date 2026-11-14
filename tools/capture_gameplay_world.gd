@@ -31,6 +31,14 @@ func _capture() -> void:
         quit(4)
         return
 
+    var fauna := scene.get_node_or_null("FloraFauna")
+    if fauna:
+        fauna.call("_sync_chunk_visibility")
+        if not bool(fauna.call("is_chunk_visibility_consistent")):
+            push_error("Gameplay capture found flora/fauna outside resident terrain chunks")
+            quit(8)
+            return
+
     # Lock the visual review to a clear midday state so weather RNG cannot
     # make screenshots appear dark or fogged between CI runs.
     var survival := scene.get_node_or_null("Survival")

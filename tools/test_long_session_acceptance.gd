@@ -60,6 +60,13 @@ func _run() -> void:
 			route_index += 1
 		await process_frame
 		frames += 1
+		if frames % WAIT_PER_STOP == 1:
+			var fauna := scene.get_node_or_null("FloraFauna")
+			if fauna:
+				fauna.call("_sync_chunk_visibility")
+				if not bool(fauna.call("is_chunk_visibility_consistent")):
+					_fail("flora/fauna visibility drifted from chunk residency during navigation", 12)
+					return
 		max_loaded = maxi(max_loaded, scene.loaded_chunks.size())
 		memory_peak = maxi(memory_peak, int(Performance.get_monitor(Performance.MEMORY_STATIC)))
 		object_peak = maxi(object_peak, int(Performance.get_monitor(Performance.OBJECT_COUNT)))
