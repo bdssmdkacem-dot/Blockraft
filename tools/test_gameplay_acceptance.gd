@@ -43,7 +43,21 @@ func _run_checks() -> void:
     if fractional_terrain_corners < 100:
         _fail("terrain renderer did not create enough blended low-poly slope corners: %d" % fractional_terrain_corners, 80)
         return
-    print("TERRAIN_SMOOTH_MESH_PASS: cached surface columns=", surface_cache.size(), " shared corners=", corner_cache.size(), " fractional slope corners=", fractional_terrain_corners)
+    var blended_shore_corners := 0
+    for corner_height in corner_cache.values():
+        if float(corner_height) > 2.0 and float(corner_height) < 3.0:
+            blended_shore_corners += 1
+    var water_surface_columns := 0
+    for block_position in scene.blocks:
+        var water_cell: Vector3i = block_position
+        if str(scene.blocks[block_position]) == "water" and water_cell.y == 2:
+            var water_column := Vector2i(water_cell.x, water_cell.z)
+            if surface_cache.has(water_column) and is_equal_approx(float(surface_cache[water_column]), 3.0):
+                water_surface_columns += 1
+    if blended_shore_corners < 20 or water_surface_columns < 20:
+        _fail("water and terrain shoreline are not sharing blended surface corners: shore_corners=%d water_columns=%d" % [blended_shore_corners, water_surface_columns], 81)
+        return
+    print("TERRAIN_SMOOTH_MESH_PASS: cached surface columns=", surface_cache.size(), " shared corners=", corner_cache.size(), " fractional slope corners=", fractional_terrain_corners, " blended shore corners=", blended_shore_corners, " water surface columns=", water_surface_columns)
 
     # Every spawned plant must sit on a continuous, exposed terrain column.
     var flora := scene.get_node_or_null("FloraFauna")
