@@ -95,12 +95,17 @@ func _run_checks() -> void:
 		_fail("menu protagonist remains underneath the left action-button column", 42)
 		return
 	var rounded_peaks := 0
-	for mountain_part in world.find_children("*", "MeshInstance3D", true, false):
+	var mountain_root := world.find_child("MountainBackdrop", true, false) as Node3D
+	for mountain_part in mountain_root.find_children("*", "MeshInstance3D", true, false):
 		var mountain_mesh := (mountain_part as MeshInstance3D).mesh
-		if mountain_mesh is CylinderMesh and mountain_mesh.radial_segments >= 12 and mountain_mesh.top_radius >= mountain_mesh.bottom_radius * 0.35:
-			rounded_peaks += 1
+		if mountain_mesh is ArrayMesh and mountain_mesh.get_surface_count() == 1:
+			var mountain_arrays: Array = mountain_mesh.surface_get_arrays(0)
+			var mountain_vertices: PackedVector3Array = mountain_arrays[Mesh.ARRAY_VERTEX]
+			var mountain_colors: PackedColorArray = mountain_arrays[Mesh.ARRAY_COLOR]
+			if mountain_vertices.size() >= 300 and mountain_colors.size() == mountain_vertices.size():
+				rounded_peaks += 1
 	if rounded_peaks < 9:
-		_fail("mountain backdrop still uses sharp pyramid peaks instead of softened ridges", 43)
+		_fail("mountain backdrop is missing faceted multi-ring ridge meshes", 43)
 		return
 	var cloud_root := world.find_child("SkyClouds", true, false) as Node3D
 	if cloud_root == null or cloud_root.get_child_count() < 15:
