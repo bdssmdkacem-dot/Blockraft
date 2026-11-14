@@ -829,7 +829,7 @@ func _load_chunk(ck: Vector2i) -> void:
 		var group_indices: PackedInt32Array = render_group["indices"]
 		render_triangles += int(group_indices.size() / 3)
 		render_face_quads += int(group_indices.size() / 6)
-		render_vertex_bytes += group_vertices.size() * 24 + group_indices.size() * 4
+		render_vertex_bytes += group_vertices.size() * 40 + group_indices.size() * 4
 	chunk_render_triangle_count_total += render_triangles
 	chunk_render_vertex_bytes_total += render_vertex_bytes
 	chunk_render_full_cube_triangle_equivalent_total += block_count * 12
@@ -862,10 +862,11 @@ func _load_chunk(ck: Vector2i) -> void:
 
 func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String) -> void:
 	if not groups.has(kind):
-		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "indices": PackedInt32Array()}
+		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
 	var group: Dictionary = groups[kind]
 	var vertices: PackedVector3Array = group["vertices"]
 	var normals: PackedVector3Array = group["normals"]
+	var colors: PackedColorArray = group["colors"]
 	var indices: PackedInt32Array = group["indices"]
 	var x := float(pos.x)
 	var y := float(pos.y)
@@ -899,9 +900,21 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var base_index := vertices.size()
 		vertices.append_array(PackedVector3Array([a, b, c, d]))
 		normals.append_array(PackedVector3Array([normal, normal, normal, normal]))
+		# Deterministic per-voxel/per-face tinting adds subtle material breakup
+		# without texture lookups or extra draw calls. Top faces are slightly
+		# brighter; vertical rock faces remain naturally shaded.
+		var noise_value := sin(float(pos.x) * 12.9898 + float(pos.y) * 78.233 + float(pos.z) * 37.719)
+		var variation := 0.94 + (noise_value * 0.5 + 0.5) * 0.12
+		if normal.y > 0.5:
+			variation *= 1.055
+		elif absf(normal.y) < 0.5:
+			variation *= 0.94
+		var tint := Color(variation, variation, variation, 1.0)
+		colors.append_array(PackedColorArray([tint, tint, tint, tint]))
 		indices.append_array(PackedInt32Array([base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]))
 	group["vertices"] = vertices
 	group["normals"] = normals
+	group["colors"] = colors
 	group["indices"] = indices
 	groups[kind] = group
 
@@ -911,6 +924,7 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		var group: Dictionary = render_groups[kind_variant]
 		var vertices: PackedVector3Array = group["vertices"]
 		var normals: PackedVector3Array = group["normals"]
+		var colors: PackedColorArray = group["colors"]
 		var indices: PackedInt32Array = group["indices"]
 		if vertices.is_empty() or indices.is_empty():
 			continue
@@ -918,6 +932,7 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = vertices
 		arrays[Mesh.ARRAY_NORMAL] = normals
+		arrays[Mesh.ARRAY_COLOR] = colors
 		arrays[Mesh.ARRAY_INDEX] = indices
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
@@ -927,6 +942,7 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		var surface_material := (block_materials.get(kind, block_materials["stone"]) as StandardMaterial3D).duplicate() as StandardMaterial3D
 		# Preserve normal back-face culling after emitting clockwise front faces.
 		surface_material.cull_mode = BaseMaterial3D.CULL_BACK
+		surface_material.vertex_color_use_as_albedo = true
 		instance.material_override = surface_material
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(instance)
