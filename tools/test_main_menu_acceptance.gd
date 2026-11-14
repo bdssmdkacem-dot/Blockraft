@@ -137,9 +137,11 @@ func _run_checks() -> void:
 	if castle.scale.x > 1.15:
 		_fail("castle scale clips the upper landmark at menu framing", 44)
 		return
-	if castle.get_child_count() < 180:
-		_fail("castle is missing its expanded multi-wing architecture pass", 53)
-		return
+	for wing_name in ["CastleWestWing", "CastleEastWing"]:
+		var wing := castle.get_node_or_null(wing_name) as Node3D
+		if wing == null or wing.get_child_count() < 20:
+			_fail("castle is missing a fully detailed side wing: %s" % wing_name, 53)
+			return
 
 	var strip := scene.find_child("FeatureStrip", true, false) as HBoxContainer
 	if strip == null:
