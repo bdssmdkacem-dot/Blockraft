@@ -721,22 +721,63 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 					blocks[p] = "leaves"
 
 func _ensure_spawn_pad() -> void:
-	# Reserve a clear, level landing area so trees/old edits cannot leave the
-	# player trapped inside terrain or looking out into the sky.
-	for x in range(-6, 7):
-		for z in range(-6, 7):
+	# Reserve a level 7x7 landing area, then blend it into the original terrain.
+	# Preserve the surrounding natural heights as much as possible: each ramp
+	# column may differ by only one block per ring from its nearest pad edge.
+	var original_heights: Dictionary = {}
+	for position in blocks:
+		var pos: Vector3i = position
+		if abs(pos.x) > 8 or abs(pos.z) > 8 or str(blocks[position]) not in TERRAIN_SURFACE_KINDS:
+			continue
+		var key := Vector2i(pos.x, pos.z)
+		original_heights[key] = maxi(int(original_heights.get(key, MIN_Y)), pos.y)
+	var target_heights: Dictionary = {}
+	for x in range(-8, 9):
+		for z in range(-8, 9):
 			var distance := maxi(absi(x), absi(z))
-			var surface_y := 4
-			if distance == 3:
-				surface_y = 3
-			elif distance == 5:
-				surface_y = 5
-			elif distance >= 6:
-				surface_y = 6
-			# The 7x7 landing pad is surrounded by three one-block ramp rings.
-			# Clear from each chosen surface upward so old terrain cannot leave lips.
-			for y in range(surface_y, SPAWN_CLEAR_MAX_Y + 1):
+			var boundary_x := clampi(x, -3, 3)
+			var boundary_z := clampi(z, -3, 3)
+			var boundary_height := 3 if absi(boundary_x) == 3 or absi(boundary_z) == 3 else 4
+			var target_height := boundary_height
+			if distance <= 3:
+				target_height = 3 if distance == 3 else 4
+			else:
+				var original_height := int(original_heights.get(Vector2i(x, z), boundary_height))
+				var allowed_steps := distance - 3
+				target_height = clampi(original_height, boundary_height - allowed_steps, boundary_height + allowed_steps)
+			target_heights[Vector2i(x, z)] = target_height
+	# A few local passes preserve the original landscape while eliminating any
+	# quantized two-block seams where the ramp meets natural ground.
+	for _ramp_pass in range(4):
+		var ramp_changed := false
+		for x in range(-8, 9):
+			for z in range(-8, 9):
+				var key := Vector2i(x, z)
+				var height := int(target_heights[key])
+				for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
+					var neighbor_key: Vector2i = key + offset
+					if not target_heights.has(neighbor_key):
+						continue
+					var neighbor_height := int(target_heights[neighbor_key])
+					if height > neighbor_height + 1:
+						target_heights[key] = neighbor_height + 1
+						height = neighbor_height + 1
+						ramp_changed = true
+					elif neighbor_height > height + 1:
+						target_heights[neighbor_key] = height + 1
+						ramp_changed = true
+		if not ramp_changed:
+			break
+	for x in range(-8, 9):
+		for z in range(-8, 9):
+			var key := Vector2i(x, z)
+			var surface_y := int(target_heights[key])
+			var original_y := int(original_heights.get(key, surface_y))
+			for y in range(mini(original_y, surface_y) + 1, SPAWN_CLEAR_MAX_Y + 1):
 				blocks.erase(Vector3i(x, y, z))
+			if surface_y > original_y:
+				for y in range(original_y + 1, surface_y):
+					blocks[Vector3i(x, y, z)] = "dirt"
 			blocks[Vector3i(x, surface_y - 1, z)] = "dirt"
 			blocks[Vector3i(x, surface_y, z)] = "grass"
 
