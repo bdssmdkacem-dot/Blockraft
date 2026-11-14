@@ -185,15 +185,25 @@ func _update_hp_bar() -> void:
 			mat.albedo_color = Color(0.95, 0.2, 0.15)
 
 func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.85) -> void:
+	# Animal anatomy uses rounded volumes rather than sharp boxes. The world
+	# remains voxel-styled, but faces, joints, ears and tails now read as
+	# connected living forms instead of stacked rectangular props.
 	var mi := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = size
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.5
+	mesh.height = 1.0
+	mesh.radial_segments = 16
+	mesh.rings = 10
 	mi.mesh = mesh
+	mi.scale = size
 	mi.position = pos
+	mi.set_meta("animal_part_size", size)
+	mi.set_meta("animal_rounded_part", true)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.roughness = roughness
 	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	parent.add_child(mi)
 
 func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88) -> MeshInstance3D:
@@ -201,8 +211,8 @@ func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, rough
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.5
 	sphere.height = 1.0
-	sphere.radial_segments = 12
-	sphere.rings = 8
+	sphere.radial_segments = 20
+	sphere.rings = 12
 	mi.mesh = sphere
 	mi.position = pos
 	mi.scale = size
@@ -335,16 +345,16 @@ func _build_mesh(data: Dictionary) -> void:
 	var leg_y := 0.12 * s if kind == Kind.CHICKEN else (0.14 * s if kind == Kind.FOX else (0.20 * s if kind == Kind.COW else 0.16 * s))
 	var leg_height := 0.22 * s if kind == Kind.CHICKEN else (0.26 * s if kind == Kind.FOX else (0.40 * s if kind == Kind.COW else 0.28 * s))
 	for part in _body_root.get_children():
-		if not (part is MeshInstance3D) or not (part.mesh is BoxMesh):
+		if not (part is MeshInstance3D) or not part.has_meta("animal_part_size"):
 			continue
-		var box := part.mesh as BoxMesh
-		if is_equal_approx(part.position.y, leg_y) and is_equal_approx(box.size.y, leg_height):
+		var part_size: Vector3 = part.get_meta("animal_part_size")
+		if is_equal_approx(part.position.y, leg_y) and is_equal_approx(part_size.y, leg_height):
 			_animated_legs.append(part)
-		if kind == Kind.CHICKEN and is_equal_approx(absf(part.position.x), 0.19 * s) and is_equal_approx(part.position.y, 0.34 * s) and is_equal_approx(box.size.y, 0.24 * s):
+		if kind == Kind.CHICKEN and is_equal_approx(absf(part.position.x), 0.19 * s) and is_equal_approx(part.position.y, 0.34 * s) and is_equal_approx(part_size.y, 0.24 * s):
 			_animated_wings.append(part)
-		if kind == Kind.FOX and part.position.z <= -0.70 * s and part.position.y >= 0.30 * s and box.size.z >= 0.38 * s:
+		if kind == Kind.FOX and part.position.z <= -0.70 * s and part.position.y >= 0.30 * s and part_size.z >= 0.38 * s:
 			_tail_mesh = part
-		elif kind == Kind.COW and part.position.z <= -0.54 * s and part.position.y >= 0.40 * s and box.size.z >= 0.08 * s:
+		elif kind == Kind.COW and part.position.z <= -0.54 * s and part.position.y >= 0.40 * s and part_size.z >= 0.08 * s:
 			_tail_mesh = part
 
 func _pick_new_direction() -> void:
