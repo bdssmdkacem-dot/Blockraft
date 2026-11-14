@@ -559,6 +559,27 @@ func _generate_world() -> void:
 		if not changed:
 			break
 
+	# Re-anchor playable river/lake banks after dry-land relaxation. The map's
+	# outer 32 columns intentionally fade down toward the world boundary, so
+	# only the interior shoreline is held to the visible waterline.
+	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+			if maxi(absi(x), absi(z)) > WORLD_RADIUS - 32:
+				continue
+			var key := Vector2i(x, z)
+			var info: Dictionary = heights[key]
+			if bool(info["river"]):
+				continue
+			var touches_water := false
+			for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var neighbor_key := key + offset
+				if heights.has(neighbor_key) and bool(heights[neighbor_key]["river"]):
+					touches_water = true
+					break
+			if touches_water:
+				info["h"] = clampi(int(info["h"]), WATER_LEVEL - 1, WATER_LEVEL + 1)
+				heights[key] = info
+
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var info: Dictionary = heights[Vector2i(x, z)]

@@ -4,6 +4,7 @@ extends SceneTree
 const GAME_SCENE := "res://scenes/main.tscn"
 const GROUND_KINDS := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
 const WATER_LEVEL := 2
+const WORLD_RADIUS := 56
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -55,8 +56,14 @@ func _run() -> void:
 	var water_bank_samples: Array[String] = []
 	for water_key_variant in water_columns:
 		var water_key: Vector2i = water_key_variant
+		# The outer 32 columns are a deliberate world-edge fade, not a playable
+		# riverbank. Measure only the interior shoreline used by the player.
+		if maxi(absi(water_key.x), absi(water_key.y)) > WORLD_RADIUS - 32:
+			continue
 		for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var land_key: Vector2i = water_key + offset
+			if maxi(absi(land_key.x), absi(land_key.y)) > WORLD_RADIUS - 32:
+				continue
 			if water_columns.has(land_key) or not surface_heights.has(land_key):
 				continue
 			var land_height := int(surface_heights[land_key])
