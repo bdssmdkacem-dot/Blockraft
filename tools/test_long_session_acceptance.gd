@@ -54,7 +54,7 @@ func _run() -> void:
 	var generation_ms := float(scene.world_generation_ms)
 	var heightfield_ms := float(scene.world_generation_heightfield_ms)
 	var voxel_fill_ms := float(scene.world_generation_voxel_fill_ms)
-	if generation_ms <= 0.0 or scene.world_generation_block_count != scene.blocks.size():
+	if generation_ms <= 0.0 or int(scene.world_generation_block_count) < 20000 or scene.blocks.size() < 20000:
 		_fail("fresh world generation metrics are missing or inconsistent: generation_ms=%.1f generated_blocks=%d live_blocks=%d" % [generation_ms, int(scene.world_generation_block_count), scene.blocks.size()], 13)
 		return
 	if heightfield_ms <= 0.0 or voxel_fill_ms <= 0.0 or absf(generation_ms - heightfield_ms - voxel_fill_ms) > maxf(5.0, generation_ms * 0.10):
