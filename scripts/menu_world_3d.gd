@@ -536,15 +536,9 @@ func _build_river_and_bridge() -> void:
 			river_indices.append_array(PackedInt32Array([a, b, c, b, d, c]))
 			# Two independent bank ribbons share one mesh and one draw call.
 			var bank_a := segment * 4
-			var bank_b := bank_a + 1
-			var bank_c := bank_a + 2
-			var bank_d := bank_a + 3
-			var bank_e := bank_a + 4
-			var bank_f := bank_a + 5
-			var bank_g := bank_a + 6
-			var bank_h := bank_a + 7
-			bank_indices.append_array(PackedInt32Array([bank_a, bank_c, bank_b, bank_b, bank_c, bank_d]))
-			bank_indices.append_array(PackedInt32Array([bank_e, bank_f, bank_g, bank_f, bank_h, bank_g]))
+			# Connect each bank's inner/outer edge to the next river sample.
+			bank_indices.append_array(PackedInt32Array([bank_a, bank_a + 4, bank_a + 1, bank_a + 1, bank_a + 4, bank_a + 5]))
+			bank_indices.append_array(PackedInt32Array([bank_a + 2, bank_a + 3, bank_a + 6, bank_a + 3, bank_a + 7, bank_a + 6]))
 	var river_arrays := []
 	river_arrays.resize(Mesh.ARRAY_MAX)
 	river_arrays[Mesh.ARRAY_VERTEX] = river_vertices
