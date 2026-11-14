@@ -905,7 +905,7 @@ func _rebuild_terrain_surface_cache_from_blocks() -> void:
 	terrain_corner_heights.clear()
 	for position_variant in blocks:
 		var position: Vector3i = position_variant
-		if str(blocks[position]) not in TERRAIN_SURFACE_KINDS:
+		if position.y > 14 or str(blocks[position]) not in TERRAIN_SURFACE_KINDS:
 			continue
 		var key := Vector2i(position.x, position.z)
 		var surface_y := float(position.y + 1)
@@ -930,6 +930,8 @@ func _refresh_terrain_corner_height(corner: Vector2i) -> void:
 		terrain_corner_heights.erase(corner)
 
 func _refresh_terrain_surface_column(x: int, z: int) -> void:
+	# The procedural terrain never exceeds y=13; higher player structures are
+	# intentionally excluded from natural-landscape smoothing.
 	var key := Vector2i(x, z)
 	var found := false
 	for y in range(27, MIN_Y - 1, -1):
