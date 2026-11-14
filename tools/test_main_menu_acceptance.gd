@@ -91,7 +91,7 @@ func _run_checks() -> void:
 		return
 	var river_normals: PackedVector3Array = river_arrays[Mesh.ARRAY_NORMAL]
 	for river_vertex in river_vertices:
-		if river_vertex.y < 0.04:
+		if river_vertex.y < 0.19:
 			_fail("menu river surface is below the landscape plane and will be occluded", 59)
 			return
 	for index_offset in range(0, river_indices.size(), 3):
