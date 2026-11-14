@@ -2,6 +2,7 @@ extends Node
 ## Higher-detail flora + fauna spawn.
 ## Ground support and opening sightlines are validated to avoid floating-looking debris.
 ## The gameplay bridge remains below the cleared tree-canopy envelope.
+## The sightline clearance includes tree-base and canopy overhang margins.
 
 const AnimalScript = preload("res://scripts/animal.gd")
 
