@@ -1058,13 +1058,22 @@ func _notification(what: int) -> void:
 		if _save_dirty or what == NOTIFICATION_WM_CLOSE_REQUEST:
 			save_world(what != NOTIFICATION_EXIT_TREE)
 
+func _parse_json_safely(raw_text: String) -> Variant:
+	# JSON.parse_string emits an engine ERROR for malformed input. Save recovery
+	# deliberately probes corrupt primary/backup files, so use the parser API
+	# and return null without polluting otherwise successful recovery logs.
+	var parser := JSON.new()
+	if parser.parse(raw_text) != OK:
+		return null
+	return parser.data
+
 func _is_valid_save_candidate(path: String, minimum_blocks: int = 2000) -> bool:
 	if not FileAccess.file_exists(path):
 		return false
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return false
-	var parsed = JSON.parse_string(file.get_as_text())
+	var parsed = _parse_json_safely(file.get_as_text())
 	file.close()
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return false
@@ -1118,7 +1127,7 @@ func save_world(show_feedback: bool = false) -> void:
 	if verify_file == null:
 		push_error("Blockraft: temporary save could not be reopened")
 		return
-	var verified = JSON.parse_string(verify_file.get_as_text())
+	var verified = _parse_json_safely(verify_file.get_as_text())
 	verify_file.close()
 	if typeof(verified) != TYPE_DICTIONARY:
 		push_error("Blockraft: temporary save JSON root is not a Dictionary; previous save preserved")
@@ -1197,7 +1206,7 @@ func _load_world_snapshot() -> bool:
 		if file == null:
 			push_warning("Blockraft: could not open save candidate " + candidate)
 			continue
-		var parsed = JSON.parse_string(file.get_as_text())
+		var parsed = _parse_json_safely(file.get_as_text())
 		file.close()
 		if typeof(parsed) != TYPE_DICTIONARY:
 			push_warning("Blockraft: invalid save JSON in " + candidate)
