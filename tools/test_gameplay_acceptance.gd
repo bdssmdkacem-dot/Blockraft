@@ -48,6 +48,9 @@ func _run_checks() -> void:
         var gy := floori(plant.position.y - 1.0 + 0.001)
         var ground_cell := Vector3i(gx, gy, gz)
         var ground_kind := str(scene.blocks.get(ground_cell, ""))
+        if plant.position.z < -6.0 and plant.position.z > -42.0 and absf(plant.position.x) < 28.0:
+            _fail("decorative plant spawned inside the opening camera corridor", 75)
+            return
         if ground_kind not in ["grass", "dirt", "sand", "gravel"]:
             _fail("plant spawned on a non-ground voxel at %s (%s)" % [str(ground_cell), ground_kind], 69)
             return
@@ -62,7 +65,12 @@ func _run_checks() -> void:
     if grounded_plants < 20:
         _fail("too few grounded plants were spawned: %d" % grounded_plants, 72)
         return
-    print("FLORA_GROUNDING_ACCEPTANCE_PASS: plants are exposed and supported by continuous terrain columns count=", grounded_plants)
+    for block_position in scene.blocks:
+        var block_cell: Vector3i = block_position
+        if str(scene.blocks[block_position]) == "leaves" and block_cell.z < -6 and block_cell.z > -42 and abs(block_cell.x) < 28:
+            _fail("tree foliage remains inside the opening camera corridor at %s" % str(block_cell), 76)
+            return
+    print("FLORA_GROUNDING_ACCEPTANCE_PASS: plants and tree foliage are grounded and keep the opening camera corridor clear count=", grounded_plants)
 
     var water_material := scene.block_materials.get("water") as StandardMaterial3D
     var gameplay_environment := scene.get_node_or_null("WorldEnvironment") as WorldEnvironment
