@@ -32,18 +32,31 @@ func _process(delta: float) -> void:
 			i += 1
 
 func _surface_y(x: int, z: int) -> int:
-	# Only terrain voxels can be a spawn surface. Chests, ores and decorative
-	# blocks are not ground; treating them as ground created floating fauna
-	# and plants above the landscape.
+	# A spawn surface must be the exposed top of a continuous terrain column.
+	# Merely finding a grass/stone voxel is insufficient: old saves and player
+	# builds can contain floating platforms, detached blocks and canopy pieces.
 	for y in range(30, -5, -1):
-		var k := str(_blocks.get(Vector3i(x, y, z), ""))
-		if k in ["grass", "dirt", "sand", "gravel", "stone", "rock"]:
+		var ground := Vector3i(x, y, z)
+		var kind := str(_blocks.get(ground, ""))
+		if kind not in ["grass", "dirt", "sand", "gravel", "stone", "rock"]:
+			continue
+		if _blocks.has(ground + Vector3i.UP):
+			continue
+		var supported_to_world_floor := true
+		for support_y in range(y - 1, -7, -1):
+			var support_kind := str(_blocks.get(Vector3i(x, support_y, z), ""))
+			if support_kind.is_empty() or support_kind == "water":
+				supported_to_world_floor = false
+				break
+		if supported_to_world_floor:
 			return y
 	return -999
 
 func _is_water(x: int, z: int) -> bool:
-	for y in range(0, 6):
-		if _blocks.has(Vector3i(x, y, z)) and str(_blocks[Vector3i(x, y, z)]) == "water":
+	# Check the whole playable column, not a fixed sea-level slice. This also
+	# prevents fauna spawning above water saved or placed at a different height.
+	for y in range(-6, 31):
+		if str(_blocks.get(Vector3i(x, y, z), "")) == "water":
 			return true
 	return false
 
@@ -77,7 +90,7 @@ func _spawn_plants() -> void:
 		# Keep decorative flora inside the readable playable landscape. Plants
 		# placed on the far perimeter looked suspended because the terrain fades
 		# below the distant camera horizon.
-		if Vector2(float(x), float(z)).length() > 40.0:
+		if Vector2(float(x), float(z)).length() > 32.0:
 			continue
 		if sy < 0 or sy > 18:
 			continue
@@ -196,7 +209,7 @@ func _spawn_animals() -> void:
 			continue
 		# Spawn only on exposed dry terrain. A valid height beneath water,
 		# a chest, or a tree canopy is not a walkable animal spawn point.
-		if _blocks.has(ground_cell + Vector3i(0, 1, 0)):
+		if _blocks.has(ground_cell + Vector3i.UP) or _blocks.has(ground_cell + Vector3i(0, 2, 0)):
 			continue
 		var animal: CharacterBody3D = AnimalScript.new()
 		animal.name = "Animal_%d" % spawned
