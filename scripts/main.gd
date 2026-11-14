@@ -607,16 +607,16 @@ func _generate_world() -> void:
 					blocks[Vector3i(x, water_level, z)] = "water"
 			if not is_river and river_d < 4.2 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
-			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5:
-				# Give the outer hills a readable forest biome instead of isolated
-				# single trees. Keep the immediate spawn view open, but raise the
-				# baseline density enough that the generated world contains real
-				# groves after slope and river exclusions.
+			var camera_clearance := Vector2(float(x), float(z)).length()
+			var tree_edge_clearance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
+			var opening_camera_corridor := z < -12 and z > -36 and abs(x) < 20
+			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5 and camera_clearance <= 30.0 and tree_edge_clearance > 16.0 and not opening_camera_corridor:
+				# Keep tree crowns grounded within the visible playable basin.
+				# Trees on the far perimeter or central horizon were technically
+				# supported, but their trunks fell below the camera horizon and
+				# made detached leaf clusters appear to float in the sky.
 				var forest_signal := sin(float(x) * 0.17) * cos(float(z) * 0.19)
 				var tree_chance := 0.055 if forest_signal > 0.35 else 0.020
-				# Keep the spawn/camera corridor open; dense near-field crowns
-				# previously hid the player and consumed most of the view.
-				var camera_clearance := Vector2(float(x), float(z)).length()
 				if camera_clearance < 22.0:
 					tree_chance *= 0.55
 				elif camera_clearance < 30.0:
