@@ -306,6 +306,10 @@ func _build_mesh(data: Dictionary) -> void:
 		Kind.COW:
 			_box(_body_root, Vector3(0, 0.55 * s, 0), Vector3(0.55 * s, 0.45 * s, 0.85 * s), body_c)
 			_box(_body_root, Vector3(0.12 * s, 0.55 * s, 0.1 * s), Vector3(0.22 * s, 0.35 * s, 0.30 * s), spot_c)
+			# Distinct coat patches sit on the visible flank, not buried inside the body.
+			_ellipsoid(_body_root, Vector3(-0.22 * s, 0.57 * s, 0.43 * s), Vector3(0.18 * s, 0.20 * s, 0.055 * s), spot_c)
+			_ellipsoid(_body_root, Vector3(0.18 * s, 0.42 * s, 0.45 * s), Vector3(0.13 * s, 0.12 * s, 0.045 * s), spot_c)
+			_ellipsoid(_body_root, Vector3(-0.28 * s, 0.56 * s, -0.08 * s), Vector3(0.05 * s, 0.18 * s, 0.22 * s), spot_c)
 			_box(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.36 * s, 0.32 * s, 0.32 * s), body_c)
 			_box(_body_root, Vector3(-0.18 * s, 0.20 * s, 0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.18 * s, 0.20 * s, 0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
@@ -327,24 +331,20 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0.0, 0.42 * s, -0.55 * s), Vector3(0.07 * s, 0.40 * s, 0.08 * s), Color("#2c2520"))
 			_box(_body_root, Vector3(0.0, 0.22 * s, -0.73 * s), Vector3(0.16 * s, 0.18 * s, 0.16 * s), Color("#2c2520"))
 		Kind.SHEEP:
-			_box(_body_root, Vector3(0, 0.42 * s, 0), Vector3(0.50 * s, 0.42 * s, 0.65 * s), body_c)
-			_box(_body_root, Vector3(0, 0.55 * s, 0.38 * s), Vector3(0.28 * s, 0.26 * s, 0.28 * s), Color("#2a2a2a"))
-			_box(_body_root, Vector3(-0.14 * s, 0.16 * s, 0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
-			_box(_body_root, Vector3(0.14 * s, 0.16 * s, 0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
-			_box(_body_root, Vector3(-0.14 * s, 0.16 * s, -0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
-			_box(_body_root, Vector3(0.14 * s, 0.16 * s, -0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
-			# Layered wool lobes soften the sheep silhouette; dark face contrasts with fleece.
-			for wool_pos in [
-				Vector3(-0.20, 0.55, 0.0), Vector3(0.20, 0.55, 0.0),
-				Vector3(-0.15, 0.65, -0.20), Vector3(0.15, 0.65, -0.20),
-				Vector3(0.0, 0.68, 0.12), Vector3(0.0, 0.35, -0.30)
-			]:
-				_box(_body_root, wool_pos * s, Vector3(0.24 * s, 0.22 * s, 0.24 * s), Color("#fffdf7"))
-			_box(_body_root, Vector3(-0.08 * s, 0.60 * s, 0.54 * s), Vector3(0.045 * s, 0.05 * s, 0.035 * s), Color("#f5f0e8"))
-			_box(_body_root, Vector3(0.08 * s, 0.60 * s, 0.54 * s), Vector3(0.045 * s, 0.05 * s, 0.035 * s), Color("#f5f0e8"))
-			_box(_body_root, Vector3(0.0, 0.33 * s, -0.42 * s), Vector3(0.16 * s, 0.14 * s, 0.18 * s), Color("#f1eee6"))
-			_box(_body_root, Vector3(-0.20 * s, 0.59 * s, 0.40 * s), Vector3(0.09 * s, 0.12 * s, 0.10 * s), Color("#fffdf7"))
-			_box(_body_root, Vector3(0.20 * s, 0.59 * s, 0.40 * s), Vector3(0.09 * s, 0.12 * s, 0.10 * s), Color("#fffdf7"))
+			# Compact charcoal face and four tapered legs; avoid a second full-body
+			# sphere so the fleece reads as one soft torso rather than stacked balls.
+			_box(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.22 * s, 0.22 * s, 0.25 * s), Color("#353535"))
+			for leg_x in [-0.15, 0.15]:
+				for leg_z in [-0.23, 0.22]:
+					_ellipsoid(_body_root, Vector3(leg_x * s, 0.16 * s, leg_z * s), Vector3(0.085 * s, 0.30 * s, 0.09 * s), Color("#343434"))
+			# Short ears and eyes sit on the face plane and remain visible at distance.
+			for ear_x in [-0.17, 0.17]:
+				_ellipsoid(_body_root, Vector3(ear_x * s, 0.61 * s, 0.34 * s), Vector3(0.10 * s, 0.07 * s, 0.16 * s), Color("#d9c7bd"))
+			for eye_x in [-0.075, 0.075]:
+				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.555 * s), Vector3(0.035 * s, 0.045 * s, 0.025 * s), Color("#f8eee4"))
+			# Four flattened fleece panels follow the back contour without spherical clumps.
+			for fleece_pos in [Vector3(-0.22, 0.58, -0.08), Vector3(0.22, 0.58, -0.08), Vector3(-0.12, 0.69, -0.28), Vector3(0.12, 0.69, -0.28)]:
+				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.16 * s, 0.10 * s, 0.22 * s), Color("#e9e5dc"))
 	# Register leg meshes explicitly by species-specific geometry dimensions.
 	# This avoids accidentally animating beaks, wings or decorative tail blocks.
 	_animated_legs.clear()
