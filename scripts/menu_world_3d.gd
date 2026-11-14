@@ -533,7 +533,7 @@ func _build_river_and_bridge() -> void:
 			var b := a + 1
 			var c := a + 2
 			var d := a + 3
-			river_indices.append_array(PackedInt32Array([a, b, c, b, d, c]))
+			river_indices.append_array(PackedInt32Array([a, c, b, b, c, d]))
 			# Two independent bank ribbons share one mesh and one draw call.
 			var bank_a := segment * 4
 			# Connect each bank's inner/outer edge to the next river sample.
