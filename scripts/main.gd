@@ -3,6 +3,7 @@ extends Node3D
 
 const WORLD_RADIUS := 56
 const MIN_Y := -6
+const WATER_LEVEL := 2
 const CHUNK_SIZE := 16
 const VIEW_CHUNKS := 3
 const MAX_CHUNK_BUILDS_PER_FRAME := 1
@@ -485,6 +486,10 @@ func _generate_world() -> void:
 	# Quantization can turn two compliant floating-point slopes into a two-voxel
 	# cliff. Relax the final integer surface as well, while keeping river floors
 	# fixed so the water channels remain recessed and readable.
+	# Quantization must preserve the waterline too. The previous integer
+	# relaxation skipped river neighbours, allowing the first dry bank column
+	# to be raised several blocks by its other neighbours after the floating
+	# slope pass had already constrained it.
 	for _integer_pass in range(16):
 		var integer_updates: Dictionary = {}
 		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
@@ -496,6 +501,7 @@ func _generate_world() -> void:
 				var current_height := int(info["h"])
 				var lower_bound := MIN_Y + 2
 				var upper_bound := 13
+				var touches_water := false
 				for ox in [-1, 0, 1]:
 					for oz in [-1, 0, 1]:
 						if ox == 0 and oz == 0:
@@ -505,11 +511,17 @@ func _generate_world() -> void:
 							continue
 						var neighbor: Dictionary = heights[neighbor_key]
 						if bool(neighbor["river"]):
+							touches_water = true
 							continue
 						var neighbor_height := int(neighbor["h"])
 						lower_bound = maxi(lower_bound, neighbor_height - 1)
 						upper_bound = mini(upper_bound, neighbor_height + 1)
-				integer_updates[key] = clampi(current_height, lower_bound, upper_bound) if lower_bound <= upper_bound else int(round((lower_bound + upper_bound) * 0.5))
+				var adjusted_height := clampi(current_height, lower_bound, upper_bound) if lower_bound <= upper_bound else int(round((lower_bound + upper_bound) * 0.5))
+				if touches_water:
+					# Water surface is WATER_LEVEL + 1. Keep the adjacent dry
+					# surface within one voxel of that level for rivers and lakes.
+					adjusted_height = clampi(adjusted_height, WATER_LEVEL - 1, WATER_LEVEL + 1)
+				integer_updates[key] = adjusted_height
 		for key in integer_updates:
 			var info: Dictionary = heights[key]
 			info["h"] = int(integer_updates[key])
@@ -561,7 +573,7 @@ func _generate_world() -> void:
 					if heights.has(nkey):
 						max_dh = maxi(max_dh, absi(height - int(heights[nkey]["h"])))
 			var steep := max_dh >= 1 and height >= 8
-			var water_level := 2
+			var water_level := WATER_LEVEL
 			for y in range(MIN_Y, height + 1):
 				var kind := "stone"
 				if is_river and y < water_level: kind = "dirt"

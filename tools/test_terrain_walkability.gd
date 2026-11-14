@@ -3,6 +3,7 @@ extends SceneTree
 
 const GAME_SCENE := "res://scenes/main.tscn"
 const GROUND_KINDS := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
+const WATER_LEVEL := 2
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -47,6 +48,33 @@ func _run() -> void:
 	if surface_heights.size() < 10000:
 		_fail("Too few terrain columns were generated: %d" % surface_heights.size())
 		return
+
+	var water_bank_edges := 0
+	var water_bank_violations := 0
+	var worst_water_bank_step := 0
+	var water_bank_samples: Array[String] = []
+	for water_key_variant in water_columns:
+		var water_key: Vector2i = water_key_variant
+		for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var land_key: Vector2i = water_key + offset
+			if water_columns.has(land_key) or not surface_heights.has(land_key):
+				continue
+			var land_height := int(surface_heights[land_key])
+			var bank_step := absi(land_height - WATER_LEVEL)
+			water_bank_edges += 1
+			worst_water_bank_step = maxi(worst_water_bank_step, bank_step)
+			if bank_step > 1:
+				water_bank_violations += 1
+				if water_bank_samples.size() < 16:
+					water_bank_samples.append("%s=%d beside water %s" % [land_key, land_height, water_key])
+	if water_bank_edges < 20:
+		_fail("not enough generated river/lake shoreline edges were sampled: %d" % water_bank_edges)
+		return
+	if water_bank_violations > 0:
+		push_error("Water bank edge samples: " + str(water_bank_samples))
+		_fail("generated shoreline contains %d abrupt water-to-land edges; worst surface-level difference is %d blocks" % [water_bank_violations, worst_water_bank_step])
+		return
+	print("TERRAIN_WATER_BANK_PASS edges=", water_bank_edges, " max_waterline_step=", worst_water_bank_step)
 
 	var annulus_min := 999
 	var annulus_max := -999
