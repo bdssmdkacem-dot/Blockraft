@@ -349,8 +349,8 @@ func _generate_world() -> void:
 			if dist > 12.0 and dist < 48.0:
 				river_d = minf(river_d, scenic_river_d)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
-			var in_main := river_d < 2.2 and dist > 7.0
-			var in_trib := trib_d < 1.5 and dist > 11.0 and fz > 0.0
+			var in_main := river_d < 1.55 and dist > 7.0
+			var in_trib := trib_d < 1.15 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
 				h = mini(h, 1.2)
@@ -361,8 +361,8 @@ func _generate_world() -> void:
 				var bank_distance := river_d
 				if dist > 11.0 and fz > 0.0:
 					bank_distance = minf(bank_distance, trib_d)
-				if bank_distance < 8.5 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(2.2, 8.5, bank_distance))
+				if bank_distance < 7.5 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(1.55, 7.5, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
