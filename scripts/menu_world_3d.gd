@@ -29,6 +29,7 @@ func _ready() -> void:
 	_build_terrain_art_pass()
 	_build_horizon_layers()
 	_build_mountain_backdrop()
+	_build_mountain_ridge_art_pass()
 	_build_sunset_disc()
 	_build_sky_clouds()
 	_build_river_and_bridge()
@@ -311,6 +312,74 @@ func _build_mountain_backdrop() -> void:
 		fall.position = Vector3(spec[0], spec[1] * 0.5, spec[2])
 		fall.material_override = fall_mat
 		ridges.add_child(fall)
+
+
+func _build_mountain_ridge_art_pass() -> void:
+	# Connected alpine ridgelines create a continuous skyline behind the older
+	# peak silhouettes. Height samples form several asymmetric summits and
+	# saddles; vertex colours separate forest foothills, exposed rock and snow.
+	var root := Node3D.new()
+	root.name = "ConnectedMountainRidges"
+	add_child(root)
+	var ridge_specs := [
+		{"z": -50.0, "base": 1.5, "height": 19.0, "phase": 0.0, "color": Color("#536c79")},
+		{"z": -59.0, "base": 0.0, "height": 24.0, "phase": 2.2, "color": Color("#405a6b")},
+		{"z": -68.0, "base": -0.8, "height": 27.0, "phase": 4.1, "color": Color("#617782")}
+	]
+	for ridge_index in range(ridge_specs.size()):
+		var spec: Dictionary = ridge_specs[ridge_index]
+		var vertices := PackedVector3Array()
+		var colors := PackedColorArray()
+		var indices := PackedInt32Array()
+		const SEGMENTS := 64
+		const DEPTH_ROWS := 5
+		for row in range(DEPTH_ROWS):
+			var depth_t := float(row) / float(DEPTH_ROWS - 1)
+			for segment in range(SEGMENTS + 1):
+				var t := float(segment) / float(SEGMENTS)
+				var x := -52.0 + t * 104.0
+				var envelope := 0.50 + 0.50 * sin(PI * t)
+				var peaks := 0.0
+				for peak_spec in [[-0.78, 0.78, 0.13], [-0.48, 0.54, 0.10], [-0.12, 1.0, 0.12], [0.22, 0.68, 0.09], [0.57, 0.92, 0.12], [0.84, 0.48, 0.08]]:
+					var distance := (t - float(peak_spec[0])) / float(peak_spec[2])
+					peaks = maxf(peaks, float(peak_spec[1]) * exp(-distance * distance * 0.5))
+				var serration := (sin(t * 93.0 + float(spec["phase"])) * 0.035 + sin(t * 171.0 + float(spec["phase"]) * 1.7) * 0.018) * envelope
+				var height := float(spec["base"]) + float(spec["height"]) * (peaks * envelope + serration)
+				var z := float(spec["z"]) - depth_t * (5.0 + ridge_index * 1.5)
+				var side_drop := absf(depth_t - 0.5) * 0.22
+				vertices.append(Vector3(x, height - side_drop, z))
+				var rock: Color = spec["color"]
+				var facet := 0.5 + 0.5 * sin(t * 137.0 + depth_t * 8.0 + ridge_index)
+				var color := rock.lerp(Color("#89969a"), facet * 0.24)
+				if height > 15.0 + ridge_index * 1.3:
+					color = color.lerp(Color("#e1e8e4"), clampf((height - 15.0 - ridge_index * 1.3) / 8.0, 0.0, 0.92))
+				elif height < 6.0:
+					color = color.lerp(Color("#42664f"), 0.72)
+				colors.append(color)
+		for row in range(DEPTH_ROWS - 1):
+			for segment in range(SEGMENTS):
+				var a := row * (SEGMENTS + 1) + segment
+				var b := a + 1
+				var d := a + SEGMENTS + 1
+				var e := d + 1
+				indices.append_array(PackedInt32Array([a, b, d, b, e, d]))
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		arrays[Mesh.ARRAY_COLOR] = colors
+		arrays[Mesh.ARRAY_INDEX] = indices
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var ridge := MeshInstance3D.new()
+		ridge.name = "ConnectedAlpineRidge_%d" % ridge_index
+		ridge.mesh = mesh
+		var material := StandardMaterial3D.new()
+		material.vertex_color_use_as_albedo = true
+		material.roughness = 0.98
+		material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		ridge.material_override = material
+		ridge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(ridge)
 
 func _build_sunset_disc() -> void:
 	# A warm, emissive sun gives the valley a clear golden-hour focal point.
@@ -674,6 +743,31 @@ func _build_landmark_details() -> void:
 	add_child(details)
 	_box(details, Vector3(12, 0.3, 5), Vector3(1, 0.6, 1), MAT_STONE)
 	_box(details, Vector3(-5, 0.4, 8), Vector3(1.5, 0.8, 1.2), MAT_DIRT)
+
+	# Two inhabited side wings turn the isolated gatehouse into a broader
+	# fortified landmark. Roof slopes, corner towers, connecting galleries and
+	# repeated lit windows give the silhouette depth at menu-camera distance.
+	for side in [-1.0, 1.0]:
+		var wing_x := side * 11.2
+		_box(root, Vector3(wing_x, 3.4, -1.6), Vector3(7.0, 6.6, 9.5), Color("#78847e"))
+		_box(root, Vector3(wing_x, 6.9, -1.6), Vector3(7.6, 0.35, 10.0), Color("#a8b1a7"))
+		var front_roof := _box(root, Vector3(wing_x - side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#854a3b"))
+		front_roof.rotation.z = deg_to_rad(side * -24.0)
+		var rear_roof := _box(root, Vector3(wing_x + side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#a45c43"))
+		rear_roof.rotation.z = deg_to_rad(side * 24.0)
+		_box(root, Vector3(wing_x, 8.15, 1.0), Vector3(0.22, 0.32, 10.6), Color("#c28b61"))
+		for window_z in [-4.4, -1.8, 0.8, 3.4]:
+			_box(root, Vector3(wing_x - side * 3.56, 4.4, window_z), Vector3(0.12, 1.25, 0.72), Color("#253b49"))
+			_box(root, Vector3(wing_x - side * 3.64, 4.4, window_z), Vector3(0.08, 0.18, 0.86), Color("#e9b96b"), 0.32)
+		for tower_z in [-5.5, 3.0]:
+			_box(root, Vector3(wing_x, 8.3, tower_z), Vector3(2.3, 3.2, 2.3), Color("#66756f"))
+			_box(root, Vector3(wing_x, 10.0, tower_z), Vector3(2.8, 0.28, 2.8), Color("#b2b8ad"))
+			_pyramid(root, Vector3(wing_x, 10.15, tower_z), 1.55, 2.6, Color("#75463b"))
+			_box(root, Vector3(wing_x, 12.0, tower_z), Vector3(0.12, 0.7, 0.12), Color("#f0ce83"))
+	# Raised stone causeway and retaining walls visually anchor the expanded wings.
+	_box(root, Vector3(0.0, 0.35, 8.4), Vector3(24.0, 0.55, 2.0), Color("#777f76"))
+	for side in [-1.0, 1.0]:
+		_box(root, Vector3(side * 10.0, 0.9, 8.4), Vector3(0.42, 1.2, 2.0), Color("#aab2a8"))
 
 func _build_castle_surface_details() -> void:
 	# Layered masonry, slit windows, banners and warm sconces break up the
