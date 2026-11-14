@@ -20,6 +20,11 @@ func _run() -> void:
 	# container. Remove any snapshot written by an earlier test so this check
 	# measures the current procedural generator, not an older saved world.
 	game.call("_clear_old_save")
+	# _clear_old_save removes the primary snapshot; remove its recovery backup too
+	# so this acceptance run cannot silently load an older generated world.
+	var backup_path := "user://world_blocks.json.bak"
+	if FileAccess.file_exists(backup_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(backup_path))
 	root.add_child(game)
 	var ready := false
 	for _frame in range(900):
@@ -29,6 +34,9 @@ func _run() -> void:
 			break
 	if not ready:
 		_fail("World did not initialize")
+		return
+	if float(game.get("world_generation_ms")) <= 0.0:
+		_fail("Terrain test did not run a fresh procedural generation pass")
 		return
 
 	var blocks: Dictionary = game.get("blocks")
