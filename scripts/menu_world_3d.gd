@@ -395,6 +395,7 @@ func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, c
 			surface.add_vertex(upper_b)
 			surface.set_color(facet.lightened(0.06))
 			surface.add_vertex(upper_a)
+	surface.generate_normals()
 	var mesh := surface.commit()
 	spire.mesh = mesh
 	spire.position = position
