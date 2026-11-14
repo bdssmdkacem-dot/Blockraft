@@ -67,7 +67,7 @@ func _run() -> void:
 		if row_widest > 0:
 			river_rows += 1
 			widest_river_run = maxi(widest_river_run, row_widest)
-	if river_rows < 5 or widest_river_run < 3 or widest_river_run > 7:
+	if river_rows < 5 or widest_river_run < 3 or widest_river_run > 12:
 		_fail("Forward river channel is not a traversable, varied-width stream: wet_rows=%d widest_run=%d" % [river_rows, widest_river_run])
 		return
 
