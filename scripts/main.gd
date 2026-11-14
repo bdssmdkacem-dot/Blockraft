@@ -562,6 +562,36 @@ func _generate_world() -> void:
 	# single source of truth for walkable one-block terrain transitions. Avoid
 	# the former 32-pass in-place lowering sweep, which flattened distant ridges.
 
+	# A short final edge sweep repairs only residual two-block seams left by
+	# quantization. Four passes are enough after bounded float/integer relaxation;
+	# unlike the old 32-pass sweep this does not flatten distant ridges.
+	for _edge_pass in range(4):
+		var edge_changed := false
+		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
+				var current_key := Vector2i(x, z)
+				var current_info: Dictionary = heights[current_key]
+				if bool(current_info.get("is_river", false)):
+					continue
+				var current_height := int(round(float(current_info["h"])))
+				for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
+					var neighbor_key := current_key + offset
+					if not heights.has(neighbor_key):
+						continue
+					var neighbor_info: Dictionary = heights[neighbor_key]
+					if bool(neighbor_info.get("is_river", false)):
+						continue
+					var neighbor_height := int(round(float(neighbor_info["h"])))
+					if current_height > neighbor_height + 1:
+						current_info["h"] = float(neighbor_height + 1)
+						current_height = neighbor_height + 1
+					edge_changed = true
+					elif neighbor_height > current_height + 1:
+						neighbor_info["h"] = float(current_height + 1)
+						edge_changed = true
+		if not edge_changed:
+			break
+
 	var voxel_fill_started_usec := Time.get_ticks_usec()
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
