@@ -322,6 +322,12 @@ func _generate_world() -> void:
 			h += sin(fx * 0.12 + fz * 0.06) * 0.20
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
 			h += local_relief * 2.0
+			# Two broad Gaussian ridges frame the forward river valley. Their
+			# gentle profiles restore visible mountain relief without creating
+			# isolated spikes or abrupt voxel walls.
+			var west_ridge := exp(-pow((fx + 19.0) / 10.0, 2.0) - pow((fz + 34.0) / 11.0, 2.0)) * 4.2
+			var east_ridge := exp(-pow((fx - 20.0) / 12.0, 2.0) - pow((fz + 32.0) / 10.0, 2.0)) * 3.8
+			h += west_ridge + east_ridge
 			# Higher outer ridges are made from local noise peaks rather than one
 			# broad cosine band, giving the skyline varied saddles and rounded hills.
 			if dist > 22.0:
