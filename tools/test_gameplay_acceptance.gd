@@ -67,7 +67,7 @@ func _run_checks() -> void:
         return
     for block_position in scene.blocks:
         var block_cell: Vector3i = block_position
-        if str(scene.blocks[block_position]) in ["wood", "leaves"] and block_cell.y >= 5 and block_cell.z < -6 and block_cell.z > -42 and abs(block_cell.x) < 28:
+        if str(scene.blocks[block_position]) in ["wood", "leaves"] and block_cell.y >= 5 and block_cell.z < -3 and block_cell.z > -42 and abs(block_cell.x) < 30:
             _fail("tree foliage remains inside the opening camera corridor at %s" % str(block_cell), 76)
             return
     print("FLORA_GROUNDING_ACCEPTANCE_PASS: plants and tree foliage are grounded and keep the opening camera corridor clear count=", grounded_plants)
