@@ -264,8 +264,9 @@ func _run_checks() -> void:
     # explicit water-avoidance steering path against a deterministic water cell.
     for animal_node in animals:
         var animal := animal_node as CharacterBody3D
-        if animal.call("_is_water_at_world_position", animal.global_position):
-            _fail("animal spawned inside a water volume: %s" % animal.name, 52)
+        var spawn_position: Vector3 = animal.get_meta("spawn_position", animal.global_position)
+        if animal.call("_is_water_at_world_position", spawn_position):
+            _fail("animal initial spawn position is inside a water volume: %s at %s" % [animal.name, str(spawn_position)], 52)
             return
     var navigation_animal := animals[0] as CharacterBody3D
     var original_direction: Vector3 = navigation_animal.get("_dir")
