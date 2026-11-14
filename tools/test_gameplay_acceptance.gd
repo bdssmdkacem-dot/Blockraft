@@ -70,7 +70,17 @@ func _run_checks() -> void:
         if str(scene.blocks[block_position]) in ["wood", "leaves"] and block_cell.y >= 5 and block_cell.z < -3 and block_cell.z > -42 and abs(block_cell.x) < 30:
             _fail("tree foliage remains inside the opening camera corridor at %s" % str(block_cell), 76)
             return
-    print("FLORA_GROUNDING_ACCEPTANCE_PASS: plants and tree foliage are grounded and keep the opening camera corridor clear count=", grounded_plants)
+    for block_position in scene.blocks:
+        var visible_cell: Vector3i = block_position
+        if visible_cell.y < 5 or visible_cell.z >= -3 or visible_cell.z <= -42 or abs(visible_cell.x) >= 30:
+            continue
+        var visible_kind := str(scene.blocks[block_position])
+        if visible_kind == "water":
+            continue
+        if not scene.blocks.has(visible_cell + Vector3i.DOWN):
+            _fail("unsupported solid voxel remains in the opening view at %s (%s)" % [str(visible_cell), visible_kind], 77)
+            return
+    print("FLORA_GROUNDING_ACCEPTANCE_PASS: plants and tree foliage are grounded, opening corridor is clear, and visible solids have vertical support count=", grounded_plants)
 
     var water_material := scene.block_materials.get("water") as StandardMaterial3D
     var gameplay_environment := scene.get_node_or_null("WorldEnvironment") as WorldEnvironment
