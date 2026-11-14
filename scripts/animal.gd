@@ -244,7 +244,7 @@ func _build_mesh(data: Dictionary) -> void:
 	match kind:
 		Kind.CHICKEN:
 			_ellipsoid(_body_root, Vector3(0, 0.34 * s, -0.015 * s), Vector3(0.54 * s, 0.43 * s, 0.62 * s), body_c)
-			_ellipsoid(_body_root, Vector3(0, 0.55 * s, 0.18 * s), Vector3(0.39 * s, 0.36 * s, 0.36 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.53 * s, 0.22 * s), Vector3(0.31 * s, 0.29 * s, 0.31 * s), body_c)
 		Kind.FOX:
 			_ellipsoid(_body_root, Vector3(0, 0.36 * s, -0.02 * s), Vector3(0.50 * s, 0.37 * s, 0.78 * s), body_c)
 			_ellipsoid(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.37 * s, 0.34 * s, 0.38 * s), body_c)
@@ -311,6 +311,7 @@ func _build_mesh(data: Dictionary) -> void:
 			_ellipsoid(_body_root, Vector3(-0.22 * s, 0.57 * s, 0.43 * s), Vector3(0.18 * s, 0.20 * s, 0.055 * s), spot_c)
 			_ellipsoid(_body_root, Vector3(0.18 * s, 0.42 * s, 0.45 * s), Vector3(0.13 * s, 0.12 * s, 0.045 * s), spot_c)
 			_ellipsoid(_body_root, Vector3(-0.28 * s, 0.56 * s, -0.08 * s), Vector3(0.05 * s, 0.18 * s, 0.22 * s), spot_c)
+			_ellipsoid(_body_root, Vector3(0.30 * s, 0.57 * s, -0.12 * s), Vector3(0.045 * s, 0.16 * s, 0.20 * s), spot_c)
 			_box(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.36 * s, 0.32 * s, 0.32 * s), body_c)
 			_box(_body_root, Vector3(-0.18 * s, 0.20 * s, 0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.18 * s, 0.20 * s, 0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
@@ -334,7 +335,7 @@ func _build_mesh(data: Dictionary) -> void:
 		Kind.SHEEP:
 			# Compact charcoal face and four tapered legs; avoid a second full-body
 			# sphere so the fleece reads as one soft torso rather than stacked balls.
-			_box(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.22 * s, 0.22 * s, 0.25 * s), Color("#353535"))
+			_box(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.18 * s, 0.19 * s, 0.20 * s), Color("#353535"))
 			for leg_x in [-0.15, 0.15]:
 				for leg_z in [-0.23, 0.22]:
 					_ellipsoid(_body_root, Vector3(leg_x * s, 0.16 * s, leg_z * s), Vector3(0.085 * s, 0.30 * s, 0.09 * s), Color("#343434"))
@@ -344,8 +345,8 @@ func _build_mesh(data: Dictionary) -> void:
 			for eye_x in [-0.075, 0.075]:
 				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.555 * s), Vector3(0.035 * s, 0.045 * s, 0.025 * s), Color("#f8eee4"))
 			# Four flattened fleece panels follow the back contour without spherical clumps.
-			for fleece_pos in [Vector3(-0.22, 0.58, -0.08), Vector3(0.22, 0.58, -0.08), Vector3(-0.12, 0.69, -0.28), Vector3(0.12, 0.69, -0.28)]:
-				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.16 * s, 0.10 * s, 0.22 * s), Color("#e9e5dc"))
+			for fleece_pos in [Vector3(-0.18, 0.57, -0.08), Vector3(0.18, 0.57, -0.08), Vector3(-0.10, 0.64, -0.26), Vector3(0.10, 0.64, -0.26)]:
+				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.13 * s, 0.075 * s, 0.18 * s), Color("#e9e5dc"))
 	# Register leg meshes explicitly by species-specific geometry dimensions.
 	# This avoids accidentally animating beaks, wings or decorative tail blocks.
 	_animated_legs.clear()
