@@ -1,5 +1,6 @@
 extends Node
 ## Higher-detail flora + fauna spawn.
+## Ground support and opening sightlines are validated to avoid floating-looking debris.
 
 const AnimalScript = preload("res://scripts/animal.gd")
 
