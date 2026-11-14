@@ -50,6 +50,22 @@ func _run() -> void:
 		_fail("Too few terrain columns were generated: %d" % surface_heights.size())
 		return
 
+	# The protected 7x7 spawn pad needs a dry transition ring at height >= 3.
+	# Without it, a valid one-block border step becomes a two-block rise when
+	# sampled across two cells from the surrounding natural terrain.
+	var spawn_ring_violations: Array[String] = []
+	for x in range(-4, 5):
+		for z in range(-4, 5):
+			if maxi(absi(x), absi(z)) != 4:
+				continue
+			var ring_key := Vector2i(x, z)
+			if water_columns.has(ring_key) or not surface_heights.has(ring_key) or int(surface_heights.get(ring_key, -999)) < 3:
+				spawn_ring_violations.append("%s=%s" % [ring_key, str(surface_heights.get(ring_key, "missing"))])
+	if not spawn_ring_violations.is_empty():
+		_fail("spawn transition ring is incomplete or below its target height: " + str(spawn_ring_violations))
+		return
+	print("TERRAIN_SPAWN_TRANSITION_PASS columns=16 minimum_surface=3")
+
 	var water_bank_edges := 0
 	var water_bank_violations := 0
 	var worst_water_bank_step := 0
