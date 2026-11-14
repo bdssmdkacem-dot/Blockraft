@@ -307,7 +307,7 @@ func _generate_world() -> void:
 	var terrain_noise := FastNoiseLite.new()
 	terrain_noise.seed = 82417
 	terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	terrain_noise.frequency = 0.026
+	terrain_noise.frequency = 0.034
 	terrain_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	terrain_noise.fractal_octaves = 4
 	terrain_noise.fractal_gain = 0.48
@@ -321,7 +321,7 @@ func _generate_world() -> void:
 			h += sin(fx * 0.060 + 1.7) * 0.52 + cos(fz * 0.058 + 0.6) * 0.48
 			h += sin(fx * 0.12 + fz * 0.06) * 0.20
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
-			h += local_relief * 2.0
+			h += local_relief * 2.35
 			# Two broad Gaussian ridges frame the forward river valley. Their
 			# gentle profiles restore visible mountain relief without creating
 			# isolated spikes or abrupt voxel walls.
@@ -349,8 +349,8 @@ func _generate_world() -> void:
 			if dist > 12.0 and dist < 48.0:
 				river_d = minf(river_d, scenic_river_d)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
-			var in_main := river_d < 3.0 and dist > 7.0
-			var in_trib := trib_d < 2.0 and dist > 11.0 and fz > 0.0
+			var in_main := river_d < 2.2 and dist > 7.0
+			var in_trib := trib_d < 1.5 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
 				h = mini(h, 1.2)
@@ -361,8 +361,8 @@ func _generate_world() -> void:
 				var bank_distance := river_d
 				if dist > 11.0 and fz > 0.0:
 					bank_distance = minf(bank_distance, trib_d)
-				if bank_distance < 9.0 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(3.0, 12.0, bank_distance))
+				if bank_distance < 8.5 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(2.2, 8.5, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
