@@ -762,21 +762,24 @@ func _build_landmark_details() -> void:
 	# repeated lit windows give the silhouette depth at menu-camera distance.
 	for side in [-1.0, 1.0]:
 		var wing_x := side * 11.2
-		_box(root, Vector3(wing_x, 3.4, -1.6), Vector3(7.0, 6.6, 9.5), Color("#78847e"))
-		_box(root, Vector3(wing_x, 6.9, -1.6), Vector3(7.6, 0.35, 10.0), Color("#a8b1a7"))
-		var front_roof := _box(root, Vector3(wing_x - side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#854a3b"))
+		var wing_root := Node3D.new()
+		wing_root.name = "CastleWestWing" if side < 0.0 else "CastleEastWing"
+		root.add_child(wing_root)
+		_box(wing_root, Vector3(wing_x, 3.4, -1.6), Vector3(7.0, 6.6, 9.5), Color("#78847e"))
+		_box(wing_root, Vector3(wing_x, 6.9, -1.6), Vector3(7.6, 0.35, 10.0), Color("#a8b1a7"))
+		var front_roof := _box(wing_root, Vector3(wing_x - side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#854a3b"))
 		front_roof.rotation.z = deg_to_rad(side * -24.0)
-		var rear_roof := _box(root, Vector3(wing_x + side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#a45c43"))
+		var rear_roof := _box(wing_root, Vector3(wing_x + side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#a45c43"))
 		rear_roof.rotation.z = deg_to_rad(side * 24.0)
-		_box(root, Vector3(wing_x, 8.15, 1.0), Vector3(0.22, 0.32, 10.6), Color("#c28b61"))
+		_box(wing_root, Vector3(wing_x, 8.15, 1.0), Vector3(0.22, 0.32, 10.6), Color("#c28b61"))
 		for window_z in [-4.4, -1.8, 0.8, 3.4]:
-			_box(root, Vector3(wing_x - side * 3.56, 4.4, window_z), Vector3(0.12, 1.25, 0.72), Color("#253b49"))
-			_box(root, Vector3(wing_x - side * 3.64, 4.4, window_z), Vector3(0.08, 0.18, 0.86), Color("#e9b96b"), 0.32)
+			_box(wing_root, Vector3(wing_x - side * 3.56, 4.4, window_z), Vector3(0.12, 1.25, 0.72), Color("#253b49"))
+			_box(wing_root, Vector3(wing_x - side * 3.64, 4.4, window_z), Vector3(0.08, 0.18, 0.86), Color("#e9b96b"), 0.32)
 		for tower_z in [-5.5, 3.0]:
-			_box(root, Vector3(wing_x, 8.3, tower_z), Vector3(2.3, 3.2, 2.3), Color("#66756f"))
-			_box(root, Vector3(wing_x, 10.0, tower_z), Vector3(2.8, 0.28, 2.8), Color("#b2b8ad"))
-			_pyramid(root, Vector3(wing_x, 10.15, tower_z), 1.55, 2.6, Color("#75463b"))
-			_box(root, Vector3(wing_x, 12.0, tower_z), Vector3(0.12, 0.7, 0.12), Color("#f0ce83"))
+			_box(wing_root, Vector3(wing_x, 8.3, tower_z), Vector3(2.3, 3.2, 2.3), Color("#66756f"))
+			_box(wing_root, Vector3(wing_x, 10.0, tower_z), Vector3(2.8, 0.28, 2.8), Color("#b2b8ad"))
+			_pyramid(wing_root, Vector3(wing_x, 10.15, tower_z), 1.55, 2.6, Color("#75463b"))
+			_box(wing_root, Vector3(wing_x, 12.0, tower_z), Vector3(0.12, 0.7, 0.12), Color("#f0ce83"))
 	# Raised stone causeway and retaining walls visually anchor the expanded wings.
 	_box(root, Vector3(0.0, 0.35, 8.4), Vector3(24.0, 0.55, 2.0), Color("#777f76"))
 	for side in [-1.0, 1.0]:
