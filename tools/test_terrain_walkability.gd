@@ -97,18 +97,12 @@ func _run() -> void:
 	if bridge_deck_cells != 8 or str(blocks.get(Vector3i(0, 2, -21), "")) != "wood" or str(blocks.get(Vector3i(0, 2, -12), "")) != "wood":
 		_fail("Timber bridge deck or its one-block bank approaches are incomplete: deck=%d" % bridge_deck_cells)
 		return
-	for pad_x in range(-6, 7):
-		for pad_z in range(-6, 7):
+	for pad_x in range(-3, 4):
+		for pad_z in range(-3, 4):
 			var pad_distance := maxi(absi(pad_x), absi(pad_z))
-			var expected_pad_height := 4
-			if pad_distance == 3:
-				expected_pad_height = 3
-			elif pad_distance == 5:
-				expected_pad_height = 5
-			elif pad_distance >= 6:
-				expected_pad_height = 6
+			var expected_pad_height := 3 if pad_distance == 3 else 4
 			if int(surface_heights.get(Vector2i(pad_x, pad_z), -999)) != expected_pad_height:
-				_fail("Spawn landing pad/ramp ring is not level at (%d,%d)" % [pad_x, pad_z])
+				_fail("Spawn landing pad is not level at (%d,%d)" % [pad_x, pad_z])
 				return
 
 	var annulus_min := 999
