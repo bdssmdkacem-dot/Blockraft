@@ -137,7 +137,7 @@ func _run_checks() -> void:
             _fail("indexed voxel surface references a vertex outside its buffer", 66)
             return
         var geometric_normal := (face_test_vertices[ib] - face_test_vertices[ia]).cross(face_test_vertices[ic] - face_test_vertices[ia])
-        if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(face_test_normals[ia]) > -0.90:
+        if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(face_test_normals[ia]) > -0.99:
             _fail("indexed voxel triangle winding disagrees with outward normals", 67)
             return
     if old_origin == null:
@@ -191,7 +191,7 @@ func _run_checks() -> void:
                         _fail("chunk %s index buffer references an invalid vertex" % str(key), 66)
                         return
                     var geometric_normal := (mesh_vertices[ib] - mesh_vertices[ia]).cross(mesh_vertices[ic] - mesh_vertices[ia])
-                    if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(mesh_normals[ia]) > -0.90:
+                    if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(mesh_normals[ia]) > -0.99:
                         _fail("chunk %s indexed surface winding disagrees with outward normals" % str(key), 65)
                         return
                 var surface_material := child.material_override as StandardMaterial3D
