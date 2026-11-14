@@ -764,7 +764,7 @@ func _build_landmark_details() -> void:
 		var wing_x: float = float(side) * 11.2
 		var wing_root := Node3D.new()
 		wing_root.name = "CastleWestWing" if side < 0.0 else "CastleEastWing"
-		details.add_child(wing_root)
+		add_child(wing_root)
 		_box(wing_root, Vector3(wing_x, 3.4, -1.6), Vector3(7.0, 6.6, 9.5), Color("#78847e"))
 		_box(wing_root, Vector3(wing_x, 6.9, -1.6), Vector3(7.6, 0.35, 10.0), Color("#a8b1a7"))
 		var front_roof := _box(wing_root, Vector3(wing_x - side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#854a3b"))
@@ -781,9 +781,9 @@ func _build_landmark_details() -> void:
 			_pyramid(wing_root, Vector3(wing_x, 10.15, tower_z), 1.55, 2.6, Color("#75463b"))
 			_box(wing_root, Vector3(wing_x, 12.0, tower_z), Vector3(0.12, 0.7, 0.12), Color("#f0ce83"))
 	# Raised stone causeway and retaining walls visually anchor the expanded wings.
-	_box(details, Vector3(0.0, 0.35, 8.4), Vector3(24.0, 0.55, 2.0), Color("#777f76"))
+	_box(self, Vector3(0.0, 0.35, 8.4), Vector3(24.0, 0.55, 2.0), Color("#777f76"))
 	for side in [-1.0, 1.0]:
-		_box(details, Vector3(side * 10.0, 0.9, 8.4), Vector3(0.42, 1.2, 2.0), Color("#aab2a8"))
+		_box(self, Vector3(side * 10.0, 0.9, 8.4), Vector3(0.42, 1.2, 2.0), Color("#aab2a8"))
 
 func _build_castle_surface_details() -> void:
 	# Layered masonry, slit windows, banners and warm sconces break up the
