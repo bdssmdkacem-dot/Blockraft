@@ -52,6 +52,11 @@ var chunk_render_triangle_count_total := 0
 var chunk_render_vertex_bytes_total := 0
 var chunk_render_full_cube_triangle_equivalent_total := 0
 var chunk_render_face_quads_total := 0
+# Cold-start terrain generation diagnostics (milliseconds).
+var world_generation_ms := 0.0
+var world_generation_heightfield_ms := 0.0
+var world_generation_voxel_fill_ms := 0.0
+var world_generation_block_count := 0
 
 func _ready() -> void:
 	player = get_node_or_null("Player") as CharacterBody3D
@@ -298,6 +303,7 @@ func use_depot() -> void:
 	_refresh_backpack_ui()
 
 func _generate_world() -> void:
+	var generation_started_usec := Time.get_ticks_usec()
 	blocks.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 82417
@@ -565,6 +571,7 @@ func _generate_world() -> void:
 		if not changed:
 			break
 
+	var voxel_fill_started_usec := Time.get_ticks_usec()
 	for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var info: Dictionary = heights[Vector2i(x, z)]
@@ -683,6 +690,14 @@ func _generate_world() -> void:
 		if z % 2 == 0:
 			blocks[Vector3i(-1, 4, z)] = "wood"
 			blocks[Vector3i(1, 4, z)] = "wood"
+	world_generation_heightfield_ms = float(voxel_fill_started_usec - generation_started_usec) / 1000.0
+	world_generation_voxel_fill_ms = float(Time.get_ticks_usec() - voxel_fill_started_usec) / 1000.0
+	world_generation_ms = float(Time.get_ticks_usec() - generation_started_usec) / 1000.0
+	world_generation_block_count = blocks.size()
+	print("WORLD_GENERATION_METRICS total_ms=", snappedf(world_generation_ms, 0.1),
+		" heightfield_and_relaxation_ms=", snappedf(world_generation_heightfield_ms, 0.1),
+		" voxel_fill_and_decoration_ms=", snappedf(world_generation_voxel_fill_ms, 0.1),
+		" blocks=", world_generation_block_count)
 
 func _ore_noise(x: int, y: int, z: int) -> float:
 	return 0.5 + 0.5 * sin(float(x) * 0.19 + float(y) * 0.37) * cos(float(z) * 0.17 + float(y) * 0.23) * sin(float(x + z) * 0.11 + float(y) * 0.29)
