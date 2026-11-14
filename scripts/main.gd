@@ -714,17 +714,17 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 					blocks[p] = "leaves"
 
 func _ensure_spawn_transition_ring() -> void:
-	# The protected 7x7 landing pad sits one block above its border. Two
-	# dry transition rings spread that rise across four cells instead of
-	# leaving a two-voxel jump in the first natural terrain columns.
+	# The protected 7x7 landing pad sits one block above its border. Four
+	# dry transition rings keep the spawn ramp gradual: height 3 across rings
+	# four/five, then height 2 across rings six/seven.
 	# This runs only for a freshly generated world; restored player edits stay intact.
-	for x in range(-6, 7):
-		for z in range(-6, 7):
+	for x in range(-7, 8):
+		for z in range(-7, 8):
 			var ring_distance := maxi(absi(x), absi(z))
 			var minimum_surface := 0
-			if ring_distance == 4:
+			if ring_distance == 4 or ring_distance == 5:
 				minimum_surface = 3
-			elif ring_distance == 6:
+			elif ring_distance == 6 or ring_distance == 7:
 				minimum_surface = 2
 			else:
 				continue
