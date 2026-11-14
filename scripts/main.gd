@@ -97,6 +97,7 @@ func _initialize_world_async() -> void:
 			_generate_world()
 	if not restored:
 		_clear_spawn_camera_corridor()
+		_ensure_spawn_transition_ring()
 	_ensure_spawn_pad()
 	_spawn_depot()
 	if player:
@@ -711,6 +712,32 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 				var p := Vector3i(x + dx, canopy_y + dy, z + dz)
 				if not blocks.has(p):
 					blocks[p] = "leaves"
+
+func _ensure_spawn_transition_ring() -> void:
+	# The protected 7x7 spawn pad is one block above its border. Add one
+	# intermediate dry-ground ring so the first natural terrain column does
+	# not jump two voxels across the two-cell acceptance span.
+	# This runs only for a freshly generated world; restored player edits stay intact.
+	for x in range(-4, 5):
+		for z in range(-4, 5):
+			if maxi(absi(x), absi(z)) != 4:
+				continue
+			var has_water := false
+			for y in range(MIN_Y, WATER_LEVEL + 1):
+				if str(blocks.get(Vector3i(x, y, z), "")) == "water":
+					has_water = true
+					break
+			if has_water:
+				continue
+			var top_ground := MIN_Y - 1
+			for y in range(MIN_Y, 16):
+				var kind := str(blocks.get(Vector3i(x, y, z), ""))
+				if kind in ["grass", "dirt", "stone", "rock", "sand", "gravel"]:
+					top_ground = y
+			if top_ground < 3:
+				for y in range(top_ground + 1, 3):
+					blocks[Vector3i(x, y, z)] = "dirt"
+				blocks[Vector3i(x, 3, z)] = "grass"
 
 func _ensure_spawn_pad() -> void:
 	# Reserve a clear, level landing area so trees/old edits cannot leave the
