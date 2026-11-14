@@ -49,10 +49,7 @@ func _run() -> void:
 			var water_key := Vector2i(p.x, p.z)
 			water_columns[water_key] = int(water_columns.get(water_key, 0)) + 1
 		var key := Vector2i(p.x, p.z)
-		# The timber bridge deck is the walkable surface over its approach
-		# columns; measure the deck rather than the lower terrain hidden beneath it.
-		var is_bridge_deck := kind == "wood" and p.x == 0 and p.z >= -20 and p.z <= -13 and p.y == 3
-		if kind not in GROUND_KINDS and not is_bridge_deck:
+		if kind not in GROUND_KINDS:
 			continue
 		if not surface_heights.has(key) or p.y > int(surface_heights[key]):
 			surface_heights[key] = p.y
@@ -92,6 +89,13 @@ func _run() -> void:
 			deep_river_columns += 1
 	if shallow_river_columns < 8 or deep_river_columns < 8:
 		_fail("River needs both shallow shoreline shelves and a deeper centre: shallow=%d deep=%d" % [shallow_river_columns, deep_river_columns])
+		return
+	var bridge_deck_cells := 0
+	for bridge_z in range(-20, -12):
+		if str(blocks.get(Vector3i(0, 3, bridge_z), "")) == "wood":
+			bridge_deck_cells += 1
+	if bridge_deck_cells != 8 or str(blocks.get(Vector3i(0, 2, -21), "")) != "wood" or str(blocks.get(Vector3i(0, 2, -12), "")) != "wood":
+		_fail("Timber bridge deck or its one-block bank approaches are incomplete: deck=%d" % bridge_deck_cells)
 		return
 
 	var annulus_min := 999
