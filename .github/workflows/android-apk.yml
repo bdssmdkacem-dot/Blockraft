@@ -2,7 +2,7 @@ name: Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, perf/culled-chunk-surface-meshes]
     paths:
       - "project.godot"
       - "export_presets.cfg"
