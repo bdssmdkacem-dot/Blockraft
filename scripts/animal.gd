@@ -262,8 +262,6 @@ func _build_mesh(data: Dictionary) -> void:
 				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.15 * s, 0.13 * s, 0.17 * s), Color("#fffdf7"))
 	match kind:
 		Kind.CHICKEN:
-			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.46 * s, 0.38 * s, 0.54 * s), body_c)
-			_box(_body_root, Vector3(0, 0.52 * s, 0.18 * s), Vector3(0.32 * s, 0.30 * s, 0.32 * s), body_c)
 			_box(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.10 * s, 0.08 * s, 0.18 * s), spot_c)
 			# Oversized comb, bright beak and readable eyes give the chicken a clear mobile silhouette.
 			_box(_body_root, Vector3(0, 0.72 * s, 0.17 * s), Vector3(0.16 * s, 0.22 * s, 0.12 * s), Color("#c9342b"))
@@ -283,10 +281,6 @@ func _build_mesh(data: Dictionary) -> void:
 			for feather_x in [-0.10, 0.0, 0.10]:
 				_box(_body_root, Vector3(feather_x * s, 0.43 * s, -0.38 * s), Vector3(0.085 * s, 0.16 * s, 0.22 * s), Color("#e4ded2"))
 		Kind.FOX:
-			_box(_body_root, Vector3(0, 0.35 * s, 0), Vector3(0.42 * s, 0.32 * s, 0.70 * s), body_c)
-			_box(_body_root, Vector3(0, 0.48 * s, 0.32 * s), Vector3(0.30 * s, 0.28 * s, 0.30 * s), body_c)
-			_box(_body_root, Vector3(0, 0.38 * s, -0.42 * s), Vector3(0.14 * s, 0.16 * s, 0.36 * s), body_c)
-			_box(_body_root, Vector3(0, 0.38 * s, -0.58 * s), Vector3(0.12 * s, 0.12 * s, 0.12 * s), spot_c)
 			_box(_body_root, Vector3(-0.12 * s, 0.12 * s, 0.15 * s), Vector3(0.10 * s, 0.24 * s, 0.10 * s), body_c)
 			_box(_body_root, Vector3(0.12 * s, 0.12 * s, 0.15 * s), Vector3(0.10 * s, 0.24 * s, 0.10 * s), body_c)
 			# Fox ears, pale muzzle and dark eyes make it distinct from livestock.
@@ -300,19 +294,14 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0.15 * s, 0.14 * s, -0.22 * s), Vector3(0.11 * s, 0.26 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(-0.15 * s, 0.14 * s, 0.25 * s), Vector3(0.11 * s, 0.26 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.15 * s, 0.14 * s, 0.25 * s), Vector3(0.11 * s, 0.26 * s, 0.12 * s), body_c)
-			_box(_body_root, Vector3(0.0, 0.34 * s, -0.72 * s), Vector3(0.22 * s, 0.22 * s, 0.42 * s), body_c)
-			_box(_body_root, Vector3(0.0, 0.34 * s, -0.98 * s), Vector3(0.20 * s, 0.18 * s, 0.18 * s), spot_c)
 			_box(_body_root, Vector3(-0.12 * s, 0.78 * s, 0.34 * s), Vector3(0.06 * s, 0.12 * s, 0.04 * s), Color("#f3b2a2"))
 			_box(_body_root, Vector3(0.12 * s, 0.78 * s, 0.34 * s), Vector3(0.06 * s, 0.12 * s, 0.04 * s), Color("#f3b2a2"))
 		Kind.COW:
-			_box(_body_root, Vector3(0, 0.55 * s, 0), Vector3(0.55 * s, 0.45 * s, 0.85 * s), body_c)
-			_box(_body_root, Vector3(0.12 * s, 0.55 * s, 0.1 * s), Vector3(0.22 * s, 0.35 * s, 0.30 * s), spot_c)
 			# Distinct coat patches sit on the visible flank, not buried inside the body.
 			_ellipsoid(_body_root, Vector3(-0.22 * s, 0.57 * s, 0.43 * s), Vector3(0.18 * s, 0.20 * s, 0.055 * s), spot_c)
 			_ellipsoid(_body_root, Vector3(0.18 * s, 0.42 * s, 0.45 * s), Vector3(0.13 * s, 0.12 * s, 0.045 * s), spot_c)
 			_ellipsoid(_body_root, Vector3(-0.28 * s, 0.56 * s, -0.08 * s), Vector3(0.05 * s, 0.18 * s, 0.22 * s), spot_c)
 			_ellipsoid(_body_root, Vector3(0.30 * s, 0.57 * s, -0.12 * s), Vector3(0.045 * s, 0.16 * s, 0.20 * s), spot_c)
-			_box(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.36 * s, 0.32 * s, 0.32 * s), body_c)
 			_box(_body_root, Vector3(-0.18 * s, 0.20 * s, 0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.18 * s, 0.20 * s, 0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(-0.18 * s, 0.20 * s, -0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
@@ -335,7 +324,7 @@ func _build_mesh(data: Dictionary) -> void:
 		Kind.SHEEP:
 			# Compact charcoal face and four tapered legs; avoid a second full-body
 			# sphere so the fleece reads as one soft torso rather than stacked balls.
-			_box(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.18 * s, 0.19 * s, 0.20 * s), Color("#353535"))
+			_ellipsoid(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.18 * s, 0.19 * s, 0.20 * s), Color("#353535"))
 			for leg_x in [-0.15, 0.15]:
 				for leg_z in [-0.23, 0.22]:
 					_ellipsoid(_body_root, Vector3(leg_x * s, 0.16 * s, leg_z * s), Vector3(0.085 * s, 0.30 * s, 0.09 * s), Color("#343434"))
