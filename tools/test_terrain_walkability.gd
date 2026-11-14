@@ -39,9 +39,12 @@ func _run() -> void:
 		var p: Vector3i = position
 		if kind == "water":
 			water_columns[Vector2i(p.x, p.z)] = true
-		if kind not in GROUND_KINDS:
-			continue
 		var key := Vector2i(p.x, p.z)
+		# The timber bridge deck is the walkable surface over its approach
+		# columns; measure the deck rather than the lower terrain hidden beneath it.
+		var is_bridge_deck := kind == "wood" and p.x == 0 and p.z >= -20 and p.z <= -13 and p.y == 3
+		if kind not in GROUND_KINDS and not is_bridge_deck:
+			continue
 		if not surface_heights.has(key) or p.y > int(surface_heights[key]):
 			surface_heights[key] = p.y
 	if surface_heights.size() < 10000:
