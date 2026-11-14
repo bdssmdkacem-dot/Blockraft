@@ -18,6 +18,7 @@ const SPAWN_Z := 0.5
 const SPAWN_SURFACE_Y := 5.0
 const SPAWN_CLEAR_MAX_Y := 80
 const SPAWN_CONTACT_EPSILON := 0.04
+const TERRAIN_SURFACE_KINDS := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
 
 var blocks: Dictionary = {}
 var block_mesh := BoxMesh.new()
@@ -57,6 +58,9 @@ var world_generation_ms := 0.0
 var world_generation_heightfield_ms := 0.0
 var world_generation_voxel_fill_ms := 0.0
 var world_generation_block_count := 0
+# Shared corner heights let adjacent voxel tops meet as continuous low-poly slopes.
+var terrain_surface_heights: Dictionary = {}
+var terrain_corner_heights: Dictionary = {}
 
 func _ready() -> void:
 	player = get_node_or_null("Player") as CharacterBody3D
@@ -106,6 +110,7 @@ func _initialize_world_async() -> void:
 	if not restored:
 		_clear_spawn_camera_corridor()
 	_ensure_spawn_pad()
+	_rebuild_terrain_surface_cache_from_blocks()
 	_spawn_depot()
 	if player:
 		player.velocity = Vector3.ZERO
@@ -895,6 +900,55 @@ func _load_chunk(ck: Vector2i) -> void:
 	if OS.is_debug_build():
 		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " collision_faces=", collision_face_count, " render_triangles=", render_triangles, " full_cube_triangles=", block_count * 12, " render_face_quads=", render_face_quads, " render_buffer_bytes=", render_vertex_bytes, " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
 
+func _rebuild_terrain_surface_cache_from_blocks() -> void:
+	terrain_surface_heights.clear()
+	terrain_corner_heights.clear()
+	for position_variant in blocks:
+		var position: Vector3i = position_variant
+		if str(blocks[position]) not in TERRAIN_SURFACE_KINDS:
+			continue
+		var key := Vector2i(position.x, position.z)
+		var surface_y := float(position.y + 1)
+		if not terrain_surface_heights.has(key) or surface_y > float(terrain_surface_heights[key]):
+			terrain_surface_heights[key] = surface_y
+	for x in range(-WORLD_RADIUS - 1, WORLD_RADIUS + 2):
+		for z in range(-WORLD_RADIUS - 1, WORLD_RADIUS + 2):
+			_refresh_terrain_corner_height(Vector2i(x, z))
+
+func _refresh_terrain_corner_height(corner: Vector2i) -> void:
+	var total := 0.0
+	var samples := 0
+	for ox in [-1, 0]:
+		for oz in [-1, 0]:
+			var column := Vector2i(corner.x + ox, corner.y + oz)
+			if terrain_surface_heights.has(column):
+				total += float(terrain_surface_heights[column])
+				samples += 1
+	if samples > 0:
+		terrain_corner_heights[corner] = total / float(samples)
+	else:
+		terrain_corner_heights.erase(corner)
+
+func _refresh_terrain_surface_column(x: int, z: int) -> void:
+	var key := Vector2i(x, z)
+	var found := false
+	for y in range(27, MIN_Y - 1, -1):
+		if str(blocks.get(Vector3i(x, y, z), "")) in TERRAIN_SURFACE_KINDS:
+			terrain_surface_heights[key] = float(y + 1)
+			found = true
+			break
+	if not found:
+		terrain_surface_heights.erase(key)
+	for corner_x in [x, x + 1]:
+		for corner_z in [z, z + 1]:
+			_refresh_terrain_corner_height(Vector2i(corner_x, corner_z))
+
+func _smooth_terrain_vertex(vertex: Vector3) -> Vector3:
+	var corner := Vector2i(roundi(vertex.x), roundi(vertex.z))
+	if terrain_corner_heights.has(corner):
+		vertex.y = float(terrain_corner_heights[corner])
+	return vertex
+
 func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String) -> void:
 	if not groups.has(kind):
 		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
@@ -930,11 +984,22 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var c: Vector3 = face[3]
 		var d: Vector3 = face[4]
 		var normal: Vector3 = face[5]
+		# Only natural ground surface blocks receive shared corner heights.
+		# Their top edges form continuous low-poly slopes while collision,
+		# mining and placement remain on the original voxel grid.
+		var smooth_surface := kind in TERRAIN_SURFACE_KINDS and not blocks.has(pos + Vector3i.UP)
+		if smooth_surface:
+			if is_equal_approx(a.y, y + 1.0): a = _smooth_terrain_vertex(a)
+			if is_equal_approx(b.y, y + 1.0): b = _smooth_terrain_vertex(b)
+			if is_equal_approx(c.y, y + 1.0): c = _smooth_terrain_vertex(c)
+			if is_equal_approx(d.y, y + 1.0): d = _smooth_terrain_vertex(d)
 		# Store four shared quad vertices and six indices instead of six
-		# duplicated vertices. Clockwise winding matches Godot's front faces.
+		# duplicated vertices. Recompute outward normals after slope shaping.
+		var geometric_normal := (c - a).cross(b - a) + (d - a).cross(c - a)
+		var vertex_normal := -geometric_normal.normalized() if geometric_normal.length_squared() > 0.0001 else normal
 		var base_index := vertices.size()
 		vertices.append_array(PackedVector3Array([a, b, c, d]))
-		normals.append_array(PackedVector3Array([normal, normal, normal, normal]))
+		normals.append_array(PackedVector3Array([vertex_normal, vertex_normal, vertex_normal, vertex_normal]))
 		# Deterministic per-voxel/per-face tinting adds subtle material breakup
 		# without texture lookups or extra draw calls. Top faces are slightly
 		# brighter; vertical rock faces remain naturally shaded.
@@ -1084,6 +1149,7 @@ func remove_block(pos: Vector3i) -> void:
 	if mining_fx and mining_fx.has_method("play_break"):
 		mining_fx.play_break(Vector3(pos), kind)
 	blocks.erase(pos)
+	_refresh_terrain_surface_column(pos.x, pos.z)
 	_rebuild_chunk(_chunk_key_from_world(pos.x, pos.z))
 	# A boundary edit can expose faces in the neighboring chunk.
 	for d in [Vector3i(1,0,0), Vector3i(-1,0,0), Vector3i(0,0,1), Vector3i(0,0,-1)]:
@@ -1096,6 +1162,7 @@ func place_block(pos: Vector3i, kind: String = "dirt") -> void:
 	if blocks.has(pos) or pos.y < MIN_Y or pos.y > 80: return
 	if player and player.global_position.distance_to(Vector3(pos) + Vector3(0.5, 0.5, 0.5)) < 1.8: return
 	blocks[pos] = kind
+	_refresh_terrain_surface_column(pos.x, pos.z)
 	var ck := _chunk_key_from_world(pos.x, pos.z)
 	_rebuild_chunk(ck)
 	if mining_fx and mining_fx.has_method("play_place"):
