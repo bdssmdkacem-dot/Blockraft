@@ -332,18 +332,18 @@ func _generate_world() -> void:
 			h += sin(fx * 0.060 + 1.7) * 0.52 + cos(fz * 0.058 + 0.6) * 0.48
 			h += sin(fx * 0.12 + fz * 0.06) * 0.20
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
-			h += local_relief * 2.50
+			h += local_relief * 3.0
 			# Two broad Gaussian ridges frame the forward river valley. Their
 			# gentle profiles restore visible mountain relief without creating
 			# isolated spikes or abrupt voxel walls.
-			var west_ridge := exp(-pow((fx + 19.0) / 10.0, 2.0) - pow((fz + 34.0) / 11.0, 2.0)) * 4.2
-			var east_ridge := exp(-pow((fx - 20.0) / 12.0, 2.0) - pow((fz + 32.0) / 10.0, 2.0)) * 3.8
+			var west_ridge := exp(-pow((fx + 19.0) / 10.0, 2.0) - pow((fz + 34.0) / 11.0, 2.0)) * 6.0
+			var east_ridge := exp(-pow((fx - 20.0) / 12.0, 2.0) - pow((fz + 32.0) / 10.0, 2.0)) * 5.8
 			h += west_ridge + east_ridge
 			# Higher outer ridges are made from local noise peaks rather than one
 			# broad cosine band, giving the skyline varied saddles and rounded hills.
 			if dist > 22.0:
 				var ridge_peak := maxf(0.0, terrain_noise.get_noise_2d(fx * 0.72 + 91.0, fz * 0.72 - 47.0))
-				h += pow(ridge_peak, 1.65) * 2.1
+				h += pow(ridge_peak, 1.65) * 3.0
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
 			# Keep only the protected spawn pad level. Blend into the nearby
@@ -366,7 +366,16 @@ func _generate_world() -> void:
 			var in_trib := trib_d < 1.25 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
-				h = mini(h, 1.2)
+				# Deepen the channel centre and leave a shallow shelf near the bank.
+				# The water surface stays level while its voxel depth changes gradually.
+				var channel_distance := river_d
+				var channel_width := main_river_width
+				if in_trib and (not in_main or trib_d < river_d):
+					channel_distance = trib_d
+					channel_width = 1.25
+				var edge_t := clampf(channel_distance / maxf(channel_width, 0.1), 0.0, 1.0)
+				var channel_floor_height := lerpf(0.35, 1.2, edge_t)
+				h = mini(h, channel_floor_height)
 			else:
 				# Shape each shoreline from its own water edge into a broad, gently
 				# rising bank. The inner edge follows the actual channel width.
@@ -388,7 +397,7 @@ func _generate_world() -> void:
 			if edge_distance < 32.0:
 				h = lerpf(float(MIN_Y + 2), h, smoothstep(0.0, 32.0, edge_distance))
 			heights[Vector2i(x, z)] = {
-				"hf": clampf(h, float(MIN_Y + 2), 11.5),
+				"hf": clampf(h, float(MIN_Y + 2), 15.5),
 				"river": in_river or in_lake,
 				"river_d": mini(river_d if in_main else (trib_d if in_trib else 99.0), 99.0),
 				"lake": in_lake,
@@ -425,7 +434,7 @@ func _generate_world() -> void:
 		for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			var key := Vector2i(x, z)
 			var info: Dictionary = heights[key]
-			var hi := clampi(int(round(float(info["hf"]))), MIN_Y + 2, 13)
+			var hi := clampi(int(round(float(info["hf"]))), MIN_Y + 2, 17)
 			info["h"] = hi
 			var dist2 := sqrt(float(x * x + z * z))
 			var path := false
