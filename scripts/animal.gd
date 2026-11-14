@@ -196,12 +196,51 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: 
 	mi.material_override = mat
 	parent.add_child(mi)
 
+func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.5
+	sphere.height = 1.0
+	sphere.radial_segments = 12
+	sphere.rings = 8
+	mi.mesh = sphere
+	mi.position = pos
+	mi.scale = size
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = roughness
+	mi.material_override = material
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	parent.add_child(mi)
+	return mi
+
+
 func _build_mesh(data: Dictionary) -> void:
 	_body_root = Node3D.new()
 	add_child(_body_root)
 	var s: float = float(data["scale"])
 	var body_c: Color = data["color_body"]
 	var spot_c: Color = data["color_spot"]
+	# Rounded core volumes sit beneath the voxel detailing. This preserves the
+	# readable Blockraft silhouette while avoiding animals that look like loose
+	# stacks of disconnected cubes at medium camera distance.
+	match kind:
+		Kind.CHICKEN:
+			_ellipsoid(_body_root, Vector3(0, 0.34 * s, -0.015 * s), Vector3(0.54 * s, 0.43 * s, 0.62 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.55 * s, 0.18 * s), Vector3(0.39 * s, 0.36 * s, 0.36 * s), body_c)
+		Kind.FOX:
+			_ellipsoid(_body_root, Vector3(0, 0.36 * s, -0.02 * s), Vector3(0.50 * s, 0.37 * s, 0.78 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.37 * s, 0.34 * s, 0.38 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.35 * s, -0.78 * s), Vector3(0.28 * s, 0.25 * s, 0.62 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.35 * s, -1.02 * s), Vector3(0.24 * s, 0.20 * s, 0.24 * s), spot_c)
+		Kind.COW:
+			_ellipsoid(_body_root, Vector3(0, 0.54 * s, 0), Vector3(0.64 * s, 0.52 * s, 0.94 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.43 * s, 0.39 * s, 0.40 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.34 * s, 0.20 * s, 0.18 * s), Color("#e9a5a0"))
+		Kind.SHEEP:
+			_ellipsoid(_body_root, Vector3(0, 0.43 * s, -0.01 * s), Vector3(0.62 * s, 0.53 * s, 0.78 * s), body_c)
+			for fleece_pos in [Vector3(-0.22, 0.55, 0.0), Vector3(0.22, 0.55, 0.0), Vector3(-0.15, 0.68, -0.22), Vector3(0.15, 0.68, -0.22), Vector3(0.0, 0.72, 0.12), Vector3(0.0, 0.35, -0.34)]:
+				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.30 * s, 0.28 * s, 0.30 * s), Color("#fffdf7"))
 	match kind:
 		Kind.CHICKEN:
 			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.46 * s, 0.38 * s, 0.54 * s), body_c)
