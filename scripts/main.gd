@@ -612,7 +612,7 @@ func _generate_world() -> void:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			var camera_clearance := Vector2(float(x), float(z)).length()
 			var tree_edge_clearance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
-			var opening_camera_corridor: bool = z < -3 and z > -40 and abs(x) < 12
+			var opening_camera_corridor: bool = z < -3 and z > -40 and abs(x) < 8
 			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5 and camera_clearance <= 30.0 and tree_edge_clearance > 16.0 and not opening_camera_corridor:
 				# Keep tree crowns grounded within the visible playable basin.
 				# Trees on the far perimeter or central horizon were technically
@@ -633,7 +633,7 @@ func _generate_world() -> void:
 	# Frame the starter valley with a few guaranteed tree groups. The
 	# central movement corridor stays open, while these flank canopies break up
 	# the broad grass terraces and give the river approach a stronger sense of place.
-	for flank_tree in [Vector2i(-17, -12), Vector2i(17, -14), Vector2i(-21, -27), Vector2i(21, -29)]:
+	for flank_tree in [Vector2i(-9, -12), Vector2i(9, -14), Vector2i(-13, -27), Vector2i(13, -29)]:
 		if not heights.has(flank_tree):
 			continue
 		var flank_info: Dictionary = heights[flank_tree]
