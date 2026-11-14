@@ -213,23 +213,12 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: 
 
 func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	if size.x * size.y * size.z > 0.10 and size.z > size.y * 1.20:
-		# A low-poly capsule gives horizontal torsos a shoulder-to-rump profile
-		# instead of a perfectly round ball. Smaller parts stay ellipsoidal.
-		var torso := CapsuleMesh.new()
-		torso.radius = 0.5
-		torso.height = 1.0
-		torso.radial_segments = 14
-		torso.rings = 6
-		mi.mesh = torso
-		mi.rotation.x = PI * 0.5
-	else:
-		var sphere := SphereMesh.new()
-		sphere.radius = 0.5
-		sphere.height = 1.0
-		sphere.radial_segments = 20
-		sphere.rings = 12
-		mi.mesh = sphere
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.5
+	sphere.height = 1.0
+	sphere.radial_segments = 20
+	sphere.rings = 12
+	mi.mesh = sphere
 	mi.position = pos
 	mi.scale = size
 	mi.set_meta("animal_rounded_part", true)
