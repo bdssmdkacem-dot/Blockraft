@@ -255,8 +255,10 @@ func _build_mesh(data: Dictionary) -> void:
 			_ellipsoid(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.34 * s, 0.20 * s, 0.18 * s), Color("#e9a5a0"))
 		Kind.SHEEP:
 			_ellipsoid(_body_root, Vector3(0, 0.43 * s, -0.01 * s), Vector3(0.62 * s, 0.53 * s, 0.78 * s), body_c)
-			for fleece_pos in [Vector3(-0.22, 0.55, 0.0), Vector3(0.22, 0.55, 0.0), Vector3(-0.15, 0.66, -0.22), Vector3(0.15, 0.66, -0.22)]:
-				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.21 * s, 0.19 * s, 0.22 * s), Color("#fffdf7"))
+			# Two compact fleece tufts sit on the back; the body remains one
+			# readable volume instead of becoming a pile of oversized white balls.
+			for fleece_pos in [Vector3(-0.18, 0.66, -0.10), Vector3(0.18, 0.66, -0.10)]:
+				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.15 * s, 0.13 * s, 0.17 * s), Color("#fffdf7"))
 	match kind:
 		Kind.CHICKEN:
 			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.46 * s, 0.38 * s, 0.54 * s), body_c)
