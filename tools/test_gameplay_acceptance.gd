@@ -32,6 +32,48 @@ func _run_checks() -> void:
         _fail("nearby world chunks did not stream in", 15)
         return
 
+    # Every spawned plant must sit on a continuous, exposed terrain column.
+    var flora := scene.get_node_or_null("FloraFauna")
+    var flora_root := flora.get_node_or_null("Flora") as Node3D if flora != null else null
+    if flora_root == null:
+        _fail("flora root is missing after world initialization", 68)
+        return
+    var grounded_plants := 0
+    for plant_node in flora_root.get_children():
+        var plant := plant_node as Node3D
+        if plant == null:
+            continue
+        var gx := floori(plant.position.x)
+        var gz := floori(plant.position.z)
+        var gy := floori(plant.position.y - 1.0 + 0.001)
+        var ground_cell := Vector3i(gx, gy, gz)
+        var ground_kind := str(scene.blocks.get(ground_cell, ""))
+        if ground_kind not in ["grass", "dirt", "sand", "gravel"]:
+            _fail("plant spawned on a non-ground voxel at %s (%s)" % [str(ground_cell), ground_kind], 69)
+            return
+        if scene.blocks.has(ground_cell + Vector3i.UP) or scene.blocks.has(ground_cell + Vector3i(0, 2, 0)):
+            _fail("plant spawned inside an obstructed voxel column at %s" % str(ground_cell), 70)
+            return
+        for support_y in range(gy - 1, -7, -1):
+            if not scene.blocks.has(Vector3i(gx, support_y, gz)) or str(scene.blocks.get(Vector3i(gx, support_y, gz), "")) == "water":
+                _fail("plant is not supported by continuous terrain at %s" % str(ground_cell), 71)
+                return
+        grounded_plants += 1
+    if grounded_plants < 20:
+        _fail("too few grounded plants were spawned: %d" % grounded_plants, 72)
+        return
+    print("FLORA_GROUNDING_ACCEPTANCE_PASS: plants are exposed and supported by continuous terrain columns count=", grounded_plants)
+
+    var water_material := scene.block_materials.get("water") as StandardMaterial3D
+    var gameplay_environment := scene.get_node_or_null("WorldEnvironment") as WorldEnvironment
+    if water_material == null or water_material.roughness > 0.30 or water_material.metallic < 0.08 or water_material.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA:
+        _fail("gameplay water material is not configured for readable reflective water", 73)
+        return
+    if gameplay_environment == null or gameplay_environment.environment == null or gameplay_environment.environment.background_mode != Environment.BG_SKY:
+        _fail("gameplay world is not rendering its configured sky environment", 74)
+        return
+    print("WORLD_MATERIAL_ACCEPTANCE_PASS: sky background and low-roughness translucent water verified")
+
     var survival := scene.get_node_or_null("Survival")
     if survival == null or survival.get("world_env") == null:
         _fail("day/night system did not bind to the active WorldEnvironment", 49)
