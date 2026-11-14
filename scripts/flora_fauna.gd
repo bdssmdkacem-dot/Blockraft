@@ -228,6 +228,7 @@ func _spawn_animals() -> void:
 		elif _rng.randf() < 0.2:
 			k = AnimalScript.Kind.FOX
 		animal.setup(k, Vector3(float(x) + 0.5, float(sy) + 1.05, float(z) + 0.5))
+		animal.set_meta("spawn_position", animal.global_position)
 		spawned += 1
 
 	# Keep two peaceful animals in the near gameplay vista so the world does
@@ -255,5 +256,6 @@ func _spawn_animals() -> void:
 		peaceful.name = "Animal_NearSpawn_%d" % nearby_spawned
 		_world.add_child(peaceful)
 		peaceful.setup(AnimalScript.Kind.SHEEP, Vector3(float(cell.x) + 0.5, float(nearby_y) + 1.05, float(cell.y) + 0.5))
+		peaceful.set_meta("spawn_position", peaceful.global_position)
 		nearby_spawned += 1
 	print("BLOCKRAFT_NEAR_SPAWN_FAUNA count=", nearby_spawned)
