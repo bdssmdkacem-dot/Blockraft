@@ -228,7 +228,7 @@ func _setup_materials() -> void:
 	var colors := {
 		"grass": Color(0.15, 0.29, 0.16), "dirt": Color(0.39, 0.26, 0.16),
 		"stone": Color(0.48, 0.50, 0.52), "wood": Color(0.42, 0.25, 0.11),
-		"sand": Color(0.82, 0.72, 0.48), "water": Color(0.10, 0.39, 0.66),
+		"sand": Color(0.82, 0.72, 0.48), "water": Color(0.06, 0.27, 0.48),
 		"gravel": Color(0.55, 0.52, 0.48), "rock": Color(0.35, 0.36, 0.38),
 		"coal": Color(0.12, 0.12, 0.14), "iron": Color(0.72, 0.58, 0.48),
 		"gold": Color(0.92, 0.78, 0.22), "crystal": Color(0.45, 0.85, 0.95),
@@ -240,12 +240,14 @@ func _setup_materials() -> void:
 		mat.roughness = 0.92
 		if key == "water":
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			mat.albedo_color.a = 0.68
-			mat.roughness = 0.18
-			mat.metallic = 0.12
+			mat.albedo_color.a = 0.76
+			# Keep the water readable and softly reflective, not metallic or icy.
+			mat.roughness = 0.44
+			mat.metallic = 0.0
+			mat.specular = 0.12
 			mat.emission_enabled = true
-			mat.emission = Color(0.025, 0.10, 0.16)
-			mat.emission_energy_multiplier = 0.07
+			mat.emission = Color(0.01, 0.04, 0.08)
+			mat.emission_energy_multiplier = 0.035
 		block_materials[key] = mat
 
 func _clear_old_save() -> void:
