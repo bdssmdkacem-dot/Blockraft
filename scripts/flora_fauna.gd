@@ -86,11 +86,15 @@ func _spawn_plants() -> void:
 		var z := _rng.randi_range(-52, 52)
 		if abs(x) < 3 and abs(z) < 3:
 			continue
+		# Preserve the opening camera corridor to the river crossing. Tiny
+		# distant plant silhouettes here were visually detached from the ridge.
+		if z < -12 and z > -36 and abs(x) < 18:
+			continue
 		var sy := _surface_y(x, z)
 		# Keep decorative flora inside the readable playable landscape. Plants
 		# placed on the far perimeter looked suspended because the terrain fades
 		# below the distant camera horizon.
-		if Vector2(float(x), float(z)).length() > 32.0:
+		if Vector2(float(x), float(z)).length() > 28.0:
 			continue
 		if sy < 0 or sy > 18:
 			continue
