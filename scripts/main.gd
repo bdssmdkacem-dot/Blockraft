@@ -575,7 +575,7 @@ func _generate_world() -> void:
 					continue
 				var current_height := int(round(float(current_info["h"])))
 				for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
-					var neighbor_key := current_key + offset
+					var neighbor_key: Vector2i = current_key + offset
 					if not heights.has(neighbor_key):
 						continue
 					var neighbor_info: Dictionary = heights[neighbor_key]
