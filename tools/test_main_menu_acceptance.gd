@@ -87,11 +87,19 @@ func _run_checks() -> void:
 	var rounded_peaks := 0
 	for mountain_part in world.find_children("*", "MeshInstance3D", true, false):
 		var mountain_mesh := (mountain_part as MeshInstance3D).mesh
-		if mountain_mesh is CylinderMesh and mountain_mesh.radial_segments >= 7 and mountain_mesh.top_radius > 0.0:
+		if mountain_mesh is CylinderMesh and mountain_mesh.radial_segments >= 12 and mountain_mesh.top_radius >= mountain_mesh.bottom_radius * 0.35:
 			rounded_peaks += 1
 	if rounded_peaks < 9:
 		_fail("mountain backdrop still uses sharp pyramid peaks instead of softened ridges", 43)
 		return
+	var cloud_root := world.find_child("SkyClouds", true, false) as Node3D
+	if cloud_root == null or cloud_root.get_child_count() < 15:
+		_fail("menu sky does not contain the complete soft-cloud layer", 46)
+		return
+	for cloud_part in cloud_root.get_children():
+		if not cloud_part is MeshInstance3D or not (cloud_part.mesh is SphereMesh):
+			_fail("menu sky contains a hard-edged floating cloud fragment", 47)
+			return
 	var castle := world.find_child("GatehouseCastle", true, false) as Node3D
 	if castle == null or castle.get_child_count() < 120:
 		_fail("menu castle lacks the layered facade and landmark detail pass", 33)
