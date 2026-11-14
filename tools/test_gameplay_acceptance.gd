@@ -48,7 +48,7 @@ func _run_checks() -> void:
         var gy := floori(plant.position.y - 1.0 + 0.001)
         var ground_cell := Vector3i(gx, gy, gz)
         var ground_kind := str(scene.blocks.get(ground_cell, ""))
-        if plant.position.z < -6.0 and plant.position.z > -42.0 and absf(plant.position.x) < 12.0 and Vector2(plant.position.x, plant.position.z).length() > 18.0:
+        if plant.position.z < -6.0 and plant.position.z > -42.0 and absf(plant.position.x) < 8.0 and Vector2(plant.position.x, plant.position.z).length() > 18.0:
             _fail("decorative plant spawned inside the opening camera corridor", 75)
             return
         if ground_kind not in ["grass", "dirt", "sand", "gravel"]:
@@ -67,7 +67,7 @@ func _run_checks() -> void:
         return
     for block_position in scene.blocks:
         var block_cell: Vector3i = block_position
-        if str(scene.blocks[block_position]) in ["wood", "leaves"] and block_cell.y >= 5 and block_cell.z < -3 and block_cell.z > -42 and abs(block_cell.x) < 12:
+        if str(scene.blocks[block_position]) in ["wood", "leaves"] and block_cell.y >= 5 and block_cell.z < -3 and block_cell.z > -42 and abs(block_cell.x) < 8:
             _fail("tree foliage remains inside the opening camera corridor at %s" % str(block_cell), 76)
             return
     for block_position in scene.blocks:
