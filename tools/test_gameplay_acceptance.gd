@@ -111,13 +111,13 @@ func _run_checks() -> void:
 
     var water_material := scene.block_materials.get("water") as StandardMaterial3D
     var gameplay_environment := scene.get_node_or_null("WorldEnvironment") as WorldEnvironment
-    if water_material == null or water_material.roughness > 0.30 or water_material.metallic < 0.08 or water_material.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA:
-        _fail("gameplay water material is not configured for readable reflective water", 73)
+    if water_material == null or water_material.roughness < 0.40 or water_material.metallic > 0.02 or water_material.specular > 0.16 or water_material.albedo_color.a < 0.70 or water_material.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA:
+        _fail("gameplay water material is too glossy, metallic, or transparent for readable water", 73)
         return
     if gameplay_environment == null or gameplay_environment.environment == null or gameplay_environment.environment.background_mode != Environment.BG_SKY:
         _fail("gameplay world is not rendering its configured sky environment", 74)
         return
-    print("WORLD_MATERIAL_ACCEPTANCE_PASS: sky background and low-roughness translucent water verified")
+    print("WORLD_MATERIAL_ACCEPTANCE_PASS: sky background and deep matte translucent water verified")
 
     var survival := scene.get_node_or_null("Survival")
     if survival == null or survival.get("world_env") == null:
