@@ -152,7 +152,7 @@ func _setup_camera() -> void:
 	camera.name = "MenuWorldCamera"
 	# Pull the panorama camera back and above the near forest canopy. This
 	# keeps the protagonist in the left foreground while revealing the river,
-	# village, gatehouse and floating islands behind the menu UI.
+	# village, gatehouse and softened mountain ridges behind the menu UI.
 	camera.position = Vector3(-17.0, 8.5, 29.0)
 	camera.rotation_degrees = Vector3(-15.0, -34.0, 0.0)
 	camera.fov = 55.0
@@ -241,7 +241,7 @@ func _build_sunset_disc() -> void:
 	mesh.radius = 3.2
 	mesh.height = 6.4
 	mesh.radial_segments = 20
-	mesh.rings = 10
+	mesh.rings = 40
 	sun.mesh = mesh
 	sun.position = Vector3(13.0, 16.5, -50.0)
 	sun.scale = Vector3.ONE * 1.35
@@ -260,20 +260,34 @@ func _build_sky_clouds() -> void:
 		[Vector3(23.0, 23.2, -44.0), Vector3(3.6, 1.0, 2.2)],
 		[Vector3(38.0, 20.5, -52.0), Vector3(5.0, 0.7, 1.8)]
 	]
+	var cloud_material := _material(Color("#fff0e2"), 0.96)
+	var lobe_offsets := [-0.30, 0.0, 0.28, -0.12, 0.18]
+	var lobe_widths := [0.34, 0.42, 0.32, 0.26, 0.24]
+	var lobe_heights := [0.70, 0.92, 0.72, 0.62, 0.60]
 	for spec in cloud_specs:
 		var base_position: Vector3 = spec[0]
 		var base_size: Vector3 = spec[1]
-		_box(clouds, base_position, base_size, Color("#ffe8d2"), 0.25)
-		_box(clouds, base_position + Vector3(-base_size.x * 0.28, 0.32, 0.0), base_size * Vector3(0.52, 0.72, 0.9), Color("#fff0df"), 0.28)
-		_box(clouds, base_position + Vector3(base_size.x * 0.24, 0.22, 0.05), base_size * Vector3(0.48, 0.62, 0.82), Color("#f4d9c0"), 0.3)
+		for lobe_index in range(lobe_offsets.size()):
+			var puff := MeshInstance3D.new()
+			var sphere := SphereMesh.new()
+			sphere.radius = 1.0
+			sphere.height = 2.0
+			sphere.radial_segments = 16
+			sphere.rings = 10
+			puff.mesh = sphere
+			puff.position = base_position + Vector3(base_size.x * lobe_offsets[lobe_index], base_size.y * (0.10 if lobe_index == 1 else 0.0), 0.0)
+			puff.scale = Vector3(base_size.x * lobe_widths[lobe_index], base_size.y * lobe_heights[lobe_index], base_size.z * 0.48)
+			puff.material_override = cloud_material
+			puff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			clouds.add_child(puff)
 
 func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
 	var spire := MeshInstance3D.new()
 	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius * 0.16
+	mesh.top_radius = radius * 0.40
 	mesh.bottom_radius = radius
 	mesh.height = height
-	mesh.radial_segments = 7
+	mesh.radial_segments = 12
 	mesh.rings = 1
 	spire.mesh = mesh
 	spire.position = position
@@ -286,11 +300,11 @@ func _build_river_and_bridge() -> void:
 	var water := Node3D.new()
 	water.name = "River"
 	add_child(water)
-	var wmat := _material(Color(0.13, 0.37, 0.58, 0.72), 0.18, 0.10)
+	var wmat := _material(Color(0.10, 0.40, 0.62, 0.82), 0.10, 0.18)
 	wmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	wmat.emission_enabled = true
 	wmat.emission = Color(0.08, 0.2, 0.3)
-	wmat.emission_energy_multiplier = 0.08
+	wmat.emission_energy_multiplier = 0.05
 	var river := MeshInstance3D.new()
 	var rm := BoxMesh.new()
 	rm.size = Vector3(9.5, 0.28, 66)
