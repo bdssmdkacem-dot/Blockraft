@@ -585,7 +585,7 @@ func _generate_world() -> void:
 					if current_height > neighbor_height + 1:
 						current_info["h"] = float(neighbor_height + 1)
 						current_height = neighbor_height + 1
-					edge_changed = true
+						edge_changed = true
 					elif neighbor_height > current_height + 1:
 						neighbor_info["h"] = float(current_height + 1)
 						edge_changed = true
