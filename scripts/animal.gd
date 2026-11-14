@@ -6,22 +6,22 @@ enum State { WANDER, CHASE, ATTACK, FLEE, HURT }
 
 const KIND_DATA := {
 	Kind.FOX: {
-		"scale": 1.58, "speed": 4.0, "hp": 18.0, "dmg": 6.0,
+		"scale": 1.86, "speed": 4.0, "hp": 18.0, "dmg": 6.0,
 		"aggro": 10.0, "hit_range": 1.8, "attack_cd": 0.85,
 		"color_body": Color("#c46828"), "color_spot": Color("#f0e8e0")
 	},
 	Kind.CHICKEN: {
-		"scale": 2.08, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
+		"scale": 2.35, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
 		"aggro": 11.0, "hit_range": 2.0, "attack_cd": 0.65,
 		"color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")
 	},
 	Kind.COW: {
-		"scale": 1.68, "speed": 2.6, "hp": 32.0, "dmg": 8.0,
+		"scale": 1.98, "speed": 2.6, "hp": 32.0, "dmg": 8.0,
 		"aggro": 7.0, "hit_range": 2.1, "attack_cd": 1.1,
 		"color_body": Color("#f8f6f0"), "color_spot": Color("#2c2c2c")
 	},
 	Kind.SHEEP: {
-		"scale": 1.65, "speed": 3.0, "hp": 16.0, "dmg": 0.0,
+		"scale": 1.95, "speed": 3.0, "hp": 16.0, "dmg": 0.0,
 		"aggro": 0.0, "hit_range": 0.0, "attack_cd": 1.0,
 		"color_body": Color("#f5f5f5"), "color_spot": Color("#e8e4dc")
 	},
@@ -185,20 +185,25 @@ func _update_hp_bar() -> void:
 			mat.albedo_color = Color(0.95, 0.2, 0.15)
 
 func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.85) -> void:
-	# Animal anatomy uses rounded volumes rather than sharp boxes. The world
-	# remains voxel-styled, but faces, joints, ears and tails now read as
-	# connected living forms instead of stacked rectangular props.
+	# Keep small anatomy (eyes, beaks, hooves, combs and markings) crisp and
+	# readable. Larger forms use ellipsoids so the body silhouette is rounded
+	# without turning every facial feature and joint into a soft sphere.
 	var mi := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.5
-	mesh.height = 1.0
-	mesh.radial_segments = 16
-	mesh.rings = 10
-	mi.mesh = mesh
+	if size.x * size.y * size.z >= 0.01:
+		var mesh := SphereMesh.new()
+		mesh.radius = 0.5
+		mesh.height = 1.0
+		mesh.radial_segments = 16
+		mesh.rings = 10
+		mi.mesh = mesh
+		mi.set_meta("animal_rounded_part", true)
+	else:
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3.ONE
+		mi.mesh = mesh
 	mi.scale = size
 	mi.position = pos
 	mi.set_meta("animal_part_size", size)
-	mi.set_meta("animal_rounded_part", true)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.roughness = roughness
