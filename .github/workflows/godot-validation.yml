@@ -2,7 +2,7 @@ name: Godot validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, perf/culled-chunk-surface-meshes]
   pull_request:
   workflow_dispatch:
 
