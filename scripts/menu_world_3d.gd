@@ -773,11 +773,13 @@ func _build_landmark_details() -> void:
 		castle.add_child(wing_root)
 		_box(wing_root, Vector3(wing_x, 3.4, -1.6), Vector3(7.0, 6.6, 9.5), Color("#78847e"))
 		_box(wing_root, Vector3(wing_x, 6.9, -1.6), Vector3(7.6, 0.35, 10.0), Color("#a8b1a7"))
-		var front_roof := _box(wing_root, Vector3(wing_x - side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#854a3b"))
+		var front_roof := _box(wing_root, Vector3(wing_x - side * 1.55, 6.95, 1.0), Vector3(4.0, 0.28, 10.4), Color("#854a3b"))
 		front_roof.rotation.z = deg_to_rad(side * -24.0)
-		var rear_roof := _box(wing_root, Vector3(wing_x + side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#a45c43"))
+		front_roof.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var rear_roof := _box(wing_root, Vector3(wing_x + side * 1.55, 6.95, 1.0), Vector3(4.0, 0.28, 10.4), Color("#a45c43"))
 		rear_roof.rotation.z = deg_to_rad(side * 24.0)
-		_box(wing_root, Vector3(wing_x, 8.15, 1.0), Vector3(0.22, 0.32, 10.6), Color("#c28b61"))
+		rear_roof.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_box(wing_root, Vector3(wing_x, 7.45, 1.0), Vector3(0.22, 0.32, 10.6), Color("#c28b61"))
 		for window_z in [-4.4, -1.8, 0.8, 3.4]:
 			_box(wing_root, Vector3(wing_x - side * 3.56, 4.4, window_z), Vector3(0.12, 1.25, 0.72), Color("#253b49"))
 			_box(wing_root, Vector3(wing_x - side * 3.64, 4.4, window_z), Vector3(0.08, 0.18, 0.86), Color("#e9b96b"), 0.32)
