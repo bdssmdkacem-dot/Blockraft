@@ -1052,27 +1052,37 @@ func _append_exposed_collision_faces(faces: PackedVector3Array, pos: Vector3i) -
 	var y := float(pos.y)
 	var z := float(pos.z)
 	var count := 0
-	# Build only boundary faces. One concave shape replaces hundreds of per-block
-	# StaticBody3D + BoxShape3D pairs while preserving exact voxel hit locations.
+	var kind := str(blocks.get(pos, ""))
+	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and not blocks.has(pos + Vector3i.UP)
+	# Build only boundary faces. The smoothed render top and collision top use
+	# the same shared corner heights, so the player does not float or sink.
 	if not blocks.has(pos + Vector3i(1, 0, 0)) or str(blocks.get(pos + Vector3i(1, 0, 0), "")) == "water":
-		_append_collision_quad(faces, Vector3(x + 1, y, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y, z + 1))
+		_append_surface_aware_collision_quad(faces, Vector3(x + 1, y, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y, z + 1), smooth_surface, y)
 		count += 1
 	if not blocks.has(pos + Vector3i(-1, 0, 0)) or str(blocks.get(pos + Vector3i(-1, 0, 0), "")) == "water":
-		_append_collision_quad(faces, Vector3(x, y, z), Vector3(x, y, z + 1), Vector3(x, y + 1, z + 1), Vector3(x, y + 1, z))
+		_append_surface_aware_collision_quad(faces, Vector3(x, y, z), Vector3(x, y, z + 1), Vector3(x, y + 1, z + 1), Vector3(x, y + 1, z), smooth_surface, y)
 		count += 1
 	if not blocks.has(pos + Vector3i(0, 1, 0)) or str(blocks.get(pos + Vector3i(0, 1, 0), "")) == "water":
-		_append_collision_quad(faces, Vector3(x, y + 1, z), Vector3(x, y + 1, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y + 1, z))
+		_append_surface_aware_collision_quad(faces, Vector3(x, y + 1, z), Vector3(x, y + 1, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y + 1, z), smooth_surface, y)
 		count += 1
 	if not blocks.has(pos + Vector3i(0, -1, 0)) or str(blocks.get(pos + Vector3i(0, -1, 0), "")) == "water":
-		_append_collision_quad(faces, Vector3(x, y, z), Vector3(x + 1, y, z), Vector3(x + 1, y, z + 1), Vector3(x, y, z + 1))
+		_append_surface_aware_collision_quad(faces, Vector3(x, y, z), Vector3(x + 1, y, z), Vector3(x + 1, y, z + 1), Vector3(x, y, z + 1), smooth_surface, y)
 		count += 1
 	if not blocks.has(pos + Vector3i(0, 0, 1)) or str(blocks.get(pos + Vector3i(0, 0, 1), "")) == "water":
-		_append_collision_quad(faces, Vector3(x, y, z + 1), Vector3(x + 1, y, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x, y + 1, z + 1))
+		_append_surface_aware_collision_quad(faces, Vector3(x, y, z + 1), Vector3(x + 1, y, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x, y + 1, z + 1), smooth_surface, y)
 		count += 1
 	if not blocks.has(pos + Vector3i(0, 0, -1)) or str(blocks.get(pos + Vector3i(0, 0, -1), "")) == "water":
-		_append_collision_quad(faces, Vector3(x, y, z), Vector3(x, y + 1, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y, z))
+		_append_surface_aware_collision_quad(faces, Vector3(x, y, z), Vector3(x, y + 1, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y, z), smooth_surface, y)
 		count += 1
 	return count
+
+func _append_surface_aware_collision_quad(faces: PackedVector3Array, a: Vector3, b: Vector3, c: Vector3, d: Vector3, smooth_surface: bool, base_y: float) -> void:
+	if smooth_surface:
+		if a.y > base_y + 0.5: a = _smooth_terrain_vertex(a)
+		if b.y > base_y + 0.5: b = _smooth_terrain_vertex(b)
+		if c.y > base_y + 0.5: c = _smooth_terrain_vertex(c)
+		if d.y > base_y + 0.5: d = _smooth_terrain_vertex(d)
+	_append_collision_quad(faces, a, b, c, d)
 
 func _append_collision_quad(faces: PackedVector3Array, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
 	faces.append(a)
