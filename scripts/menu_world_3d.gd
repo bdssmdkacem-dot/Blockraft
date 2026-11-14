@@ -363,9 +363,22 @@ func _build_mountain_ridge_art_pass() -> void:
 				var d := a + SEGMENTS + 1
 				var e := d + 1
 				indices.append_array(PackedInt32Array([a, b, d, b, e, d]))
+		var normals := PackedVector3Array()
+		normals.resize(vertices.size())
+		for index_offset in range(0, indices.size(), 3):
+			var ia := indices[index_offset]
+			var ib := indices[index_offset + 1]
+			var ic := indices[index_offset + 2]
+			var face_normal := (vertices[ib] - vertices[ia]).cross(vertices[ic] - vertices[ia])
+			normals[ia] += face_normal
+			normals[ib] += face_normal
+			normals[ic] += face_normal
+		for normal_index in range(normals.size()):
+			normals[normal_index] = normals[normal_index].normalized()
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = vertices
+		arrays[Mesh.ARRAY_NORMAL] = normals
 		arrays[Mesh.ARRAY_COLOR] = colors
 		arrays[Mesh.ARRAY_INDEX] = indices
 		var mesh := ArrayMesh.new()
