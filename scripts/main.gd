@@ -905,7 +905,8 @@ func _rebuild_terrain_surface_cache_from_blocks() -> void:
 	terrain_corner_heights.clear()
 	for position_variant in blocks:
 		var position: Vector3i = position_variant
-		if position.y > 14 or str(blocks[position]) not in TERRAIN_SURFACE_KINDS:
+		var surface_kind := str(blocks[position])
+		if position.y > 14 or (surface_kind not in TERRAIN_SURFACE_KINDS and surface_kind != "water"):
 			continue
 		var key := Vector2i(position.x, position.z)
 		var surface_y := float(position.y + 1)
@@ -938,7 +939,8 @@ func _refresh_terrain_surface_column(x: int, z: int) -> void:
 	var key := Vector2i(x, z)
 	var found := false
 	for y in range(14, MIN_Y - 1, -1):
-		if str(blocks.get(Vector3i(x, y, z), "")) in TERRAIN_SURFACE_KINDS:
+		var surface_kind := str(blocks.get(Vector3i(x, y, z), ""))
+		if surface_kind in TERRAIN_SURFACE_KINDS or surface_kind == "water":
 			terrain_surface_heights[key] = float(y + 1)
 			found = true
 			break
@@ -966,7 +968,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 	var y := float(pos.y)
 	var z := float(pos.z)
 	var terrain_column := Vector2i(pos.x, pos.z)
-	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
+	var smooth_surface := (kind in TERRAIN_SURFACE_KINDS or kind == "water") and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
 	var faces := [
 		[Vector3i(1, 0, 0), Vector3(x + 1, y, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y, z + 1), Vector3.RIGHT],
 		[Vector3i(-1, 0, 0), Vector3(x, y, z), Vector3(x, y, z + 1), Vector3(x, y + 1, z + 1), Vector3(x, y + 1, z), Vector3.LEFT],
