@@ -571,7 +571,7 @@ func _generate_world() -> void:
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 				var current_key := Vector2i(x, z)
 				var current_info: Dictionary = heights[current_key]
-				if bool(current_info.get("is_river", false)):
+				if bool(current_info["river"]) and int(current_info["h"]) < 2:
 					continue
 				var current_height := int(round(float(current_info["h"])))
 				for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
@@ -579,15 +579,17 @@ func _generate_world() -> void:
 					if not heights.has(neighbor_key):
 						continue
 					var neighbor_info: Dictionary = heights[neighbor_key]
-					if bool(neighbor_info.get("is_river", false)):
+					if bool(neighbor_info["river"]) and int(neighbor_info["h"]) < 2:
 						continue
 					var neighbor_height := int(round(float(neighbor_info["h"])))
 					if current_height > neighbor_height + 1:
-						current_info["h"] = float(neighbor_height + 1)
+						current_info["h"] = neighbor_height + 1
 						current_height = neighbor_height + 1
+						heights[current_key] = current_info
 						edge_changed = true
 					elif neighbor_height > current_height + 1:
-						neighbor_info["h"] = float(current_height + 1)
+						neighbor_info["h"] = current_height + 1
+						heights[neighbor_key] = neighbor_info
 						edge_changed = true
 		if not edge_changed:
 			break
