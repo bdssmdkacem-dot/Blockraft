@@ -10,6 +10,26 @@ func _fail(message: String, code: int) -> void:
 
 
 func _run_checks() -> void:
+    # Godot's OBJ importer does not map legacy MTL ambient reflectance (Ka)
+    # into its PBR materials. Keep the shared palette free of unsupported
+    # ambient terms so fresh imports remain warning-free and environment light
+    # stays controlled by the scene's WorldEnvironment.
+    var palette := FileAccess.open("res://assets/models/blockraft_palette.mtl", FileAccess.READ)
+    if palette == null:
+        _fail("shared OBJ material palette could not be opened", 11)
+        return
+    var palette_line_count := 0
+    while not palette.eof_reached():
+        var palette_line := palette.get_line().strip_edges()
+        if palette_line.begins_with("Ka "):
+            _fail("unsupported MTL ambient reflectance remains: " + palette_line, 12)
+            return
+        if palette_line.begins_with("Kd "):
+            palette_line_count += 1
+    if palette_line_count < 10:
+        _fail("shared OBJ material palette is missing diffuse material definitions", 13)
+        return
+
     var packed := load("res://scenes/asset_gallery.tscn") as PackedScene
     if packed == null:
         _fail("asset_gallery.tscn failed to load", 2)
