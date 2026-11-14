@@ -111,8 +111,9 @@ func _run_checks() -> void:
     var face_test_group: Dictionary = face_test_groups["stone"]
     var face_test_vertices: PackedVector3Array = face_test_group["vertices"]
     var face_test_normals: PackedVector3Array = face_test_group["normals"]
+    var face_test_colors: PackedColorArray = face_test_group["colors"]
     var face_test_indices: PackedInt32Array = face_test_group["indices"]
-    if face_test_vertices.size() != 40 or face_test_normals.size() != 40 or face_test_indices.size() != 60:
+    if face_test_vertices.size() != 40 or face_test_normals.size() != 40 or face_test_colors.size() != 40 or face_test_indices.size() != 60:
         _fail("indexed face culling did not produce ten quads with four vertices each: vertices=%d indices=%d" % [face_test_vertices.size(), face_test_indices.size()], 60)
         return
     for index_offset in range(0, face_test_indices.size(), 3):
@@ -163,8 +164,10 @@ func _run_checks() -> void:
                 var mesh_arrays: Array = child.mesh.surface_get_arrays(0)
                 var mesh_vertices: PackedVector3Array = mesh_arrays[Mesh.ARRAY_VERTEX]
                 var mesh_normals: PackedVector3Array = mesh_arrays[Mesh.ARRAY_NORMAL]
+                var mesh_colors: PackedColorArray = mesh_arrays[Mesh.ARRAY_COLOR]
                 var mesh_indices: PackedInt32Array = mesh_arrays[Mesh.ARRAY_INDEX]
-                if mesh_vertices.is_empty() or mesh_vertices.size() != mesh_normals.size() or mesh_indices.is_empty() or mesh_indices.size() % 3 != 0:
+                var mesh_material := child.material_override as StandardMaterial3D
+                if mesh_vertices.is_empty() or mesh_vertices.size() != mesh_normals.size() or mesh_vertices.size() != mesh_colors.size() or mesh_material == null or not mesh_material.vertex_color_use_as_albedo or mesh_indices.is_empty() or mesh_indices.size() % 3 != 0:
                     _fail("chunk %s contains invalid indexed culled surface geometry" % str(key), 62)
                     return
                 for index_offset in range(0, mesh_indices.size(), 3):
@@ -211,6 +214,16 @@ func _run_checks() -> void:
     var animals := scene.find_children("Animal_*", "CharacterBody3D", true, false)
     if animals.is_empty():
         _fail("generated world has no animal assets", 18)
+        return
+    var rounded_animal_parts := 0
+    for animal_node in animals:
+        var animal := animal_node as CharacterBody3D
+        for part in animal.find_children("*", "MeshInstance3D", true, false):
+            if part is MeshInstance3D and (part as MeshInstance3D).mesh is SphereMesh:
+                rounded_animal_parts += 1
+                break
+    if rounded_animal_parts < animals.size():
+        _fail("one or more animals are missing rounded core geometry: %d/%d" % [rounded_animal_parts, animals.size()], 78)
         return
     # No spawned animal may begin inside a water voxel. Also exercise the
     # explicit water-avoidance steering path against a deterministic water cell.
