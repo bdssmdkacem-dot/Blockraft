@@ -85,7 +85,7 @@ func _setup_environment() -> void:
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color("#8da8bf")
-	environment.ambient_light_energy = 0.23
+	environment.ambient_light_energy = 0.30
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.tonemap_exposure = 0.82
 	environment.adjustment_enabled = true
@@ -147,7 +147,7 @@ func _setup_lighting() -> void:
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-20.0, 120.0, 0.0)
 	fill.light_color = Color("#88b8d8")
-	fill.light_energy = 0.13
+	fill.light_energy = 0.20
 	add_child(fill)
 
 func _setup_camera() -> void:
@@ -786,7 +786,7 @@ func _build_landmark_details() -> void:
 		for tower_z in [-5.5, 3.0]:
 			_box(wing_root, Vector3(wing_x, 8.3, tower_z), Vector3(2.3, 3.2, 2.3), Color("#66756f"))
 			_box(wing_root, Vector3(wing_x, 10.0, tower_z), Vector3(2.8, 0.28, 2.8), Color("#b2b8ad"))
-			_pyramid(wing_root, Vector3(wing_x, 10.15, tower_z), 1.55, 2.6, Color("#75463b"))
+			_pyramid(wing_root, Vector3(wing_x, 10.05, tower_z), 1.45, 2.25, Color("#75463b"))
 			_box(wing_root, Vector3(wing_x, 12.0, tower_z), Vector3(0.12, 0.7, 0.12), Color("#f0ce83"))
 	# Raised stone causeway and retaining walls visually anchor the expanded wings.
 	_box(castle, Vector3(0.0, 0.35, 8.4), Vector3(24.0, 0.55, 2.0), Color("#777f76"))
