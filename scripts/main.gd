@@ -630,6 +630,20 @@ func _generate_world() -> void:
 			if not is_river and not steep and height >= 3 and abs(x) > 10 and abs(z) > 10 and rng.randf() < 0.0024:
 				blocks[Vector3i(x, height + 1, z)] = "chest"
 
+	# Frame the starter valley with a few guaranteed tree groups. The
+	# central movement corridor stays open, while these flank canopies break up
+	# the broad grass terraces and give the river approach a stronger sense of place.
+	for flank_tree in [Vector2i(-17, -12), Vector2i(17, -14), Vector2i(-21, -27), Vector2i(21, -29)]:
+		if not heights.has(flank_tree):
+			continue
+		var flank_info: Dictionary = heights[flank_tree]
+		var flank_height := int(flank_info["h"])
+		if bool(flank_info["river"]) or flank_height < 4:
+			continue
+		if blocks.has(Vector3i(flank_tree.x, flank_height + 1, flank_tree.y)):
+			continue
+		_make_tree(flank_tree.x, flank_height + 1, flank_tree.y, rng)
+
 	# Guarantee one discoverable chest in the generated overworld. The
 	# procedural rarity roll remains for additional loot, but a fixed seed must
 	# never produce a world with no chest at all.
