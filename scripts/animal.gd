@@ -189,7 +189,7 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: 
 	# readable. Larger forms use ellipsoids so the body silhouette is rounded
 	# without turning every facial feature and joint into a soft sphere.
 	var mi := MeshInstance3D.new()
-	if size.x * size.y * size.z >= 0.01:
+	if size.x * size.y * size.z >= 0.035:
 		var mesh := SphereMesh.new()
 		mesh.radius = 0.5
 		mesh.height = 1.0
@@ -221,6 +221,7 @@ func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, rough
 	mi.mesh = sphere
 	mi.position = pos
 	mi.scale = size
+	mi.set_meta("animal_rounded_part", true)
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.roughness = roughness
@@ -254,8 +255,8 @@ func _build_mesh(data: Dictionary) -> void:
 			_ellipsoid(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.34 * s, 0.20 * s, 0.18 * s), Color("#e9a5a0"))
 		Kind.SHEEP:
 			_ellipsoid(_body_root, Vector3(0, 0.43 * s, -0.01 * s), Vector3(0.62 * s, 0.53 * s, 0.78 * s), body_c)
-			for fleece_pos in [Vector3(-0.22, 0.55, 0.0), Vector3(0.22, 0.55, 0.0), Vector3(-0.15, 0.68, -0.22), Vector3(0.15, 0.68, -0.22), Vector3(0.0, 0.72, 0.12), Vector3(0.0, 0.35, -0.34)]:
-				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.30 * s, 0.28 * s, 0.30 * s), Color("#fffdf7"))
+			for fleece_pos in [Vector3(-0.22, 0.55, 0.0), Vector3(0.22, 0.55, 0.0), Vector3(-0.15, 0.66, -0.22), Vector3(0.15, 0.66, -0.22)]:
+				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.21 * s, 0.19 * s, 0.22 * s), Color("#fffdf7"))
 	match kind:
 		Kind.CHICKEN:
 			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.46 * s, 0.38 * s, 0.54 * s), body_c)
