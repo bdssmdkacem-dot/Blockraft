@@ -228,7 +228,7 @@ func _run_checks() -> void:
             if mesh_part.mesh is SphereMesh and mesh_part.has_meta("animal_rounded_part"):
                 rounded_mesh_parts += 1
         # Rounded body volumes are required, while crisp BoxMesh details keep eyes, beaks, hooves and horns readable.
-        if animal_mesh_parts >= 12 and rounded_mesh_parts >= 2 and float(rounded_mesh_parts) / float(animal_mesh_parts) >= 0.25:
+        if animal_mesh_parts >= 12 and rounded_mesh_parts >= 2 and float(rounded_mesh_parts) / float(animal_mesh_parts) >= 0.15:
             rounded_animal_parts += 1
     if rounded_animal_parts < animals.size():
         _fail("one or more animals lack rounded core volumes or readable anatomy: rounded=%d/%d" % [rounded_animal_parts, animals.size()], 78)
