@@ -767,6 +767,9 @@ func _build_landmark_details() -> void:
 		var wing_x: float = float(side) * 11.2
 		var wing_root := Node3D.new()
 		wing_root.name = "CastleWestWing" if side < 0.0 else "CastleEastWing"
+		# Bring the side wings forward to the gatehouse facade plane; otherwise
+		# their walls sit behind the main mass and only the roofline reads as floating.
+		wing_root.position.z = 1.8
 		castle.add_child(wing_root)
 		_box(wing_root, Vector3(wing_x, 3.4, -1.6), Vector3(7.0, 6.6, 9.5), Color("#78847e"))
 		_box(wing_root, Vector3(wing_x, 6.9, -1.6), Vector3(7.6, 0.35, 10.0), Color("#a8b1a7"))
