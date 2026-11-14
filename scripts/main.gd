@@ -572,7 +572,7 @@ func _generate_world() -> void:
 				continue
 			var touches_water := false
 			for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-				var neighbor_key := key + offset
+				var neighbor_key: Vector2i = key + offset
 				if heights.has(neighbor_key) and bool(heights[neighbor_key]["river"]):
 					touches_water = true
 					break
