@@ -89,6 +89,15 @@ func _run_checks() -> void:
 	if river_vertices.size() != 146 or river_indices.size() != 432:
 		_fail("menu river surface exceeds or misses its bounded ribbon geometry", 55)
 		return
+	var river_normals: PackedVector3Array = river_arrays[Mesh.ARRAY_NORMAL]
+	for index_offset in range(0, river_indices.size(), 3):
+		var ia := river_indices[index_offset]
+		var ib := river_indices[index_offset + 1]
+		var ic := river_indices[index_offset + 2]
+		var geometric_normal := (river_vertices[ib] - river_vertices[ia]).cross(river_vertices[ic] - river_vertices[ia])
+		if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(river_normals[ia]) > -0.99:
+			_fail("menu river triangle winding hides the water surface from above", 58)
+			return
 	var river_center_min := INF
 	var river_center_max := -INF
 	for vertex_index in range(0, river_vertices.size(), 2):
