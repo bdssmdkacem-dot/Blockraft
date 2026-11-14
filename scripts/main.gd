@@ -932,11 +932,12 @@ func _refresh_terrain_corner_height(corner: Vector2i) -> void:
 func _refresh_terrain_surface_column(x: int, z: int) -> void:
 	# The procedural terrain never exceeds y=13; higher player structures are
 	# intentionally excluded from natural-landscape smoothing.
-	if blocks.has(Vector3i(x, 15, z)) and str(blocks[Vector3i(x, 15, z)]) in TERRAIN_SURFACE_KINDS:
-		return
+	for structure_y in range(27, 14, -1):
+		if str(blocks.get(Vector3i(x, structure_y, z), "")) in TERRAIN_SURFACE_KINDS:
+			return
 	var key := Vector2i(x, z)
 	var found := false
-	for y in range(27, MIN_Y - 1, -1):
+	for y in range(14, MIN_Y - 1, -1):
 		if str(blocks.get(Vector3i(x, y, z), "")) in TERRAIN_SURFACE_KINDS:
 			terrain_surface_heights[key] = float(y + 1)
 			found = true
