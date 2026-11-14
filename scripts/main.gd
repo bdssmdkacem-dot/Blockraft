@@ -723,12 +723,18 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 func _ensure_spawn_pad() -> void:
 	# Reserve a clear, level landing area so trees/old edits cannot leave the
 	# player trapped inside terrain or looking out into the sky.
-	for x in range(-3, 4):
-		for z in range(-3, 4):
-			var border_cell := absi(x) == 3 or absi(z) == 3
-			var surface_y := 3 if border_cell else 4
-			# Clear from the chosen surface upward. Leaving an old y=4 block on
-			# the lower border created a hidden two-block lip around the spawn pad.
+	for x in range(-6, 7):
+		for z in range(-6, 7):
+			var distance := maxi(absi(x), absi(z))
+			var surface_y := 4
+			if distance == 3:
+				surface_y = 3
+			elif distance == 5:
+				surface_y = 5
+			elif distance >= 6:
+				surface_y = 6
+			# The 7x7 landing pad is surrounded by three one-block ramp rings.
+			# Clear from each chosen surface upward so old terrain cannot leave lips.
 			for y in range(surface_y, SPAWN_CLEAR_MAX_Y + 1):
 				blocks.erase(Vector3i(x, y, z))
 			blocks[Vector3i(x, surface_y - 1, z)] = "dirt"
