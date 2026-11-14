@@ -1,5 +1,9 @@
 extends Node
 ## Higher-detail flora + fauna spawn.
+## Ground support and opening sightlines are validated to avoid floating-looking debris.
+## The gameplay bridge remains below the cleared tree-canopy envelope.
+## The sightline clearance includes tree-base and canopy overhang margins.
+## Gameplay validation also checks vertical support for all visible solid voxels.
 
 const AnimalScript = preload("res://scripts/animal.gd")
 
@@ -32,16 +36,31 @@ func _process(delta: float) -> void:
 			i += 1
 
 func _surface_y(x: int, z: int) -> int:
+	# A spawn surface must be the exposed top of a continuous terrain column.
+	# Merely finding a grass/stone voxel is insufficient: old saves and player
+	# builds can contain floating platforms, detached blocks and canopy pieces.
 	for y in range(30, -5, -1):
-		if _blocks.has(Vector3i(x, y, z)):
-			var k := str(_blocks[Vector3i(x, y, z)])
-			if k != "water" and k != "wood" and k != "leaves":
-				return y
+		var ground := Vector3i(x, y, z)
+		var kind := str(_blocks.get(ground, ""))
+		if kind not in ["grass", "dirt", "sand", "gravel", "stone", "rock"]:
+			continue
+		if _blocks.has(ground + Vector3i.UP):
+			continue
+		var supported_to_world_floor := true
+		for support_y in range(y - 1, -7, -1):
+			var support_kind := str(_blocks.get(Vector3i(x, support_y, z), ""))
+			if support_kind.is_empty() or support_kind == "water":
+				supported_to_world_floor = false
+				break
+		if supported_to_world_floor:
+			return y
 	return -999
 
 func _is_water(x: int, z: int) -> bool:
-	for y in range(0, 6):
-		if _blocks.has(Vector3i(x, y, z)) and str(_blocks[Vector3i(x, y, z)]) == "water":
+	# Check the whole playable column, not a fixed sea-level slice. This also
+	# prevents fauna spawning above water saved or placed at a different height.
+	for y in range(-6, 31):
+		if str(_blocks.get(Vector3i(x, y, z), "")) == "water":
 			return true
 	return false
 
@@ -71,11 +90,27 @@ func _spawn_plants() -> void:
 		var z := _rng.randi_range(-52, 52)
 		if abs(x) < 3 and abs(z) < 3:
 			continue
+		# Preserve the opening camera corridor to the river crossing. Tiny
+		# distant plant silhouettes here were visually detached from the ridge.
+		if z < -6 and z > -42 and abs(x) < 28:
+			continue
 		var sy := _surface_y(x, z)
+		# Keep decorative flora inside the readable playable landscape. Plants
+		# placed on the far perimeter looked suspended because the terrain fades
+		# below the distant camera horizon.
+		if Vector2(float(x), float(z)).length() > 28.0:
+			continue
 		if sy < 0 or sy > 18:
 			continue
-		var kind := str(_blocks.get(Vector3i(x, sy, z), ""))
-		if kind in ["stone", "rock", "water", "wood", "leaves"]:
+		var ground_cell := Vector3i(x, sy, z)
+		var kind := str(_blocks.get(ground_cell, ""))
+		if kind not in ["grass", "dirt", "sand", "gravel"]:
+			continue
+		# Do not decorate submerged ground or cells with any voxel overhead.
+		if _is_water(x, z) or _blocks.has(ground_cell + Vector3i(0, 1, 0)):
+			continue
+		# Never attach a plant inside an existing tree canopy, chest, or build.
+		if _blocks.has(Vector3i(x, sy + 1, z)) or _blocks.has(Vector3i(x, sy + 2, z)):
 			continue
 		var near_water := _is_water(x, z) or _is_water(x + 1, z) or _is_water(x, z + 1)
 		var plant := Node3D.new()
@@ -104,7 +139,10 @@ func _spawn_spawn_meadow() -> void:
 	for i in range(positions.size()):
 		var cell: Vector2i = positions[i]
 		var sy := _surface_y(cell.x, cell.y)
-		if sy < 0:
+		if sy < 0 or _is_water(cell.x, cell.y):
+			continue
+		var ground_cell := Vector3i(cell.x, sy, cell.y)
+		if str(_blocks.get(ground_cell, "")) not in ["grass", "dirt"] or _blocks.has(ground_cell + Vector3i(0, 1, 0)):
 			continue
 		var plant := Node3D.new()
 		plant.position = Vector3(float(cell.x) + 0.5, float(sy) + 1.0, float(cell.y) + 0.5)
@@ -173,8 +211,13 @@ func _spawn_animals() -> void:
 		var sy := _surface_y(x, z)
 		if sy < 1 or sy > 14:
 			continue
-		var kind_surface := str(_blocks.get(Vector3i(x, sy, z), ""))
-		if kind_surface in ["stone", "rock", "sand"] and _rng.randf() < 0.7:
+		var ground_cell := Vector3i(x, sy, z)
+		var kind_surface := str(_blocks.get(ground_cell, ""))
+		if kind_surface not in ["grass", "dirt", "gravel"]:
+			continue
+		# Spawn only on exposed dry terrain. A valid height beneath water,
+		# a chest, or a tree canopy is not a walkable animal spawn point.
+		if _blocks.has(ground_cell + Vector3i.UP) or _blocks.has(ground_cell + Vector3i(0, 2, 0)):
 			continue
 		var animal: CharacterBody3D = AnimalScript.new()
 		animal.name = "Animal_%d" % spawned

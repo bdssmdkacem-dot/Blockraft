@@ -48,6 +48,10 @@ var chunk_build_count := 0
 var chunk_build_ms_last := 0.0
 var chunk_build_ms_peak := 0.0
 var chunk_peak_loaded := 0
+var chunk_render_triangle_count_total := 0
+var chunk_render_vertex_bytes_total := 0
+var chunk_render_full_cube_triangle_equivalent_total := 0
+var chunk_render_face_quads_total := 0
 
 func _ready() -> void:
 	player = get_node_or_null("Player") as CharacterBody3D
@@ -187,7 +191,7 @@ func _setup_environment() -> void:
 	var we := WorldEnvironment.new()
 	we.name = "WorldEnvironment"
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
+	env.background_mode = Environment.BG_SKY
 	env.background_color = Color("#7aa8d8")
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
@@ -200,9 +204,9 @@ func _setup_environment() -> void:
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color("#91a8b8")
-	env.ambient_light_energy = 0.31
+	env.ambient_light_energy = 0.36
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 0.90
+	env.tonemap_exposure = 0.94
 	env.fog_enabled = true
 	env.fog_light_color = Color("#9aabb0")
 	env.fog_density = 0.00034
@@ -214,7 +218,7 @@ func _setup_materials() -> void:
 	var colors := {
 		"grass": Color(0.15, 0.29, 0.16), "dirt": Color(0.39, 0.26, 0.16),
 		"stone": Color(0.48, 0.50, 0.52), "wood": Color(0.42, 0.25, 0.11),
-		"sand": Color(0.82, 0.72, 0.48), "water": Color(0.22, 0.48, 0.72),
+		"sand": Color(0.82, 0.72, 0.48), "water": Color(0.10, 0.39, 0.66),
 		"gravel": Color(0.55, 0.52, 0.48), "rock": Color(0.35, 0.36, 0.38),
 		"coal": Color(0.12, 0.12, 0.14), "iron": Color(0.72, 0.58, 0.48),
 		"gold": Color(0.92, 0.78, 0.22), "crystal": Color(0.45, 0.85, 0.95),
@@ -226,7 +230,12 @@ func _setup_materials() -> void:
 		mat.roughness = 0.92
 		if key == "water":
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			mat.albedo_color.a = 0.72
+			mat.albedo_color.a = 0.68
+			mat.roughness = 0.18
+			mat.metallic = 0.12
+			mat.emission_enabled = true
+			mat.emission = Color(0.025, 0.10, 0.16)
+			mat.emission_energy_multiplier = 0.07
 		block_materials[key] = mat
 
 func _clear_old_save() -> void:
@@ -298,7 +307,7 @@ func _generate_world() -> void:
 	var terrain_noise := FastNoiseLite.new()
 	terrain_noise.seed = 82417
 	terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	terrain_noise.frequency = 0.030
+	terrain_noise.frequency = 0.034
 	terrain_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	terrain_noise.fractal_octaves = 4
 	terrain_noise.fractal_gain = 0.48
@@ -308,16 +317,22 @@ func _generate_world() -> void:
 			var fz := float(z)
 			var dist := sqrt(fx * fx + fz * fz)
 			var h := 4.6
-			h += sin(fx * 0.032) * cos(fz * 0.032) * 1.65
-			h += sin(fx * 0.060 + 1.7) * 0.68 + cos(fz * 0.058 + 0.6) * 0.64
+			h += sin(fx * 0.032) * cos(fz * 0.032) * 1.35
+			h += sin(fx * 0.060 + 1.7) * 0.52 + cos(fz * 0.058 + 0.6) * 0.48
 			h += sin(fx * 0.12 + fz * 0.06) * 0.20
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
-			h += local_relief * 2.6
+			h += local_relief * 2.35
+			# Two broad Gaussian ridges frame the forward river valley. Their
+			# gentle profiles restore visible mountain relief without creating
+			# isolated spikes or abrupt voxel walls.
+			var west_ridge := exp(-pow((fx + 19.0) / 10.0, 2.0) - pow((fz + 34.0) / 11.0, 2.0)) * 4.2
+			var east_ridge := exp(-pow((fx - 20.0) / 12.0, 2.0) - pow((fz + 32.0) / 10.0, 2.0)) * 3.8
+			h += west_ridge + east_ridge
 			# Higher outer ridges are made from local noise peaks rather than one
 			# broad cosine band, giving the skyline varied saddles and rounded hills.
 			if dist > 22.0:
 				var ridge_peak := maxf(0.0, terrain_noise.get_noise_2d(fx * 0.72 + 91.0, fz * 0.72 - 47.0))
-				h += pow(ridge_peak, 1.65) * 2.8
+				h += pow(ridge_peak, 1.65) * 2.1
 			# Keep the spawn valley open, then blend into rolling hills instead
 			# of creating a sudden high wall at the edge of the starter plateau.
 			# Keep only the protected spawn pad level. Blend into the nearby
@@ -334,8 +349,8 @@ func _generate_world() -> void:
 			if dist > 12.0 and dist < 48.0:
 				river_d = minf(river_d, scenic_river_d)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
-			var in_main := river_d < 3.0 and dist > 7.0
-			var in_trib := trib_d < 2.0 and dist > 11.0 and fz > 0.0
+			var in_main := river_d < 2.2 and dist > 7.0
+			var in_trib := trib_d < 1.5 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
 				h = mini(h, 1.2)
@@ -346,8 +361,8 @@ func _generate_world() -> void:
 				var bank_distance := river_d
 				if dist > 11.0 and fz > 0.0:
 					bank_distance = minf(bank_distance, trib_d)
-				if bank_distance < 9.0 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(3.0, 12.0, bank_distance))
+				if bank_distance < 8.5 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(2.2, 8.5, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
@@ -359,7 +374,7 @@ func _generate_world() -> void:
 			if edge_distance < 32.0:
 				h = lerpf(float(MIN_Y + 2), h, smoothstep(0.0, 32.0, edge_distance))
 			heights[Vector2i(x, z)] = {
-				"hf": clampf(h, float(MIN_Y + 2), 12.5),
+				"hf": clampf(h, float(MIN_Y + 2), 11.5),
 				"river": in_river or in_lake,
 				"river_d": mini(river_d if in_main else (trib_d if in_trib else 99.0), 99.0),
 				"lake": in_lake,
@@ -592,16 +607,16 @@ func _generate_world() -> void:
 					blocks[Vector3i(x, water_level, z)] = "water"
 			if not is_river and river_d < 4.2 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
-			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5:
-				# Give the outer hills a readable forest biome instead of isolated
-				# single trees. Keep the immediate spawn view open, but raise the
-				# baseline density enough that the generated world contains real
-				# groves after slope and river exclusions.
+			var camera_clearance := Vector2(float(x), float(z)).length()
+			var tree_edge_clearance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
+			var opening_camera_corridor: bool = z < -3 and z > -40 and abs(x) < 30
+			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5 and camera_clearance <= 30.0 and tree_edge_clearance > 16.0 and not opening_camera_corridor:
+				# Keep tree crowns grounded within the visible playable basin.
+				# Trees on the far perimeter or central horizon were technically
+				# supported, but their trunks fell below the camera horizon and
+				# made detached leaf clusters appear to float in the sky.
 				var forest_signal := sin(float(x) * 0.17) * cos(float(z) * 0.19)
 				var tree_chance := 0.055 if forest_signal > 0.35 else 0.020
-				# Keep the spawn/camera corridor open; dense near-field crowns
-				# previously hid the player and consumed most of the view.
-				var camera_clearance := Vector2(float(x), float(z)).length()
 				if camera_clearance < 22.0:
 					tree_chance *= 0.55
 				elif camera_clearance < 30.0:
@@ -708,14 +723,13 @@ func _clear_spawn_camera_corridor() -> void:
 				if kind in ["wood", "leaves"]:
 					blocks.erase(pos)
 					near_foliage_removed += 1
-	# Keep the bridge approach readable without carving away the distant
-	# forest: a tapered 5-to-9-block corridor is enough for the camera.
+	# Keep a broad, readable opening toward the river. Remove only tree wood
+	# and leaves above the terrain; the low footbridge deck at y=3..4 remains.
+	# Clearing the complete canopy envelope also prevents trunk tips or
+	# overhanging leaves from appearing as isolated blocks on the horizon.
 	var forward_removed := 0
-	for x in range(-10, 11):
-		for z in range(-28, -8):
-			var view_half_width := lerpf(2.5, 4.5, inverse_lerp(-9.0, -28.0, float(z)))
-			if absf(float(x) - 0.5) > view_half_width:
-				continue
+	for x in range(-28, 29):
+		for z in range(-42, -3):
 			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
 				var kind := str(blocks.get(pos, ""))
@@ -804,11 +818,23 @@ func _load_chunk(ck: Vector2i) -> void:
 					continue
 				if kind != "water":
 					collision_face_count += _append_exposed_collision_faces(collision_faces, pos)
-				if not render_groups.has(kind):
-					render_groups[kind] = []
-				render_groups[kind].append(Transform3D(Basis.IDENTITY, Vector3(float(x) + 0.5, float(y) + 0.5, float(z) + 0.5)))
+				_append_exposed_render_faces(render_groups, pos, kind)
 				block_count += 1
-	_build_chunk_multimeshes(root, render_groups)
+	var render_triangles := 0
+	var render_vertex_bytes := 0
+	var render_face_quads := 0
+	for group_variant in render_groups.keys():
+		var render_group: Dictionary = render_groups[group_variant]
+		var group_vertices: PackedVector3Array = render_group["vertices"]
+		var group_indices: PackedInt32Array = render_group["indices"]
+		render_triangles += int(group_indices.size() / 3)
+		render_face_quads += int(group_indices.size() / 6)
+		render_vertex_bytes += group_vertices.size() * 40 + group_indices.size() * 4
+	chunk_render_triangle_count_total += render_triangles
+	chunk_render_vertex_bytes_total += render_vertex_bytes
+	chunk_render_full_cube_triangle_equivalent_total += block_count * 12
+	chunk_render_face_quads_total += render_face_quads
+	_build_chunk_surface_meshes(root, render_groups)
 	if not collision_faces.is_empty():
 		var body := StaticBody3D.new()
 		body.name = "ChunkCollision"
@@ -832,7 +858,94 @@ func _load_chunk(ck: Vector2i) -> void:
 	chunk_build_ms_peak = maxf(chunk_build_ms_peak, chunk_build_ms_last)
 	chunk_peak_loaded = maxi(chunk_peak_loaded, loaded_chunks.size())
 	if OS.is_debug_build():
-		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " collision_faces=", collision_face_count, " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
+		print("CHUNK_PERF key=", ck, " blocks=", block_count, " batches=", render_groups.size(), " collision_faces=", collision_face_count, " render_triangles=", render_triangles, " full_cube_triangles=", block_count * 12, " render_face_quads=", render_face_quads, " render_buffer_bytes=", render_vertex_bytes, " nodes=", root.get_child_count(), " build_ms=", Time.get_ticks_msec() - build_started)
+
+func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String) -> void:
+	if not groups.has(kind):
+		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
+	var group: Dictionary = groups[kind]
+	var vertices: PackedVector3Array = group["vertices"]
+	var normals: PackedVector3Array = group["normals"]
+	var colors: PackedColorArray = group["colors"]
+	var indices: PackedInt32Array = group["indices"]
+	var x := float(pos.x)
+	var y := float(pos.y)
+	var z := float(pos.z)
+	var faces := [
+		[Vector3i(1, 0, 0), Vector3(x + 1, y, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y, z + 1), Vector3.RIGHT],
+		[Vector3i(-1, 0, 0), Vector3(x, y, z), Vector3(x, y, z + 1), Vector3(x, y + 1, z + 1), Vector3(x, y + 1, z), Vector3.LEFT],
+		[Vector3i(0, 1, 0), Vector3(x, y + 1, z), Vector3(x, y + 1, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y + 1, z), Vector3.UP],
+		[Vector3i(0, -1, 0), Vector3(x, y, z), Vector3(x + 1, y, z), Vector3(x + 1, y, z + 1), Vector3(x, y, z + 1), Vector3.DOWN],
+		[Vector3i(0, 0, 1), Vector3(x, y, z + 1), Vector3(x + 1, y, z + 1), Vector3(x + 1, y + 1, z + 1), Vector3(x, y + 1, z + 1), Vector3.BACK],
+		[Vector3i(0, 0, -1), Vector3(x, y, z), Vector3(x, y + 1, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y, z), Vector3.FORWARD]
+	]
+	for face in faces:
+		var neighbor: Vector3i = pos + face[0]
+		var neighbor_exists: bool = blocks.has(neighbor)
+		var neighbor_kind := str(blocks.get(neighbor, ""))
+		var visible := not neighbor_exists
+		if kind != "water" and neighbor_kind == "water":
+			visible = true
+		if kind == "water" and neighbor_exists:
+			visible = false
+		if not visible:
+			continue
+		var a: Vector3 = face[1]
+		var b: Vector3 = face[2]
+		var c: Vector3 = face[3]
+		var d: Vector3 = face[4]
+		var normal: Vector3 = face[5]
+		# Store four shared quad vertices and six indices instead of six
+		# duplicated vertices. Clockwise winding matches Godot's front faces.
+		var base_index := vertices.size()
+		vertices.append_array(PackedVector3Array([a, b, c, d]))
+		normals.append_array(PackedVector3Array([normal, normal, normal, normal]))
+		# Deterministic per-voxel/per-face tinting adds subtle material breakup
+		# without texture lookups or extra draw calls. Top faces are slightly
+		# brighter; vertical rock faces remain naturally shaded.
+		var noise_value := sin(float(pos.x) * 12.9898 + float(pos.y) * 78.233 + float(pos.z) * 37.719)
+		var variation := 0.94 + (noise_value * 0.5 + 0.5) * 0.12
+		if normal.y > 0.5:
+			variation *= 1.055
+		elif absf(normal.y) < 0.5:
+			variation *= 0.94
+		var tint := Color(variation, variation, variation, 1.0)
+		colors.append_array(PackedColorArray([tint, tint, tint, tint]))
+		indices.append_array(PackedInt32Array([base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]))
+	group["vertices"] = vertices
+	group["normals"] = normals
+	group["colors"] = colors
+	group["indices"] = indices
+	groups[kind] = group
+
+func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> void:
+	for kind_variant in render_groups.keys():
+		var kind := str(kind_variant)
+		var group: Dictionary = render_groups[kind_variant]
+		var vertices: PackedVector3Array = group["vertices"]
+		var normals: PackedVector3Array = group["normals"]
+		var colors: PackedColorArray = group["colors"]
+		var indices: PackedInt32Array = group["indices"]
+		if vertices.is_empty() or indices.is_empty():
+			continue
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		arrays[Mesh.ARRAY_COLOR] = colors
+		arrays[Mesh.ARRAY_INDEX] = indices
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var instance := MeshInstance3D.new()
+		instance.name = "Surface_" + kind
+		instance.mesh = mesh
+		var surface_material := (block_materials.get(kind, block_materials["stone"]) as StandardMaterial3D).duplicate() as StandardMaterial3D
+		# Preserve normal back-face culling after emitting clockwise front faces.
+		surface_material.cull_mode = BaseMaterial3D.CULL_BACK
+		surface_material.vertex_color_use_as_albedo = true
+		instance.material_override = surface_material
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		parent.add_child(instance)
 
 func _append_exposed_collision_faces(faces: PackedVector3Array, pos: Vector3i) -> int:
 	var x := float(pos.x)
@@ -1173,8 +1286,9 @@ func _setup_ui() -> void:
 	layer.name = "GameUI"
 	add_child(layer)
 	status_label = Label.new()
-	status_label.position = Vector2(12, 250)
+	status_label.position = Vector2(12, 246)
 	status_label.size = Vector2(320, 22)
+	status_label.visible = false
 	status_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	status_label.add_theme_color_override("font_color", Color("#f4f7e8"))
 	status_label.add_theme_font_size_override("font_size", 13)
@@ -1208,7 +1322,8 @@ func _refresh_status() -> void:
 	var bits: PackedStringArray = []
 	for k in ["coal", "iron", "gold", "crystal", "chest"]:
 		if discovered.get(k, false): bits.append(k.capitalize())
-	status_label.text = "Discoveries: dig & explore" if bits.is_empty() else "Discovered: " + ", ".join(bits)
+	status_label.text = "Discovered: " + ", ".join(bits)
+	status_label.visible = not bits.is_empty()
 
 func _build_hotbar(layer: CanvasLayer) -> void:
 	var bar := HBoxContainer.new()
@@ -1291,7 +1406,7 @@ func _layout_hotbar(viewport_size: Vector2 = Vector2.ZERO) -> void:
 		toast_label.size = Vector2(maxf(0.0, vs.x - 24.0), 40.0) if compact else Vector2(600.0, 40.0)
 		toast_label.position = Vector2(12.0, 300.0) if compact else Vector2(vs.x * 0.5 - 300.0, 110.0)
 	if status_label:
-		status_label.position = Vector2(12.0, 250.0)
+		status_label.position = Vector2(12.0, 246.0)
 		status_label.size = Vector2(maxf(0.0, vs.x - 24.0), 22.0)
 	_layout_backpack_ui(vs)
 

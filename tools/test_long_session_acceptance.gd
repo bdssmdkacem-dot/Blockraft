@@ -52,6 +52,10 @@ func _run() -> void:
 	var route_index := 0
 	var max_loaded: int = scene.loaded_chunks.size()
 	var chunk_build_start := int(scene.chunk_build_count)
+	var render_triangles_start := int(scene.chunk_render_triangle_count_total)
+	var full_cube_triangles_start := int(scene.chunk_render_full_cube_triangle_equivalent_total)
+	var render_bytes_start := int(scene.chunk_render_vertex_bytes_total)
+	var render_quads_start := int(scene.chunk_render_face_quads_total)
 	while frames < SESSION_FRAMES:
 		if frames % WAIT_PER_STOP == 0:
 			var stop: Vector3 = ROUTE[route_index % ROUTE.size()]
@@ -81,18 +85,31 @@ func _run() -> void:
 	var built := int(scene.chunk_build_count) - chunk_build_start
 	var peak_ms := float(scene.chunk_build_ms_peak)
 	var peak_chunks := int(scene.chunk_peak_loaded)
+	var render_triangles := int(scene.chunk_render_triangle_count_total) - render_triangles_start
+	var full_cube_triangles := int(scene.chunk_render_full_cube_triangle_equivalent_total) - full_cube_triangles_start
+	var render_bytes := int(scene.chunk_render_vertex_bytes_total) - render_bytes_start
+	var render_quads := int(scene.chunk_render_face_quads_total) - render_quads_start
+	var triangle_ratio := float(render_triangles) / maxf(1.0, float(full_cube_triangles))
 	print("LONG_SESSION_METRICS frames=", frames,
 		" route_stops=", route_index,
 		" chunk_builds=", built,
 		" loaded_peak=", max_loaded,
 		" lifetime_loaded_peak=", peak_chunks,
 		" chunk_build_peak_ms=", peak_ms,
+		" indexed_render_triangles=", render_triangles,
+		" full_cube_triangle_equivalent=", full_cube_triangles,
+		" triangle_ratio=", snappedf(triangle_ratio, 0.001),
+		" exposed_face_quads=", render_quads,
+		" cumulative_render_buffer_bytes=", render_bytes,
 		" memory_start_bytes=", memory_start,
 		" memory_peak_bytes=", memory_peak,
 		" memory_end_bytes=", memory_end,
 		" object_start=", object_start,
 		" object_peak=", object_peak,
 		" object_end=", object_end)
+	if full_cube_triangles <= 0 or render_triangles <= 0 or triangle_ratio >= 0.8:
+		_fail("culled mesh did not reduce triangles by at least 20%% versus full-cube instancing: ratio=%.3f" % triangle_ratio, 12)
+		return
 	if built < 40:
 		_fail("stress route did not exercise enough chunk rebuild/stream operations: %d" % built, 6)
 		return

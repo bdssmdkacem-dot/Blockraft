@@ -6,22 +6,22 @@ enum State { WANDER, CHASE, ATTACK, FLEE, HURT }
 
 const KIND_DATA := {
 	Kind.FOX: {
-		"scale": 1.58, "speed": 4.0, "hp": 18.0, "dmg": 6.0,
+		"scale": 1.86, "speed": 4.0, "hp": 18.0, "dmg": 6.0,
 		"aggro": 10.0, "hit_range": 1.8, "attack_cd": 0.85,
 		"color_body": Color("#c46828"), "color_spot": Color("#f0e8e0")
 	},
 	Kind.CHICKEN: {
-		"scale": 2.08, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
+		"scale": 2.35, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
 		"aggro": 11.0, "hit_range": 2.0, "attack_cd": 0.65,
 		"color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")
 	},
 	Kind.COW: {
-		"scale": 1.68, "speed": 2.6, "hp": 32.0, "dmg": 8.0,
+		"scale": 1.98, "speed": 2.6, "hp": 32.0, "dmg": 8.0,
 		"aggro": 7.0, "hit_range": 2.1, "attack_cd": 1.1,
 		"color_body": Color("#f8f6f0"), "color_spot": Color("#2c2c2c")
 	},
 	Kind.SHEEP: {
-		"scale": 1.65, "speed": 3.0, "hp": 16.0, "dmg": 0.0,
+		"scale": 1.95, "speed": 3.0, "hp": 16.0, "dmg": 0.0,
 		"aggro": 0.0, "hit_range": 0.0, "attack_cd": 1.0,
 		"color_body": Color("#f5f5f5"), "color_spot": Color("#e8e4dc")
 	},
@@ -185,16 +185,51 @@ func _update_hp_bar() -> void:
 			mat.albedo_color = Color(0.95, 0.2, 0.15)
 
 func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.85) -> void:
+	# Keep small anatomy (eyes, beaks, hooves, combs and markings) crisp and
+	# readable. Larger forms use ellipsoids so the body silhouette is rounded
+	# without turning every facial feature and joint into a soft sphere.
 	var mi := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	mi.mesh = mesh
+	if size.x * size.y * size.z >= 0.035:
+		var mesh := SphereMesh.new()
+		mesh.radius = 0.5
+		mesh.height = 1.0
+		mesh.radial_segments = 16
+		mesh.rings = 10
+		mi.mesh = mesh
+		mi.set_meta("animal_rounded_part", true)
+	else:
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3.ONE
+		mi.mesh = mesh
+	mi.scale = size
 	mi.position = pos
+	mi.set_meta("animal_part_size", size)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.roughness = roughness
 	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	parent.add_child(mi)
+
+func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.5
+	sphere.height = 1.0
+	sphere.radial_segments = 20
+	sphere.rings = 12
+	mi.mesh = sphere
+	mi.position = pos
+	mi.scale = size
+	mi.set_meta("animal_rounded_part", true)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = roughness
+	mi.material_override = material
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	parent.add_child(mi)
+	return mi
+
 
 func _build_mesh(data: Dictionary) -> void:
 	_body_root = Node3D.new()
@@ -202,6 +237,28 @@ func _build_mesh(data: Dictionary) -> void:
 	var s: float = float(data["scale"])
 	var body_c: Color = data["color_body"]
 	var spot_c: Color = data["color_spot"]
+	# Rounded core volumes sit beneath the voxel detailing. This preserves the
+	# readable Blockraft silhouette while avoiding animals that look like loose
+	# stacks of disconnected cubes at medium camera distance.
+	match kind:
+		Kind.CHICKEN:
+			_ellipsoid(_body_root, Vector3(0, 0.34 * s, -0.015 * s), Vector3(0.54 * s, 0.43 * s, 0.62 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.55 * s, 0.18 * s), Vector3(0.39 * s, 0.36 * s, 0.36 * s), body_c)
+		Kind.FOX:
+			_ellipsoid(_body_root, Vector3(0, 0.36 * s, -0.02 * s), Vector3(0.50 * s, 0.37 * s, 0.78 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.37 * s, 0.34 * s, 0.38 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.35 * s, -0.78 * s), Vector3(0.28 * s, 0.25 * s, 0.62 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.35 * s, -1.02 * s), Vector3(0.24 * s, 0.20 * s, 0.24 * s), spot_c)
+		Kind.COW:
+			_ellipsoid(_body_root, Vector3(0, 0.54 * s, 0), Vector3(0.64 * s, 0.52 * s, 0.94 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.43 * s, 0.39 * s, 0.40 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.34 * s, 0.20 * s, 0.18 * s), Color("#e9a5a0"))
+		Kind.SHEEP:
+			_ellipsoid(_body_root, Vector3(0, 0.43 * s, -0.01 * s), Vector3(0.62 * s, 0.53 * s, 0.78 * s), body_c)
+			# Two compact fleece tufts sit on the back; the body remains one
+			# readable volume instead of becoming a pile of oversized white balls.
+			for fleece_pos in [Vector3(-0.18, 0.66, -0.10), Vector3(0.18, 0.66, -0.10)]:
+				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.15 * s, 0.13 * s, 0.17 * s), Color("#fffdf7"))
 	match kind:
 		Kind.CHICKEN:
 			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.46 * s, 0.38 * s, 0.54 * s), body_c)
@@ -296,16 +353,16 @@ func _build_mesh(data: Dictionary) -> void:
 	var leg_y := 0.12 * s if kind == Kind.CHICKEN else (0.14 * s if kind == Kind.FOX else (0.20 * s if kind == Kind.COW else 0.16 * s))
 	var leg_height := 0.22 * s if kind == Kind.CHICKEN else (0.26 * s if kind == Kind.FOX else (0.40 * s if kind == Kind.COW else 0.28 * s))
 	for part in _body_root.get_children():
-		if not (part is MeshInstance3D) or not (part.mesh is BoxMesh):
+		if not (part is MeshInstance3D) or not part.has_meta("animal_part_size"):
 			continue
-		var box := part.mesh as BoxMesh
-		if is_equal_approx(part.position.y, leg_y) and is_equal_approx(box.size.y, leg_height):
+		var part_size: Vector3 = part.get_meta("animal_part_size")
+		if is_equal_approx(part.position.y, leg_y) and is_equal_approx(part_size.y, leg_height):
 			_animated_legs.append(part)
-		if kind == Kind.CHICKEN and is_equal_approx(absf(part.position.x), 0.19 * s) and is_equal_approx(part.position.y, 0.34 * s) and is_equal_approx(box.size.y, 0.24 * s):
+		if kind == Kind.CHICKEN and is_equal_approx(absf(part.position.x), 0.19 * s) and is_equal_approx(part.position.y, 0.34 * s) and is_equal_approx(part_size.y, 0.24 * s):
 			_animated_wings.append(part)
-		if kind == Kind.FOX and part.position.z <= -0.70 * s and part.position.y >= 0.30 * s and box.size.z >= 0.38 * s:
+		if kind == Kind.FOX and part.position.z <= -0.70 * s and part.position.y >= 0.30 * s and part_size.z >= 0.38 * s:
 			_tail_mesh = part
-		elif kind == Kind.COW and part.position.z <= -0.54 * s and part.position.y >= 0.40 * s and box.size.z >= 0.08 * s:
+		elif kind == Kind.COW and part.position.z <= -0.54 * s and part.position.y >= 0.40 * s and part_size.z >= 0.08 * s:
 			_tail_mesh = part
 
 func _pick_new_direction() -> void:

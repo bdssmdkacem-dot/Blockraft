@@ -26,15 +26,18 @@ func _ready() -> void:
 	_setup_lighting()
 	_setup_camera()
 	_build_landscape()
+	_build_terrain_art_pass()
 	_build_horizon_layers()
 	_build_mountain_backdrop()
+	_build_mountain_ridge_art_pass()
 	_build_sunset_disc()
 	_build_sky_clouds()
 	_build_river_and_bridge()
 	_build_village()
 	_build_village_details()
+	_build_village_architecture_pass()
 	_build_forests()
-	_build_floating_islands()
+	# Floating islands were removed: they read as disconnected debris in the menu skyline.
 	_build_gatehouse_castle()
 	_build_castle_surface_details()
 	_build_landmark_details()
@@ -152,7 +155,7 @@ func _setup_camera() -> void:
 	camera.name = "MenuWorldCamera"
 	# Pull the panorama camera back and above the near forest canopy. This
 	# keeps the protagonist in the left foreground while revealing the river,
-	# village, gatehouse and floating islands behind the menu UI.
+	# village, gatehouse and softened mountain ridges behind the menu UI.
 	camera.position = Vector3(-17.0, 8.5, 29.0)
 	camera.rotation_degrees = Vector3(-15.0, -34.0, 0.0)
 	camera.fov = 55.0
@@ -172,6 +175,83 @@ func _build_landscape() -> void:
 		_box(ground, Vector3(ox, 0.2, oz), Vector3(6.0 + (i % 3), 0.4, 5.0), MAT_GRASS_LIGHT if i % 2 == 0 else MAT_GRASS)
 	_box(ground, Vector3(-10, 1.2, 4), Vector3(8, 2.5, 6), MAT_GRASS)
 	_box(ground, Vector3(-8, 2.0, 3), Vector3(4, 1.2, 3), MAT_GRASS_LIGHT)
+
+func _build_terrain_art_pass() -> void:
+	# A vertex-coloured rolling terrain mesh replaces the broad flat green menu slab.
+	# It stays deliberately low relief so landmarks remain grounded and the river
+	# and village retain their established composition.
+	var terrain := MeshInstance3D.new()
+	terrain.name = "TerrainArtPass"
+	var vertices := PackedVector3Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	const GRID := 42
+	const EXTENT := 40.0
+	for z in range(GRID + 1):
+		for x in range(GRID + 1):
+			var px := -EXTENT + float(x) * (EXTENT * 2.0 / float(GRID))
+			var pz := -EXTENT + float(z) * (EXTENT * 2.0 / float(GRID))
+			var rolling := sin(px * 0.19 + pz * 0.08) * 0.12 + cos(pz * 0.16 - px * 0.05) * 0.10
+			var bank := exp(-pow((px - 4.5) / 7.5, 2.0) - pow((pz + 8.0) / 25.0, 2.0)) * 0.13
+			vertices.append(Vector3(px, 0.025 + rolling + bank, pz))
+			var variation := sin(px * 0.31) * cos(pz * 0.27)
+			var base := Color("#3b7545").lerp(Color("#5c914c"), clampf(0.5 + variation * 0.28, 0.0, 1.0))
+			if absf(pz - (sin(px * 0.11) * 8.0 + cos(px * 0.04) * 3.0)) < 5.0:
+				base = base.lerp(Color("#7e9460"), 0.24)
+			colors.append(base)
+	for z in range(GRID):
+		for x in range(GRID):
+			var a := z * (GRID + 1) + x
+			var b := a + 1
+			var d := a + GRID + 1
+			var e := d + 1
+			indices.append_array(PackedInt32Array([a, d, b, b, d, e]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	terrain.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 1.0
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	terrain.material_override = mat
+	terrain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(terrain)
+
+	# A layered dirt-and-stone footpath ties the village to the bridge.
+	var path := Node3D.new()
+	path.name = "VillageFootpath"
+	path.position = Vector3(13.0, 0.18, -3.5)
+	path.rotation.y = deg_to_rad(-8.0)
+	add_child(path)
+	for i in range(13):
+		var z := float(i) * 1.25
+		var width := 1.35 + sin(float(i) * 0.55) * 0.18
+		_box(path, Vector3(sin(float(i) * 0.22) * 0.42, 0.0, z), Vector3(width, 0.10, 1.05), Color("#a98a62") if i % 3 else Color("#c1a477"))
+		if i % 2 == 0:
+			_box(path, Vector3(-0.9 + sin(float(i)) * 0.2, 0.04, z + 0.28), Vector3(0.24, 0.12, 0.30), Color("#8a8a78"))
+
+	# Low rock clusters and ground cover provide scale transitions at the meadow edge.
+	for i in range(18):
+		var x := -25.0 + float((i * 17) % 47)
+		var z := 4.0 + float((i * 11) % 24)
+		if absf(x + 9.0) < 4.0 and z > 10.0:
+			continue
+		var rock := MeshInstance3D.new()
+		var rock_mesh := SphereMesh.new()
+		rock_mesh.radius = 0.5
+		rock_mesh.height = 0.72
+		rock_mesh.radial_segments = 8
+		rock_mesh.rings = 5
+		rock.mesh = rock_mesh
+		rock.position = Vector3(x, 0.18, z)
+		rock.scale = Vector3(0.55 + float(i % 3) * 0.16, 0.55, 0.7 + float(i % 2) * 0.18)
+		rock.material_override = _material(Color("#68736c") if i % 2 == 0 else Color("#817e70"), 0.96)
+		add_child(rock)
 
 func _build_horizon_layers() -> void:
 	# Keep the horizon low and broken: the old continuous block wall hid the
@@ -233,6 +313,87 @@ func _build_mountain_backdrop() -> void:
 		fall.material_override = fall_mat
 		ridges.add_child(fall)
 
+
+func _build_mountain_ridge_art_pass() -> void:
+	# Connected alpine ridgelines create a continuous skyline behind the older
+	# peak silhouettes. Height samples form several asymmetric summits and
+	# saddles; vertex colours separate forest foothills, exposed rock and snow.
+	var root := Node3D.new()
+	root.name = "ConnectedMountainRidges"
+	add_child(root)
+	var ridge_specs := [
+		{"z": -50.0, "base": 1.5, "height": 19.0, "phase": 0.0, "color": Color("#536c79")},
+		{"z": -59.0, "base": 0.0, "height": 24.0, "phase": 2.2, "color": Color("#405a6b")},
+		{"z": -68.0, "base": -0.8, "height": 27.0, "phase": 4.1, "color": Color("#617782")}
+	]
+	for ridge_index in range(ridge_specs.size()):
+		var spec: Dictionary = ridge_specs[ridge_index]
+		var vertices := PackedVector3Array()
+		var colors := PackedColorArray()
+		var indices := PackedInt32Array()
+		const SEGMENTS := 64
+		const DEPTH_ROWS := 5
+		for row in range(DEPTH_ROWS):
+			var depth_t := float(row) / float(DEPTH_ROWS - 1)
+			for segment in range(SEGMENTS + 1):
+				var t := float(segment) / float(SEGMENTS)
+				var x := -52.0 + t * 104.0
+				var envelope := 0.50 + 0.50 * sin(PI * t)
+				var peaks := 0.0
+				for peak_spec in [[-0.78, 0.78, 0.13], [-0.48, 0.54, 0.10], [-0.12, 1.0, 0.12], [0.22, 0.68, 0.09], [0.57, 0.92, 0.12], [0.84, 0.48, 0.08]]:
+					var distance := (t - float(peak_spec[0])) / float(peak_spec[2])
+					peaks = maxf(peaks, float(peak_spec[1]) * exp(-distance * distance * 0.5))
+				var serration := (sin(t * 93.0 + float(spec["phase"])) * 0.035 + sin(t * 171.0 + float(spec["phase"]) * 1.7) * 0.018) * envelope
+				var height := float(spec["base"]) + float(spec["height"]) * (peaks * envelope + serration)
+				var z := float(spec["z"]) - depth_t * (5.0 + ridge_index * 1.5)
+				var side_drop := absf(depth_t - 0.5) * 0.22
+				vertices.append(Vector3(x, height - side_drop, z))
+				var rock: Color = spec["color"]
+				var facet := 0.5 + 0.5 * sin(t * 137.0 + depth_t * 8.0 + ridge_index)
+				var color := rock.lerp(Color("#89969a"), facet * 0.24)
+				if height > 15.0 + ridge_index * 1.3:
+					color = color.lerp(Color("#e1e8e4"), clampf((height - 15.0 - ridge_index * 1.3) / 8.0, 0.0, 0.92))
+				elif height < 6.0:
+					color = color.lerp(Color("#42664f"), 0.72)
+				colors.append(color)
+		for row in range(DEPTH_ROWS - 1):
+			for segment in range(SEGMENTS):
+				var a := row * (SEGMENTS + 1) + segment
+				var b := a + 1
+				var d := a + SEGMENTS + 1
+				var e := d + 1
+				indices.append_array(PackedInt32Array([a, b, d, b, e, d]))
+		var normals := PackedVector3Array()
+		normals.resize(vertices.size())
+		for index_offset in range(0, indices.size(), 3):
+			var ia := indices[index_offset]
+			var ib := indices[index_offset + 1]
+			var ic := indices[index_offset + 2]
+			var face_normal := (vertices[ib] - vertices[ia]).cross(vertices[ic] - vertices[ia])
+			normals[ia] += face_normal
+			normals[ib] += face_normal
+			normals[ic] += face_normal
+		for normal_index in range(normals.size()):
+			normals[normal_index] = normals[normal_index].normalized()
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		arrays[Mesh.ARRAY_COLOR] = colors
+		arrays[Mesh.ARRAY_INDEX] = indices
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var ridge := MeshInstance3D.new()
+		ridge.name = "ConnectedAlpineRidge_%d" % ridge_index
+		ridge.mesh = mesh
+		var material := StandardMaterial3D.new()
+		material.vertex_color_use_as_albedo = true
+		material.roughness = 0.98
+		material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		ridge.material_override = material
+		ridge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(ridge)
+
 func _build_sunset_disc() -> void:
 	# A warm, emissive sun gives the valley a clear golden-hour focal point.
 	var sun := MeshInstance3D.new()
@@ -260,25 +421,72 @@ func _build_sky_clouds() -> void:
 		[Vector3(23.0, 23.2, -44.0), Vector3(3.6, 1.0, 2.2)],
 		[Vector3(38.0, 20.5, -52.0), Vector3(5.0, 0.7, 1.8)]
 	]
+	var cloud_material := _material(Color("#fff0e2"), 0.96)
+	var lobe_offsets := [-0.30, 0.0, 0.28, -0.12, 0.18]
+	var lobe_widths := [0.34, 0.42, 0.32, 0.26, 0.24]
+	var lobe_heights := [0.70, 0.92, 0.72, 0.62, 0.60]
 	for spec in cloud_specs:
 		var base_position: Vector3 = spec[0]
 		var base_size: Vector3 = spec[1]
-		_box(clouds, base_position, base_size, Color("#ffe8d2"), 0.25)
-		_box(clouds, base_position + Vector3(-base_size.x * 0.28, 0.32, 0.0), base_size * Vector3(0.52, 0.72, 0.9), Color("#fff0df"), 0.28)
-		_box(clouds, base_position + Vector3(base_size.x * 0.24, 0.22, 0.05), base_size * Vector3(0.48, 0.62, 0.82), Color("#f4d9c0"), 0.3)
+		for lobe_index in range(lobe_offsets.size()):
+			var puff := MeshInstance3D.new()
+			var sphere := SphereMesh.new()
+			sphere.radius = 1.0
+			sphere.height = 2.0
+			sphere.radial_segments = 16
+			sphere.rings = 10
+			puff.mesh = sphere
+			puff.position = base_position + Vector3(base_size.x * lobe_offsets[lobe_index], base_size.y * (0.10 if lobe_index == 1 else 0.0), 0.0)
+			puff.scale = Vector3(base_size.x * lobe_widths[lobe_index], base_size.y * lobe_heights[lobe_index], base_size.z * 0.48)
+			puff.material_override = cloud_material
+			puff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			clouds.add_child(puff)
 
 func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
+	# Faceted multi-ring mountain mesh: broad shoulders, broken ridge lines and
+	# irregular rock facets replace the old straight-sided cone silhouette.
 	var spire := MeshInstance3D.new()
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius * 0.16
-	mesh.bottom_radius = radius
-	mesh.height = height
-	mesh.radial_segments = 7
-	mesh.rings = 1
+	spire.name = "FacetedLandform"
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	const SEGMENTS := 18
+	var ring_radii := [1.0, 0.84, 0.62, 0.39, 0.17]
+	var ring_heights := [0.0, 0.20, 0.46, 0.73, 1.0]
+	for ring in range(ring_radii.size() - 1):
+		for segment in range(SEGMENTS):
+			var angle_a := TAU * float(segment) / float(SEGMENTS)
+			var angle_b := TAU * float(segment + 1) / float(SEGMENTS)
+			var jitter_a := 1.0 + sin(float(segment) * 4.13 + position.x * 0.17) * 0.055
+			var jitter_b := 1.0 + sin(float(segment + 1) * 4.13 + position.x * 0.17) * 0.055
+			var lower_a := Vector3(cos(angle_a) * radius * ring_radii[ring] * jitter_a, height * ring_heights[ring], sin(angle_a) * radius * ring_radii[ring] * jitter_a)
+			var lower_b := Vector3(cos(angle_b) * radius * ring_radii[ring] * jitter_b, height * ring_heights[ring], sin(angle_b) * radius * ring_radii[ring] * jitter_b)
+			var upper_a := Vector3(cos(angle_a) * radius * ring_radii[ring + 1] * jitter_a, height * ring_heights[ring + 1], sin(angle_a) * radius * ring_radii[ring + 1] * jitter_a)
+			var upper_b := Vector3(cos(angle_b) * radius * ring_radii[ring + 1] * jitter_b, height * ring_heights[ring + 1], sin(angle_b) * radius * ring_radii[ring + 1] * jitter_b)
+			var facet := color.darkened(float((segment + ring * 3) % 5) * 0.035)
+			if segment % 6 == 0:
+				facet = facet.lightened(0.10)
+			surface.set_color(facet)
+			surface.add_vertex(lower_a)
+			surface.set_color(facet.darkened(0.025))
+			surface.add_vertex(lower_b)
+			surface.set_color(facet.lightened(0.035))
+			surface.add_vertex(upper_b)
+			surface.set_color(facet)
+			surface.add_vertex(lower_a)
+			surface.set_color(facet.lightened(0.035))
+			surface.add_vertex(upper_b)
+			surface.set_color(facet.lightened(0.06))
+			surface.add_vertex(upper_a)
+	surface.generate_normals()
+	var mesh := surface.commit()
 	spire.mesh = mesh
 	spire.position = position
 	spire.rotation.y = PI * 0.25
-	spire.material_override = _material(color, 0.62)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color.WHITE
+	material.vertex_color_use_as_albedo = true
+	material.roughness = 0.94
+	spire.material_override = material
 	parent.add_child(spire)
 	return spire
 
@@ -286,11 +494,11 @@ func _build_river_and_bridge() -> void:
 	var water := Node3D.new()
 	water.name = "River"
 	add_child(water)
-	var wmat := _material(Color(0.13, 0.37, 0.58, 0.72), 0.18, 0.10)
+	var wmat := _material(Color(0.10, 0.40, 0.62, 0.82), 0.10, 0.18)
 	wmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	wmat.emission_enabled = true
 	wmat.emission = Color(0.08, 0.2, 0.3)
-	wmat.emission_energy_multiplier = 0.08
+	wmat.emission_energy_multiplier = 0.05
 	var river := MeshInstance3D.new()
 	var rm := BoxMesh.new()
 	rm.size = Vector3(9.5, 0.28, 66)
@@ -360,6 +568,48 @@ func _build_village_details() -> void:
 		_box(details, Vector3(x, 3.2, -12.0), Vector3(1.05, 0.85, 1.05), MAT_LEAF_LIGHT)
 		_box(details, Vector3(x + 1.25, 1.3, -5.0), Vector3(0.08, 1.2, 0.08), MAT_WOOD)
 		_box(details, Vector3(x + 1.25, 1.85, -5.0), Vector3(0.34, 0.24, 0.12), Color("#ffd58a"), 0.25)
+
+func _build_village_architecture_pass() -> void:
+	var village := get_node_or_null("Village") as Node3D
+	if village == null:
+		return
+	var stone := Color("#8c8875")
+	var trim := Color("#e0c99d")
+	var dark_wood := Color("#543a2a")
+	for i in range(9):
+		var hx := 8.0 + float(i) * 2.5
+		var hz := -2.0 - float(i % 3) * 2.8
+		# Raised stone plinth, timber framing and window surrounds give each
+		# cottage a readable base-to-roof architectural rhythm.
+		_box(village, Vector3(hx, 0.12, hz), Vector3(2.42, 0.24, 2.22), stone)
+		for side_x in [-0.92, 0.92]:
+			_box(village, Vector3(hx + side_x, 1.02, hz + 1.04), Vector3(0.10, 1.72, 0.12), dark_wood)
+			_box(village, Vector3(hx + side_x, 1.42, hz + 1.13), Vector3(0.52, 0.08, 0.08), trim)
+		_box(village, Vector3(hx, 0.36, hz + 1.16), Vector3(0.92, 0.12, 0.08), trim)
+		_box(village, Vector3(hx - 0.48, 1.45, hz + 1.19), Vector3(0.055, 0.48, 0.06), dark_wood)
+		_box(village, Vector3(hx - 0.48, 1.45, hz + 1.20), Vector3(0.38, 0.055, 0.06), dark_wood)
+		# Roof eaves and alternating dormers break the repeated roof silhouette.
+		_box(village, Vector3(hx, 2.08, hz - 1.20), Vector3(2.72, 0.12, 0.12), Color("#6e4536"))
+		if i % 3 == 0:
+			_box(village, Vector3(hx, 2.58, hz - 0.35), Vector3(0.62, 0.46, 0.46), Color("#d4bd91"))
+			_box(village, Vector3(hx, 2.84, hz - 0.35), Vector3(0.82, 0.12, 0.62), Color("#8e4c39"))
+		if i % 3 == 1:
+			# Small timber balcony and flower box distinguish the middle cottages.
+			_box(village, Vector3(hx, 1.98, hz + 1.28), Vector3(1.25, 0.12, 0.36), dark_wood)
+			for rail_x in [-0.55, -0.18, 0.18, 0.55]:
+				_box(village, Vector3(hx + rail_x, 2.20, hz + 1.38), Vector3(0.055, 0.42, 0.055), trim)
+			_box(village, Vector3(hx, 2.39, hz + 1.38), Vector3(1.28, 0.06, 0.06), trim)
+		# Warm inset lanterns are mounted below the eaves, not floating beside walls.
+		var lantern := MeshInstance3D.new()
+		var lantern_mesh := SphereMesh.new()
+		lantern_mesh.radius = 0.13
+		lantern_mesh.height = 0.26
+		lantern_mesh.radial_segments = 8
+		lantern_mesh.rings = 5
+		lantern.mesh = lantern_mesh
+		lantern.position = Vector3(hx + 0.82, 1.55, hz + 1.20)
+		lantern.material_override = _emissive(Color("#ffd28a"), 0.35)
+		village.add_child(lantern)
 
 func _build_forests() -> void:
 	var forest := Node3D.new()
@@ -506,6 +756,40 @@ func _build_landmark_details() -> void:
 	add_child(details)
 	_box(details, Vector3(12, 0.3, 5), Vector3(1, 0.6, 1), MAT_STONE)
 	_box(details, Vector3(-5, 0.4, 8), Vector3(1.5, 0.8, 1.2), MAT_DIRT)
+	var castle := get_node_or_null("GatehouseCastle") as Node3D
+	if castle == null:
+		return
+
+	# Two inhabited side wings turn the isolated gatehouse into a broader
+	# fortified landmark. Roof slopes, corner towers, connecting galleries and
+	# repeated lit windows give the silhouette depth at menu-camera distance.
+	for side in [-1.0, 1.0]:
+		var wing_x: float = float(side) * 11.2
+		var wing_root := Node3D.new()
+		wing_root.name = "CastleWestWing" if side < 0.0 else "CastleEastWing"
+		# Bring the side wings forward to the gatehouse facade plane; otherwise
+		# their walls sit behind the main mass and only the roofline reads as floating.
+		wing_root.position.z = 1.8
+		castle.add_child(wing_root)
+		_box(wing_root, Vector3(wing_x, 3.4, -1.6), Vector3(7.0, 6.6, 9.5), Color("#78847e"))
+		_box(wing_root, Vector3(wing_x, 6.9, -1.6), Vector3(7.6, 0.35, 10.0), Color("#a8b1a7"))
+		var front_roof := _box(wing_root, Vector3(wing_x - side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#854a3b"))
+		front_roof.rotation.z = deg_to_rad(side * -24.0)
+		var rear_roof := _box(wing_root, Vector3(wing_x + side * 1.55, 7.65, 1.0), Vector3(4.0, 0.28, 10.4), Color("#a45c43"))
+		rear_roof.rotation.z = deg_to_rad(side * 24.0)
+		_box(wing_root, Vector3(wing_x, 8.15, 1.0), Vector3(0.22, 0.32, 10.6), Color("#c28b61"))
+		for window_z in [-4.4, -1.8, 0.8, 3.4]:
+			_box(wing_root, Vector3(wing_x - side * 3.56, 4.4, window_z), Vector3(0.12, 1.25, 0.72), Color("#253b49"))
+			_box(wing_root, Vector3(wing_x - side * 3.64, 4.4, window_z), Vector3(0.08, 0.18, 0.86), Color("#e9b96b"), 0.32)
+		for tower_z in [-5.5, 3.0]:
+			_box(wing_root, Vector3(wing_x, 8.3, tower_z), Vector3(2.3, 3.2, 2.3), Color("#66756f"))
+			_box(wing_root, Vector3(wing_x, 10.0, tower_z), Vector3(2.8, 0.28, 2.8), Color("#b2b8ad"))
+			_pyramid(wing_root, Vector3(wing_x, 10.15, tower_z), 1.55, 2.6, Color("#75463b"))
+			_box(wing_root, Vector3(wing_x, 12.0, tower_z), Vector3(0.12, 0.7, 0.12), Color("#f0ce83"))
+	# Raised stone causeway and retaining walls visually anchor the expanded wings.
+	_box(castle, Vector3(0.0, 0.35, 8.4), Vector3(24.0, 0.55, 2.0), Color("#777f76"))
+	for side in [-1.0, 1.0]:
+		_box(castle, Vector3(side * 10.0, 0.9, 8.4), Vector3(0.42, 1.2, 2.0), Color("#aab2a8"))
 
 func _build_castle_surface_details() -> void:
 	# Layered masonry, slit windows, banners and warm sconces break up the

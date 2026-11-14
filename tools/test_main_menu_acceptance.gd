@@ -60,15 +60,28 @@ func _run_checks() -> void:
 	if world_environment.environment.tonemap_exposure > 0.9 or world_environment.environment.ambient_light_energy > 0.32:
 		_fail("menu lighting exceeds the visual exposure budget", 36)
 		return
+	var terrain_art := world.find_child("TerrainArtPass", true, false) as MeshInstance3D
+	if terrain_art == null or not (terrain_art.mesh is ArrayMesh):
+		_fail("menu panorama is missing the vertex-coloured rolling terrain art pass", 48)
+		return
+	var terrain_arrays: Array = terrain_art.mesh.surface_get_arrays(0)
+	var terrain_vertices: PackedVector3Array = terrain_arrays[Mesh.ARRAY_VERTEX]
+	var terrain_colors: PackedColorArray = terrain_arrays[Mesh.ARRAY_COLOR]
+	if terrain_vertices.size() < 1500 or terrain_colors.size() != terrain_vertices.size():
+		_fail("menu terrain art pass lacks dense vertex-colour detail", 49)
+		return
 	var village := world.find_child("Village", true, false) as Node3D
-	if village == null or village.get_child_count() < 35:
+	if village == null or village.get_child_count() < 120:
 		_fail("village has no layered gabled house silhouettes", 37)
 		return
 	if world.find_child("River", true, false) == null:
 		_fail("menu panorama is missing its river and bridge", 38)
 		return
-	if world.find_child("FloatingIsland", true, false) == null:
-		_fail("3D menu world is missing its floating island landmark", 28)
+	# The former floating-island landmark was removed because it read as
+	# disconnected debris in the menu skyline. Keep the grounded mountain,
+	# castle, village and river landmarks as the panorama's focal composition.
+	if world.find_child("FloatingIsland", true, false) != null:
+		_fail("menu panorama still contains distracting floating-island debris", 28)
 		return
 
 	var hero := world.find_child("Protagonist", true, false) as Node3D
@@ -82,13 +95,41 @@ func _run_checks() -> void:
 		_fail("menu protagonist remains underneath the left action-button column", 42)
 		return
 	var rounded_peaks := 0
-	for mountain_part in world.find_children("*", "MeshInstance3D", true, false):
+	var mountain_root := world.find_child("MountainBackdrop", true, false) as Node3D
+	for mountain_part in mountain_root.find_children("*", "MeshInstance3D", true, false):
 		var mountain_mesh := (mountain_part as MeshInstance3D).mesh
-		if mountain_mesh is CylinderMesh and mountain_mesh.radial_segments >= 7 and mountain_mesh.top_radius > 0.0:
-			rounded_peaks += 1
+		if mountain_mesh is ArrayMesh and mountain_mesh.get_surface_count() == 1:
+			var mountain_arrays: Array = mountain_mesh.surface_get_arrays(0)
+			var mountain_vertices: PackedVector3Array = mountain_arrays[Mesh.ARRAY_VERTEX]
+			var mountain_colors: PackedColorArray = mountain_arrays[Mesh.ARRAY_COLOR]
+			if mountain_vertices.size() >= 300 and mountain_colors.size() == mountain_vertices.size():
+				rounded_peaks += 1
 	if rounded_peaks < 9:
-		_fail("mountain backdrop still uses sharp pyramid peaks instead of softened ridges", 43)
+		_fail("mountain backdrop is missing faceted multi-ring ridge meshes", 43)
 		return
+	var connected_ridges := world.find_child("ConnectedMountainRidges", true, false) as Node3D
+	if connected_ridges == null or connected_ridges.get_child_count() != 3:
+		_fail("menu panorama is missing three connected alpine ridgelines", 50)
+		return
+	for ridge_part in connected_ridges.get_children():
+		if not ridge_part is MeshInstance3D or not ((ridge_part as MeshInstance3D).mesh is ArrayMesh):
+			_fail("connected alpine ridge is not a generated mesh", 51)
+			return
+		var ridge_arrays: Array = (ridge_part as MeshInstance3D).mesh.surface_get_arrays(0)
+		var ridge_vertices: PackedVector3Array = ridge_arrays[Mesh.ARRAY_VERTEX]
+		var ridge_normals: PackedVector3Array = ridge_arrays[Mesh.ARRAY_NORMAL]
+		var ridge_colors: PackedColorArray = ridge_arrays[Mesh.ARRAY_COLOR]
+		if ridge_vertices.size() < 300 or ridge_normals.size() != ridge_vertices.size() or ridge_colors.size() != ridge_vertices.size():
+			_fail("connected alpine ridge lacks complete vertex, normal or colour buffers", 52)
+			return
+	var cloud_root := world.find_child("SkyClouds", true, false) as Node3D
+	if cloud_root == null or cloud_root.get_child_count() < 15:
+		_fail("menu sky does not contain the complete soft-cloud layer", 46)
+		return
+	for cloud_part in cloud_root.get_children():
+		if not cloud_part is MeshInstance3D or not (cloud_part.mesh is SphereMesh):
+			_fail("menu sky contains a hard-edged floating cloud fragment", 47)
+			return
 	var castle := world.find_child("GatehouseCastle", true, false) as Node3D
 	if castle == null or castle.get_child_count() < 120:
 		_fail("menu castle lacks the layered facade and landmark detail pass", 33)
@@ -96,6 +137,11 @@ func _run_checks() -> void:
 	if castle.scale.x > 1.15:
 		_fail("castle scale clips the upper landmark at menu framing", 44)
 		return
+	for wing_name in ["CastleWestWing", "CastleEastWing"]:
+		var wing := castle.get_node_or_null(wing_name) as Node3D
+		if wing == null or wing.get_child_count() < 20:
+			_fail("castle is missing a fully detailed side wing: %s" % wing_name, 53)
+			return
 
 	var strip := scene.find_child("FeatureStrip", true, false) as HBoxContainer
 	if strip == null:
