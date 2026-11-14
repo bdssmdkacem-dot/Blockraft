@@ -241,7 +241,7 @@ func _build_sunset_disc() -> void:
 	mesh.radius = 3.2
 	mesh.height = 6.4
 	mesh.radial_segments = 20
-	mesh.rings = 40
+	mesh.rings = 10
 	sun.mesh = mesh
 	sun.position = Vector3(13.0, 16.5, -50.0)
 	sun.scale = Vector3.ONE * 1.35
@@ -288,7 +288,7 @@ func _pyramid(parent: Node3D, position: Vector3, radius: float, height: float, c
 	mesh.bottom_radius = radius
 	mesh.height = height
 	mesh.radial_segments = 12
-	mesh.rings = 1
+	mesh.rings = 4
 	spire.mesh = mesh
 	spire.position = position
 	spire.rotation.y = PI * 0.25
