@@ -307,7 +307,7 @@ func _generate_world() -> void:
 	var terrain_noise := FastNoiseLite.new()
 	terrain_noise.seed = 82417
 	terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
-	terrain_noise.frequency = 0.034
+	terrain_noise.frequency = 0.048
 	terrain_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	terrain_noise.fractal_octaves = 4
 	terrain_noise.fractal_gain = 0.48
@@ -321,7 +321,7 @@ func _generate_world() -> void:
 			h += sin(fx * 0.060 + 1.7) * 0.52 + cos(fz * 0.058 + 0.6) * 0.48
 			h += sin(fx * 0.12 + fz * 0.06) * 0.20
 			var local_relief := terrain_noise.get_noise_2d(fx, fz)
-			h += local_relief * 2.35
+			h += local_relief * 2.85
 			# Two broad Gaussian ridges frame the forward river valley. Their
 			# gentle profiles restore visible mountain relief without creating
 			# isolated spikes or abrupt voxel walls.
@@ -338,10 +338,10 @@ func _generate_world() -> void:
 			# Keep only the protected spawn pad level. Blend into the nearby
 			# rolling terrain sooner so the starting area does not read as a
 			# broad artificial tabletop.
-			if dist < 4.3:
+			if dist < 3.5:
 				h = 4.0
-			elif dist < 8.0:
-				h = lerpf(4.0, h, smoothstep(4.3, 8.0, dist))
+			elif dist < 7.5:
+				h = lerpf(4.0, h, smoothstep(3.5, 7.5, dist))
 			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
 			# A visible tributary passes beyond the protected spawn pad so the
 			# normal third-person starting view has water, banks and a crossing.
@@ -459,7 +459,7 @@ func _generate_world() -> void:
 	# near-water exemption preserved abrupt river cliffs, and the rounded voxel
 	# heights then turned modest height differences into vertical rock faces.
 	# This bounded-neighbour relaxation limits each grid step before voxelizing.
-	const MAX_WALKABLE_HEIGHT_STEP := 0.45
+	const MAX_WALKABLE_HEIGHT_STEP := 0.62
 	for _slope_pass in range(48):
 		var slope_updates: Dictionary = {}
 		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
