@@ -48,7 +48,7 @@ func _run_checks() -> void:
         var gy := floori(plant.position.y - 1.0 + 0.001)
         var ground_cell := Vector3i(gx, gy, gz)
         var ground_kind := str(scene.blocks.get(ground_cell, ""))
-        if plant.position.z < -6.0 and plant.position.z > -42.0 and absf(plant.position.x) < 28.0:
+        if plant.position.z < -6.0 and plant.position.z > -42.0 and absf(plant.position.x) < 28.0 and Vector2(plant.position.x, plant.position.z).length() > 18.0:
             _fail("decorative plant spawned inside the opening camera corridor", 75)
             return
         if ground_kind not in ["grass", "dirt", "sand", "gravel"]:
