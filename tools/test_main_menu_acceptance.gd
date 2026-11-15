@@ -70,6 +70,14 @@ func _run_checks() -> void:
 	if terrain_vertices.size() < 1500 or terrain_colors.size() != terrain_vertices.size():
 		_fail("menu terrain art pass lacks dense vertex-colour detail", 49)
 		return
+	var terrain_min_y := INF
+	var terrain_max_y := -INF
+	for terrain_vertex in terrain_vertices:
+		terrain_min_y = minf(terrain_min_y, terrain_vertex.y)
+		terrain_max_y = maxf(terrain_max_y, terrain_vertex.y)
+	if terrain_max_y - terrain_min_y < 0.55:
+		_fail("menu meadow still reads as a flat slab: relief=%.3f" % (terrain_max_y - terrain_min_y), 60)
+		return
 	var village := world.find_child("Village", true, false) as Node3D
 	if village == null or village.get_child_count() < 120:
 		_fail("village has no layered gabled house silhouettes", 37)
