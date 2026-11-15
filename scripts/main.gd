@@ -241,10 +241,11 @@ func _setup_materials() -> void:
 		if key == "water":
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			mat.albedo_color.a = 0.76
-			# Keep the water readable and softly reflective, not metallic or icy.
+			# Keep the water matte: Godot 4 exposes specular_mode rather than the removed Godot 3 specular property.
 			mat.roughness = 0.44
 			mat.metallic = 0.0
-			mat.specular = 0.12
+			mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+			mat.metallic_specular = 0.0
 			mat.emission_enabled = true
 			mat.emission = Color(0.01, 0.04, 0.08)
 			mat.emission_energy_multiplier = 0.035
