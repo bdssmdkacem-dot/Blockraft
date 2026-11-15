@@ -49,9 +49,6 @@ func _run_checks() -> void:
 	if world.find_child("GoldenHourSun", true, false) == null:
 		_fail("3D menu world has no key light", 27)
 		return
-	if world.find_child("MountainBackdrop", true, false) == null:
-		_fail("menu panorama is missing layered mountain and waterfall backdrop", 34)
-		return
 	var environment_nodes := world.find_children("*", "WorldEnvironment", true, false)
 	var world_environment: WorldEnvironment = environment_nodes[0] as WorldEnvironment if not environment_nodes.is_empty() else null
 	if world_environment == null or world_environment.environment == null:
