@@ -1103,8 +1103,6 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 				continue
 			vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
 			if normal.y > 0.5:
-				var first_outward := -first_normal.normalized()
-				var second_outward := -second_normal.normalized()
 				# The indexed-surface acceptance contract requires each triangle's
 				# vertex normals to match its exact geometric face normal. Keep the
 				# normals deterministic and correct; visual smoothing belongs in
