@@ -239,14 +239,13 @@ func _setup_materials() -> void:
 		mat.albedo_color = colors[key]
 		mat.roughness = 0.92
 		if key == "water":
-			# Keep the river surface opaque. Alpha blending sorted separate terrain
-			# faces through the water and produced dark triangular patches at bends
-			# and shoreline corners in the rendered gameplay capture.
-			mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-			mat.albedo_color.a = 1.0
-			# A soft matte highlight keeps the stylized water readable without
-			# transparent sorting artifacts or mirror-like reflections.
-			mat.roughness = 0.58
+			# Retain the project's alpha water contract, but keep opacity high so
+			# shoreline terrain cannot dominate the river colour through blending.
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat.albedo_color.a = 0.94
+			# Matte, non-metallic water avoids glossy highlights while preserving
+			# a subtle depth impression at the river edge.
+			mat.roughness = 0.86
 			mat.metallic = 0.0
 			mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 			mat.metallic_specular = 0.0
