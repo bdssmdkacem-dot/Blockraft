@@ -239,10 +239,14 @@ func _setup_materials() -> void:
 		mat.albedo_color = colors[key]
 		mat.roughness = 0.92
 		if key == "water":
-			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			mat.albedo_color.a = 0.76
-			# Keep the water matte: Godot 4 exposes specular_mode rather than the removed Godot 3 specular property.
-			mat.roughness = 0.44
+			# Keep the river surface opaque. Alpha blending sorted separate terrain
+			# faces through the water and produced dark triangular patches at bends
+			# and shoreline corners in the rendered gameplay capture.
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			mat.albedo_color.a = 1.0
+			# A soft matte highlight keeps the stylized water readable without
+			# transparent sorting artifacts or mirror-like reflections.
+			mat.roughness = 0.58
 			mat.metallic = 0.0
 			mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 			mat.metallic_specular = 0.0
