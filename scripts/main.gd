@@ -1109,14 +1109,17 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 				var normal_b := _terrain_normal_at_corner(Vector2i(roundi(b.x), roundi(b.z)))
 				var normal_c := _terrain_normal_at_corner(Vector2i(roundi(c.x), roundi(c.z)))
 				var normal_d := _terrain_normal_at_corner(Vector2i(roundi(d.x), roundi(d.z)))
-				if normal_a.dot(first_outward) < 0.0: normal_a = -normal_a
-				if normal_b.dot(first_outward) < 0.0: normal_b = -normal_b
-				if normal_c.dot(first_outward) < 0.0: normal_c = -normal_c
+				# Bias the shared heightfield normal toward this triangle's exact
+				# outward normal. This preserves smooth lighting while keeping the
+				# strict winding check stable on steep local transitions.
+				normal_a = (first_outward * 0.8 + normal_a * 0.2).normalized()
+				normal_b = (first_outward * 0.8 + normal_b * 0.2).normalized()
+				normal_c = (first_outward * 0.8 + normal_c * 0.2).normalized()
 				var second_normal_a := _terrain_normal_at_corner(Vector2i(roundi(a.x), roundi(a.z)))
 				var second_normal_c := _terrain_normal_at_corner(Vector2i(roundi(c.x), roundi(c.z)))
-				if second_normal_a.dot(second_outward) < 0.0: second_normal_a = -second_normal_a
-				if normal_d.dot(second_outward) < 0.0: normal_d = -normal_d
-				if second_normal_c.dot(second_outward) < 0.0: second_normal_c = -second_normal_c
+				second_normal_a = (second_outward * 0.8 + second_normal_a * 0.2).normalized()
+				normal_d = (second_outward * 0.8 + normal_d * 0.2).normalized()
+				second_normal_c = (second_outward * 0.8 + second_normal_c * 0.2).normalized()
 				normals.append_array(PackedVector3Array([normal_a, normal_c, normal_b, second_normal_a, normal_d, second_normal_c]))
 			else:
 				normals.append_array(PackedVector3Array([-first_normal.normalized(), -first_normal.normalized(), -first_normal.normalized(), -second_normal.normalized(), -second_normal.normalized(), -second_normal.normalized()]))
