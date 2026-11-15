@@ -1103,11 +1103,21 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 				continue
 			vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
 			if normal.y > 0.5:
+				var first_outward := -first_normal.normalized()
+				var second_outward := -second_normal.normalized()
 				var normal_a := _terrain_normal_at_corner(Vector2i(roundi(a.x), roundi(a.z)))
 				var normal_b := _terrain_normal_at_corner(Vector2i(roundi(b.x), roundi(b.z)))
 				var normal_c := _terrain_normal_at_corner(Vector2i(roundi(c.x), roundi(c.z)))
 				var normal_d := _terrain_normal_at_corner(Vector2i(roundi(d.x), roundi(d.z)))
-				normals.append_array(PackedVector3Array([normal_a, normal_c, normal_b, normal_a, normal_d, normal_c]))
+				if normal_a.dot(first_outward) < 0.0: normal_a = -normal_a
+				if normal_b.dot(first_outward) < 0.0: normal_b = -normal_b
+				if normal_c.dot(first_outward) < 0.0: normal_c = -normal_c
+				var second_normal_a := _terrain_normal_at_corner(Vector2i(roundi(a.x), roundi(a.z)))
+				var second_normal_c := _terrain_normal_at_corner(Vector2i(roundi(c.x), roundi(c.z)))
+				if second_normal_a.dot(second_outward) < 0.0: second_normal_a = -second_normal_a
+				if normal_d.dot(second_outward) < 0.0: normal_d = -normal_d
+				if second_normal_c.dot(second_outward) < 0.0: second_normal_c = -second_normal_c
+				normals.append_array(PackedVector3Array([normal_a, normal_c, normal_b, second_normal_a, normal_d, second_normal_c]))
 			else:
 				normals.append_array(PackedVector3Array([-first_normal.normalized(), -first_normal.normalized(), -first_normal.normalized(), -second_normal.normalized(), -second_normal.normalized(), -second_normal.normalized()]))
 			colors.append_array(PackedColorArray([tint, tint, tint, tint, tint, tint]))
