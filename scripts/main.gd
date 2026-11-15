@@ -58,7 +58,8 @@ var world_generation_ms := 0.0
 var world_generation_heightfield_ms := 0.0
 var world_generation_voxel_fill_ms := 0.0
 var world_generation_block_count := 0
-# Shared corner heights let adjacent voxel tops meet as continuous low-poly slopes.
+# Shared dry-land corner heights let adjacent voxel tops meet as continuous low-poly slopes.
+# Water is excluded so the river stays level instead of inheriting averaged bank heights.
 var terrain_surface_heights: Dictionary = {}
 var terrain_corner_heights: Dictionary = {}
 
@@ -943,7 +944,7 @@ func _rebuild_terrain_surface_cache_from_blocks() -> void:
 	for position_variant in blocks:
 		var position: Vector3i = position_variant
 		var surface_kind := str(blocks[position])
-		if position.y > 14 or (surface_kind not in TERRAIN_SURFACE_KINDS and not (surface_kind == "water" and position.y == 2)):
+		if position.y > 14 or surface_kind not in TERRAIN_SURFACE_KINDS:
 			continue
 		var key := Vector2i(position.x, position.z)
 		var surface_y := float(position.y + 1)
@@ -977,7 +978,7 @@ func _refresh_terrain_surface_column(x: int, z: int) -> void:
 	var found := false
 	for y in range(14, MIN_Y - 1, -1):
 		var surface_kind := str(blocks.get(Vector3i(x, y, z), ""))
-		if surface_kind in TERRAIN_SURFACE_KINDS or (surface_kind == "water" and y == 2):
+		if surface_kind in TERRAIN_SURFACE_KINDS:
 			terrain_surface_heights[key] = float(y + 1)
 			found = true
 			break
@@ -1013,7 +1014,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 	var y := float(pos.y)
 	var z := float(pos.z)
 	var terrain_column := Vector2i(pos.x, pos.z)
-	var smooth_surface := (kind in TERRAIN_SURFACE_KINDS or (kind == "water" and pos.y == 2)) and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
+	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
 	var faces := [
 		[Vector3i(1, 0, 0), Vector3(x + 1, y, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y, z + 1), Vector3.RIGHT],
 		[Vector3i(-1, 0, 0), Vector3(x, y, z), Vector3(x, y, z + 1), Vector3(x, y + 1, z + 1), Vector3(x, y + 1, z), Vector3.LEFT],
