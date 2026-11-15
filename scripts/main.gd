@@ -940,7 +940,7 @@ func _rebuild_terrain_surface_cache_from_blocks() -> void:
 	for position_variant in blocks:
 		var position: Vector3i = position_variant
 		var surface_kind := str(blocks[position])
-		if position.y > 14 or surface_kind not in TERRAIN_SURFACE_KINDS:
+		if position.y > 14 or (surface_kind not in TERRAIN_SURFACE_KINDS and not (surface_kind == "water" and position.y == 2)):
 			continue
 		var key := Vector2i(position.x, position.z)
 		var surface_y := float(position.y + 1)
@@ -974,7 +974,7 @@ func _refresh_terrain_surface_column(x: int, z: int) -> void:
 	var found := false
 	for y in range(14, MIN_Y - 1, -1):
 		var surface_kind := str(blocks.get(Vector3i(x, y, z), ""))
-		if surface_kind in TERRAIN_SURFACE_KINDS:
+		if surface_kind in TERRAIN_SURFACE_KINDS or (surface_kind == "water" and y == 2):
 			terrain_surface_heights[key] = float(y + 1)
 			found = true
 			break
