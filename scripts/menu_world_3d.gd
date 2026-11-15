@@ -174,8 +174,8 @@ func _build_landscape() -> void:
 
 func _build_terrain_art_pass() -> void:
 	# A vertex-coloured rolling terrain mesh replaces the broad flat green menu slab.
-	# It stays deliberately low relief so landmarks remain grounded and the river
-	# and village retain their established composition.
+	# The higher-resolution surface adds visible rolling relief while flattening
+	# locally beneath the village and castle footprints.
 	var terrain := MeshInstance3D.new()
 	terrain.name = "TerrainArtPass"
 	var vertices := PackedVector3Array()
@@ -187,7 +187,7 @@ func _build_terrain_art_pass() -> void:
 		for x in range(GRID + 1):
 			var px := -EXTENT + float(x) * (EXTENT * 2.0 / float(GRID))
 			var pz := -EXTENT + float(z) * (EXTENT * 2.0 / float(GRID))
- 			var rolling := sin(px * 0.19 + pz * 0.08) * 0.52 + cos(pz * 0.16 - px * 0.05) * 0.34 + sin(px * 0.075 + pz * 0.12) * 0.22
+			var rolling := sin(px * 0.19 + pz * 0.08) * 0.52 + cos(pz * 0.16 - px * 0.05) * 0.34 + sin(px * 0.075 + pz * 0.12) * 0.22
 			var bank := exp(-pow((px - 4.5) / 7.5, 2.0) - pow((pz + 8.0) / 25.0, 2.0)) * 0.28
 			var building_mask := 1.0
 			for landmark in [Vector2(18.0, -5.0), Vector2(30.0, -18.0)]:
