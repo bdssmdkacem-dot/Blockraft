@@ -987,6 +987,14 @@ func _refresh_terrain_surface_column(x: int, z: int) -> void:
 		for corner_z in [z, z + 1]:
 			_refresh_terrain_corner_height(Vector2i(corner_x, corner_z))
 
+func _terrain_normal_at_corner(corner: Vector2i) -> Vector3:
+	var center_height := float(terrain_corner_heights.get(corner, 3.0))
+	var left_height := float(terrain_corner_heights.get(corner + Vector2i(-1, 0), center_height))
+	var right_height := float(terrain_corner_heights.get(corner + Vector2i(1, 0), center_height))
+	var north_height := float(terrain_corner_heights.get(corner + Vector2i(0, -1), center_height))
+	var south_height := float(terrain_corner_heights.get(corner + Vector2i(0, 1), center_height))
+	return Vector3(left_height - right_height, 2.0, north_height - south_height).normalized()
+
 func _smooth_terrain_vertex(vertex: Vector3) -> Vector3:
 	var corner := Vector2i(roundi(vertex.x), roundi(vertex.z))
 	if terrain_corner_heights.has(corner):
@@ -1005,7 +1013,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 	var y := float(pos.y)
 	var z := float(pos.z)
 	var terrain_column := Vector2i(pos.x, pos.z)
-	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
+	var smooth_surface := (kind in TERRAIN_SURFACE_KINDS or (kind == "water" and pos.y == 2)) and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
 	var faces := [
 		[Vector3i(1, 0, 0), Vector3(x + 1, y, z), Vector3(x + 1, y + 1, z), Vector3(x + 1, y + 1, z + 1), Vector3(x + 1, y, z + 1), Vector3.RIGHT],
 		[Vector3i(-1, 0, 0), Vector3(x, y, z), Vector3(x, y, z + 1), Vector3(x, y + 1, z + 1), Vector3(x, y + 1, z), Vector3.LEFT],
@@ -1074,8 +1082,11 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			"sand", "gravel":
 				tint = Color("#b69b68").lerp(Color("#e2d09b"), fine_biome * 0.48) * variation
 			"water":
-				var depth_tint := 0.5 + 0.5 * sin(float(pos.x) * 0.19 + float(pos.z) * 0.13)
-				tint = Color("#14547e").lerp(Color("#3d9fc2"), depth_tint * 0.55) * variation
+				# Keep the river's broad surface visually continuous. Small world-space
+				# colour waves replace per-voxel contrast that made the water look tiled.
+				var depth_tint := 0.5 + 0.5 * sin(float(pos.x) * 0.075 + float(pos.z) * 0.061)
+				var water_variation := 0.97 + depth_tint * 0.045
+				tint = Color("#236f98").lerp(Color("#459fbd"), depth_tint * 0.30) * water_variation
 			"leaves":
 				tint = Color("#245c2c").lerp(Color("#69a83e"), broad_biome * 0.65 + fine_biome * 0.35) * variation
 		if normal.y > 0.5:
@@ -1091,7 +1102,14 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			if first_normal.length_squared() < 0.0001 or second_normal.length_squared() < 0.0001:
 				continue
 			vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
-			normals.append_array(PackedVector3Array([-first_normal.normalized(), -first_normal.normalized(), -first_normal.normalized(), -second_normal.normalized(), -second_normal.normalized(), -second_normal.normalized()]))
+			if normal.y > 0.5:
+				var normal_a := _terrain_normal_at_corner(Vector2i(roundi(a.x), roundi(a.z)))
+				var normal_b := _terrain_normal_at_corner(Vector2i(roundi(b.x), roundi(b.z)))
+				var normal_c := _terrain_normal_at_corner(Vector2i(roundi(c.x), roundi(c.z)))
+				var normal_d := _terrain_normal_at_corner(Vector2i(roundi(d.x), roundi(d.z)))
+				normals.append_array(PackedVector3Array([normal_a, normal_c, normal_b, normal_a, normal_d, normal_c]))
+			else:
+				normals.append_array(PackedVector3Array([-first_normal.normalized(), -first_normal.normalized(), -first_normal.normalized(), -second_normal.normalized(), -second_normal.normalized(), -second_normal.normalized()]))
 			colors.append_array(PackedColorArray([tint, tint, tint, tint, tint, tint]))
 			indices.append_array(PackedInt32Array([base_index, base_index + 1, base_index + 2, base_index + 3, base_index + 4, base_index + 5]))
 		else:
