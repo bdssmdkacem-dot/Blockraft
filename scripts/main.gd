@@ -1047,16 +1047,38 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 				var next_d := _smooth_terrain_vertex(d)
 				smoothed_face = smoothed_face or not is_equal_approx(next_d.y, d.y)
 				d = next_d
-		# Deterministic per-voxel/per-face tinting adds subtle material breakup
-		# without texture lookups or extra draw calls. Top faces are slightly
-		# brighter; vertical rock faces remain naturally shaded.
+		# Per-face biome colour is baked into the existing vertex buffer: no
+		# extra materials, texture lookups, nodes, draw calls or triangles.
+		# Grass tops vary with local moisture/altitude while their exposed sides
+		# read as an earthy soil-and-rock layer instead of one flat green plane.
 		var noise_value := sin(float(pos.x) * 12.9898 + float(pos.y) * 78.233 + float(pos.z) * 37.719)
-		var variation := 0.94 + (noise_value * 0.5 + 0.5) * 0.12
-		if normal.y > 0.5:
-			variation *= 1.055
-		elif absf(normal.y) < 0.5:
-			variation *= 0.94
+		var broad_biome := 0.5 + 0.5 * sin(float(pos.x) * 0.071 + cos(float(pos.z) * 0.053) * 1.7)
+		var fine_biome := 0.5 + 0.5 * cos(float(pos.x + pos.z) * 0.31 + float(pos.x - pos.z) * 0.17)
+		var variation := 0.88 + (noise_value * 0.5 + 0.5) * 0.20
 		var tint := Color(variation, variation, variation, 1.0)
+		match kind:
+			"grass":
+				if normal.y > 0.5:
+					var meadow := Color("#397b35").lerp(Color("#86b94a"), broad_biome * 0.72 + fine_biome * 0.28)
+					tint = meadow * variation * 1.04
+				else:
+					var soil := Color("#604b35").lerp(Color("#8a7048"), fine_biome * 0.55)
+					tint = soil * variation * 0.92
+			"dirt":
+				tint = Color("#795337").lerp(Color("#a0784b"), fine_biome * 0.45) * variation
+			"stone", "rock":
+				tint = Color("#59666a").lerp(Color("#929b98"), fine_biome * 0.48) * variation
+			"sand", "gravel":
+				tint = Color("#b69b68").lerp(Color("#e2d09b"), fine_biome * 0.48) * variation
+			"water":
+				var depth_tint := 0.5 + 0.5 * sin(float(pos.x) * 0.19 + float(pos.z) * 0.13)
+				tint = Color("#14547e").lerp(Color("#3d9fc2"), depth_tint * 0.55) * variation
+			"leaves":
+				tint = Color("#245c2c").lerp(Color("#69a83e"), broad_biome * 0.65 + fine_biome * 0.35) * variation
+		if normal.y > 0.5:
+			tint = tint.lightened(0.035)
+		elif absf(normal.y) < 0.5:
+			tint = tint.darkened(0.045)
 		var base_index := vertices.size()
 		if smoothed_face:
 			# A warped quad is two non-coplanar triangles. Give each triangle its
