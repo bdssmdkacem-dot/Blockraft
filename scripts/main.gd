@@ -1039,6 +1039,11 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var c: Vector3 = face[3]
 		var d: Vector3 = face[4]
 		var normal: Vector3 = face[5]
+		# Render water as a continuous horizontal surface. Its exposed voxel side
+		# walls created dark, jagged blue cliffs along every shoreline step; the
+		# underlying water voxels and terrain collision remain unchanged.
+		if kind == "water" and normal.y < 0.5:
+			continue
 		var smoothed_face := false
 		# Natural ground surface blocks share corner heights across neighbouring
 		# columns. Render and collision therefore agree on the same gentle slopes.
