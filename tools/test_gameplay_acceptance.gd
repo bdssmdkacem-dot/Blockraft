@@ -43,21 +43,58 @@ func _run_checks() -> void:
     if fractional_terrain_corners < 100:
         _fail("terrain renderer did not create enough blended low-poly slope corners: %d" % fractional_terrain_corners, 80)
         return
-    var blended_shore_corners := 0
-    for corner_height in corner_cache.values():
-        if float(corner_height) > 2.0 and float(corner_height) < 3.0:
-            blended_shore_corners += 1
-    var water_surface_columns := 0
+    # Water is deliberately excluded from the dry-land corner cache: averaging
+    # shoreline heights into water vertices made the river surface uneven.
+    # Verify the bank has blended corners next to real water columns, while the
+    # rendered water top remains a level plane at y=3.0.
+    var blended_shore_corners: Dictionary = {}
+    var water_surface_columns: Dictionary = {}
     for block_position in scene.blocks:
         var water_cell: Vector3i = block_position
-        if str(scene.blocks[block_position]) == "water" and water_cell.y == 2:
-            var water_column := Vector2i(water_cell.x, water_cell.z)
-            if surface_cache.has(water_column) and is_equal_approx(float(surface_cache[water_column]), 3.0):
-                water_surface_columns += 1
-    if blended_shore_corners < 20 or water_surface_columns < 20:
-        _fail("water and terrain shoreline are not sharing blended surface corners: shore_corners=%d water_columns=%d" % [blended_shore_corners, water_surface_columns], 81)
+        if str(scene.blocks[block_position]) != "water" or water_cell.y != 2:
+            continue
+        water_surface_columns[Vector2i(water_cell.x, water_cell.z)] = true
+        for corner_variant in [
+            Vector2i(water_cell.x, water_cell.z),
+            Vector2i(water_cell.x + 1, water_cell.z),
+            Vector2i(water_cell.x, water_cell.z + 1),
+            Vector2i(water_cell.x + 1, water_cell.z + 1)
+        ]:
+            var corner: Vector2i = corner_variant
+            if not corner_cache.has(corner):
+                continue
+            var corner_height := float(corner_cache[corner])
+            if corner_height > 2.0 and corner_height < 3.0:
+                blended_shore_corners[corner] = true
+    if blended_shore_corners.size() < 20 or water_surface_columns.size() < 20:
+        _fail("river bank is missing blended shoreline corners or water columns: shore_corners=%d water_columns=%d" % [blended_shore_corners.size(), water_surface_columns.size()], 81)
         return
-    print("TERRAIN_SMOOTH_MESH_PASS: cached surface columns=", surface_cache.size(), " shared corners=", corner_cache.size(), " fractional slope corners=", fractional_terrain_corners, " blended shore corners=", blended_shore_corners, " water surface columns=", water_surface_columns)
+
+    var flat_water_top_vertices := 0
+    for chunk_variant in scene.loaded_chunks.values():
+        var chunk_root := chunk_variant as Node3D
+        if chunk_root == null:
+            continue
+        var water_instance := chunk_root.get_node_or_null("Surface_water") as MeshInstance3D
+        if water_instance == null:
+            continue
+        var water_mesh := water_instance.mesh as ArrayMesh
+        if water_mesh == null or water_mesh.get_surface_count() == 0:
+            continue
+        var water_arrays: Array = water_mesh.surface_get_arrays(0)
+        var water_vertices: PackedVector3Array = water_arrays[Mesh.ARRAY_VERTEX]
+        var water_normals: PackedVector3Array = water_arrays[Mesh.ARRAY_NORMAL]
+        for vertex_index in range(mini(water_vertices.size(), water_normals.size())):
+            if water_normals[vertex_index].y <= 0.9:
+                continue
+            flat_water_top_vertices += 1
+            if not is_equal_approx(water_vertices[vertex_index].y, 3.0):
+                _fail("river water top is not level at y=3.0: vertex_y=%f" % water_vertices[vertex_index].y, 82)
+                return
+    if flat_water_top_vertices < 20:
+        _fail("loaded chunks do not expose enough level river top vertices: %d" % flat_water_top_vertices, 83)
+        return
+    print("TERRAIN_SMOOTH_MESH_PASS: cached surface columns=", surface_cache.size(), " shared corners=", corner_cache.size(), " fractional slope corners=", fractional_terrain_corners, " blended shoreline corners=", blended_shore_corners.size(), " water columns=", water_surface_columns.size(), " flat water top vertices=", flat_water_top_vertices)
 
     # Every spawned plant must sit on a continuous, exposed terrain column.
     var flora := scene.get_node_or_null("FloraFauna")
