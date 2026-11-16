@@ -368,9 +368,9 @@ func _generate_world() -> void:
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
 			# A gently varying channel width avoids the ruler-straight, uniformly
 			# narrow trench. Width modulation is low-frequency and deterministic.
-			var main_river_width := 2.35 + sin(fx * 0.17 + fz * 0.08) * 0.22 + cos(fz * 0.21) * 0.10
+			var main_river_width := 1.75 + sin(fx * 0.17 + fz * 0.08) * 0.28 + cos(fz * 0.21) * 0.12
 			var in_main := river_d < main_river_width and dist > 7.0
-			var in_trib := trib_d < 1.70 and dist > 11.0 and fz > 0.0
+			var in_trib := trib_d < 1.25 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
 				# Deepen the channel centre and leave a shallow shelf near the bank.
@@ -379,7 +379,7 @@ func _generate_world() -> void:
 				var channel_width := main_river_width
 				if in_trib and (not in_main or trib_d < river_d):
 					channel_distance = trib_d
-					channel_width = 1.70
+					channel_width = 1.25
 				var edge_t := clampf(channel_distance / maxf(channel_width, 0.1), 0.0, 1.0)
 				var channel_floor_height := lerpf(0.35, 1.2, edge_t)
 				h = mini(h, channel_floor_height)
@@ -390,9 +390,9 @@ func _generate_world() -> void:
 				var bank_inner_width := main_river_width
 				if dist > 11.0 and fz > 0.0 and trib_d < bank_distance:
 					bank_distance = trib_d
-					bank_inner_width = 1.70
-				if bank_distance < 10.5 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 10.5, bank_distance))
+					bank_inner_width = 1.25
+				if bank_distance < 8.5 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 8.5, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
