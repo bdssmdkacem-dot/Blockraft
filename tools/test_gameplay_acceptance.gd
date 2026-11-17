@@ -143,7 +143,7 @@ func _run_checks() -> void:
             queue_head += 1
             component_size += 1
             for direction in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-                var neighbor := current + direction
+                var neighbor: Vector2i = current + direction
                 if unvisited_water.has(neighbor):
                     unvisited_water.erase(neighbor)
                     queue.append(neighbor)
