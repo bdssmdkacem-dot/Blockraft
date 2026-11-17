@@ -1015,8 +1015,8 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var indices: PackedInt32Array = group["indices"]
 	var near_a := start + inward
 	var near_b := end + inward
-	near_a.y = water_top - 0.035
-	near_b.y = water_top - 0.035
+	near_a.y = water_top + 0.018
+	near_b.y = water_top + 0.018
 	var shore_a := start
 	var shore_b := end
 	shore_a.y = float(terrain_corner_heights.get(corner_a, water_top - 0.4))
