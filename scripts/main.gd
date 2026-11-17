@@ -1024,7 +1024,9 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var geometric := (shore_b - near_a).cross(near_b - near_a)
 	if geometric.length_squared() < 0.0001:
 		return
-	var outward := -geometric.normalized()
+	# The sand indices reverse the local (a,b,c) order; use the normal opposite
+	# to the indexed triangle winding, matching every other culled surface batch.
+	var outward := geometric.normalized()
 	var base := vertices.size()
 	vertices.append_array(PackedVector3Array([near_a, near_b, shore_b, shore_a]))
 	normals.append_array(PackedVector3Array([outward, outward, outward, outward]))
@@ -1266,7 +1268,7 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		instance.mesh = mesh
 		var surface_material := (block_materials.get(kind, block_materials["stone"]) as StandardMaterial3D).duplicate() as StandardMaterial3D
 		# Preserve normal back-face culling after emitting clockwise front faces.
-		surface_material.cull_mode = BaseMaterial3D.CULL_DISABLED if kind == "sand" else BaseMaterial3D.CULL_BACK
+		surface_material.cull_mode = BaseMaterial3D.CULL_BACK
 		surface_material.vertex_color_use_as_albedo = true
 		# Water vertex colours already contain the full display colour. A dark
 		# blue base albedo multiplied them a second time and crushed the river
