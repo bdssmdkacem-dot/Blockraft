@@ -1079,10 +1079,10 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		group["normals"] = normals + PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP, Vector3.UP])
 		group["colors"] = colors + PackedColorArray([water_tint, water_tint, water_tint, water_tint])
 		group["indices"] = indices + PackedInt32Array([
-			# Counter-clockwise from above so the top-facing water surface is
-			# rendered consistently with its explicit Vector3.UP normals.
-			base_index, base_index + 1, base_index + 2,
-			base_index, base_index + 2, base_index + 3
+			# Godot's voxel surface convention uses clockwise front faces here;
+			# keep the water winding aligned with the outward top normals.
+			base_index, base_index + 2, base_index + 1,
+			base_index, base_index + 3, base_index + 2
 		])
 		groups[kind] = group
 		var water_top := y + 1.0
