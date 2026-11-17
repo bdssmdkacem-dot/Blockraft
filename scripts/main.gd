@@ -1062,7 +1062,9 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		# Only the uppermost water cell contributes a visible surface.
 		if blocks.has(pos + Vector3i(0, 1, 0)):
 			return
-		var left_water := str(blocks.get(pos + Vector3i(-1, 0, 0), "")) == "water"
+		# A lower water cell beside a taller water column still needs its own exposed top.
+		# Only suppress this row when the left neighbour has water at the same top height.
+		var left_water := str(blocks.get(pos + Vector3i(-1, 0, 0), "")) == "water" and not blocks.has(pos + Vector3i(-1, 1, 0))
 		if left_water:
 			return
 		var run_width := 1
