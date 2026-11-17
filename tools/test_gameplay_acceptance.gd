@@ -125,6 +125,59 @@ func _run_checks() -> void:
     else: scene.blocks[stepped_water_probe + Vector3i.LEFT + Vector3i.UP] = old_left_water_top
     print("WATER_EXPOSED_TOP_REGRESSION_PASS: stepped water columns retain exposed lower top surfaces")
 
+    # The generated river must contain a genuinely 4-connected two-dimensional
+    # water region; diagonal corner-touching cells do not count as a continuous
+    # channel and previously produced visible breaks in the camera capture.
+    var unvisited_water: Dictionary = {}
+    for water_column_variant in water_surface_columns:
+        unvisited_water[water_column_variant] = true
+    var largest_water_component := 0
+    while not unvisited_water.is_empty():
+        var seed: Vector2i = unvisited_water.keys()[0]
+        unvisited_water.erase(seed)
+        var queue: Array[Vector2i] = [seed]
+        var queue_head := 0
+        var component_size := 0
+        while queue_head < queue.size():
+            var current: Vector2i = queue[queue_head]
+            queue_head += 1
+            component_size += 1
+            for direction in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+                var neighbor := current + direction
+                if unvisited_water.has(neighbor):
+                    unvisited_water.erase(neighbor)
+                    queue.append(neighbor)
+        largest_water_component = maxi(largest_water_component, component_size)
+    if largest_water_component < 20:
+        _fail("generated river has no sufficiently large 4-connected water region: largest=%d" % largest_water_component, 86)
+        return
+    print("WATER_GRID_CONNECTIVITY_PASS: largest 4-connected surface region=", largest_water_component)
+
+    # A water run crossing a 16-cell chunk seam must be split at the seam.
+    # Both chunk meshes must own one side and meet exactly at x=16, so unloading
+    # either chunk cannot remove the neighbour's water surface.
+    var seam_water_cells := [Vector3i(15, 2, 1000), Vector3i(16, 2, 1000), Vector3i(17, 2, 1000)]
+    for seam_cell in seam_water_cells:
+        scene.blocks[seam_cell] = "water"
+    var left_chunk_water: Dictionary = {}
+    var right_chunk_water: Dictionary = {}
+    scene.call("_append_exposed_render_faces", left_chunk_water, seam_water_cells[0], "water", 0, 16)
+    scene.call("_append_exposed_render_faces", right_chunk_water, seam_water_cells[1], "water", 16, 32)
+    var left_seam_vertices: PackedVector3Array = left_chunk_water.get("water", {}).get("vertices", PackedVector3Array())
+    var right_seam_vertices: PackedVector3Array = right_chunk_water.get("water", {}).get("vertices", PackedVector3Array())
+    var left_max_x := -INF
+    var right_min_x := INF
+    for vertex in left_seam_vertices:
+        left_max_x = maxf(left_max_x, vertex.x)
+    for vertex in right_seam_vertices:
+        right_min_x = minf(right_min_x, vertex.x)
+    if not is_equal_approx(left_max_x, 16.0) or not is_equal_approx(right_min_x, 16.0):
+        _fail("water mesh does not meet exactly at chunk seam x=16: left_max=%f right_min=%f" % [left_max_x, right_min_x], 87)
+        return
+    for seam_cell in seam_water_cells:
+        scene.blocks.erase(seam_cell)
+    print("WATER_CHUNK_SEAM_PASS: adjacent chunk surfaces meet exactly at x=16")
+
     # Every spawned plant must sit on a continuous, exposed terrain column.
     var flora := scene.get_node_or_null("FloraFauna")
     var flora_root := scene.get_node_or_null("Flora") as Node3D if flora != null else null
