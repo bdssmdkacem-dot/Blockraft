@@ -360,7 +360,10 @@ func _generate_world() -> void:
 				h = 4.0
 			elif dist < 7.5:
 				h = lerpf(4.0, h, smoothstep(3.5, 7.5, dist))
-			var river_d := absf(fz - sin(fx * 0.11) * 8.0 - cos(fx * 0.04) * 3.0)
+			# Keep the channel centreline's lateral drift below half a voxel per step.
+			# The previous steep sine could move the river diagonally by a full cell
+			# between adjacent columns, leaving only corner-touching water tiles.
+			var river_d := absf(fz - sin(fx * 0.055) * 8.0 - cos(fx * 0.025) * 3.0)
 			# The forward scenic tributary gives the spawn view a visible crossing.
 			var scenic_river_d := absf(fz + 15.0 + sin(fx * 0.12) * 3.0)
 			if dist > 12.0 and dist < 48.0:
