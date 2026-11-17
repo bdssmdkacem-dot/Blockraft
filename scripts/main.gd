@@ -1026,20 +1026,9 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var run_width := 1
 		while str(blocks.get(pos + Vector3i(run_width, 0, 0), "")) == "water" and not blocks.has(pos + Vector3i(run_width, 1, 0)):
 			run_width += 1
-		for column_offset in range(run_width):
-			if str(blocks.get(pos + Vector3i(column_offset, 0, -1), "")) == "water":
-				return
+		# Merge each contiguous row independently. Adjacent rows share exact
+		# boundary vertices, avoiding holes when the river changes width.
 		var run_depth := 1
-		while true:
-			var complete_row := true
-			for column_offset in range(run_width):
-				var row_cell := pos + Vector3i(column_offset, 0, run_depth)
-				if str(blocks.get(row_cell, "")) != "water" or blocks.has(row_cell + Vector3i(0, 1, 0)):
-					complete_row = false
-					break
-			if not complete_row:
-				break
-			run_depth += 1
 		var water_vertices := PackedVector3Array([
 			Vector3(x, y + 1.0, z),
 			Vector3(x, y + 1.0, z + float(run_depth)),
