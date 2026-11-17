@@ -247,8 +247,9 @@ func _run_checks() -> void:
                         _fail("chunk %s index buffer references an invalid vertex" % str(key), 66)
                         return
                     var geometric_normal := (mesh_vertices[ib] - mesh_vertices[ia]).cross(mesh_vertices[ic] - mesh_vertices[ia])
-                    if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(mesh_normals[ia]) > -0.99:
-                        _fail("chunk %s indexed surface winding disagrees with outward normals" % str(key), 65)
+                    var normal_alignment := geometric_normal.normalized().dot(mesh_normals[ia]) if geometric_normal.length_squared() >= 0.0001 else 1.0
+                    if geometric_normal.length_squared() < 0.0001 or normal_alignment > -0.99:
+                        _fail("chunk %s batch %s triangle %d winding disagrees with outward normals (dot=%.4f)" % [str(key), child.name, index_offset / 3, normal_alignment], 65)
                         return
                 var surface_material := child.material_override as StandardMaterial3D
                 if surface_material == null or surface_material.cull_mode != BaseMaterial3D.CULL_BACK:
