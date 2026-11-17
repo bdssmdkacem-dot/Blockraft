@@ -1002,6 +1002,41 @@ func _smooth_terrain_vertex(vertex: Vector3) -> Vector3:
 		vertex.y = float(terrain_corner_heights[corner])
 	return vertex
 
+func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vector3, inward: Vector3, corner_a: Vector2i, corner_b: Vector2i, water_top: float) -> void:
+	# Render-only sediment bevel: it overlaps the outermost water fringe and
+	# meets the smoothed dry-bank corner heights. It never changes voxel data,
+	# terrain collision, water collision, or the generated river footprint.
+	if not groups.has("sand"):
+		groups["sand"] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
+	var group: Dictionary = groups["sand"]
+	var vertices: PackedVector3Array = group["vertices"]
+	var normals: PackedVector3Array = group["normals"]
+	var colors: PackedColorArray = group["colors"]
+	var indices: PackedInt32Array = group["indices"]
+	var near_a := start + inward
+	var near_b := end + inward
+	near_a.y = water_top - 0.035
+	near_b.y = water_top - 0.035
+	var shore_a := start
+	var shore_b := end
+	shore_a.y = float(terrain_corner_heights.get(corner_a, water_top - 0.4))
+	shore_b.y = float(terrain_corner_heights.get(corner_b, water_top - 0.4))
+	var geometric := (shore_b - near_a).cross(near_b - near_a)
+	if geometric.length_squared() < 0.0001:
+		return
+	var outward := -geometric.normalized()
+	var base := vertices.size()
+	vertices.append_array(PackedVector3Array([near_a, near_b, shore_b, shore_a]))
+	normals.append_array(PackedVector3Array([outward, outward, outward, outward]))
+	var sediment_tint := Color("#b7a276")
+	colors.append_array(PackedColorArray([sediment_tint, sediment_tint, sediment_tint, sediment_tint]))
+	indices.append_array(PackedInt32Array([base, base + 2, base + 1, base, base + 3, base + 2]))
+	group["vertices"] = vertices
+	group["normals"] = normals
+	group["colors"] = colors
+	group["indices"] = indices
+	groups["sand"] = group
+
 func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String) -> void:
 	if not groups.has(kind):
 		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
@@ -1047,6 +1082,21 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			vertices.size(), vertices.size() + 3, vertices.size() + 2
 		])
 		groups[kind] = group
+		var water_top := y + 1.0
+		var left_land := Vector2i(pos.x - 1, pos.z)
+		if str(blocks.get(pos + Vector3i(-1, 0, 0), "")) != "water" and terrain_surface_heights.has(left_land):
+			_append_shoreline_transition(groups, Vector3(x, 0.0, z), Vector3(x, 0.0, z + 1.0), Vector3(0.38, 0.0, 0.0), Vector2i(pos.x, pos.z), Vector2i(pos.x, pos.z + 1), water_top)
+		var right_land := Vector2i(pos.x + run_width, pos.z)
+		if str(blocks.get(pos + Vector3i(run_width, 0, 0), "")) != "water" and terrain_surface_heights.has(right_land):
+			_append_shoreline_transition(groups, Vector3(x + float(run_width), 0.0, z + 1.0), Vector3(x + float(run_width), 0.0, z), Vector3(-0.38, 0.0, 0.0), Vector2i(pos.x + run_width, pos.z + 1), Vector2i(pos.x + run_width, pos.z), water_top)
+		for offset_x in range(run_width):
+			var water_x := pos.x + offset_x
+			var north_land := Vector2i(water_x, pos.z - 1)
+			if str(blocks.get(Vector3i(water_x, pos.y, pos.z - 1), "")) != "water" and terrain_surface_heights.has(north_land):
+				_append_shoreline_transition(groups, Vector3(float(water_x + 1), 0.0, z), Vector3(float(water_x), 0.0, z), Vector3(0.0, 0.0, 0.38), Vector2i(water_x + 1, pos.z), Vector2i(water_x, pos.z), water_top)
+			var south_land := Vector2i(water_x, pos.z + 1)
+			if str(blocks.get(Vector3i(water_x, pos.y, pos.z + 1), "")) != "water" and terrain_surface_heights.has(south_land):
+				_append_shoreline_transition(groups, Vector3(float(water_x), 0.0, z + 1.0), Vector3(float(water_x + 1), 0.0, z + 1.0), Vector3(0.0, 0.0, -0.38), Vector2i(water_x, pos.z + 1), Vector2i(water_x + 1, pos.z + 1), water_top)
 		return
 	var terrain_column := Vector2i(pos.x, pos.z)
 	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
@@ -1216,7 +1266,7 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		instance.mesh = mesh
 		var surface_material := (block_materials.get(kind, block_materials["stone"]) as StandardMaterial3D).duplicate() as StandardMaterial3D
 		# Preserve normal back-face culling after emitting clockwise front faces.
-		surface_material.cull_mode = BaseMaterial3D.CULL_BACK
+		surface_material.cull_mode = BaseMaterial3D.CULL_DISABLED if kind == "sand" else BaseMaterial3D.CULL_BACK
 		surface_material.vertex_color_use_as_albedo = true
 		# Water vertex colours already contain the full display colour. A dark
 		# blue base albedo multiplied them a second time and crushed the river
