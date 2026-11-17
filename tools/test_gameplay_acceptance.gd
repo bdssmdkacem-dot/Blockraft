@@ -71,6 +71,7 @@ func _run_checks() -> void:
         return
 
     var flat_water_top_vertices := 0
+    var non_top_water_vertices := 0
     for chunk_variant in scene.loaded_chunks.values():
         var chunk_root := chunk_variant as Node3D
         if chunk_root == null:
@@ -86,11 +87,15 @@ func _run_checks() -> void:
         var water_normals: PackedVector3Array = water_arrays[Mesh.ARRAY_NORMAL]
         for vertex_index in range(mini(water_vertices.size(), water_normals.size())):
             if water_normals[vertex_index].y <= 0.9:
+                non_top_water_vertices += 1
                 continue
             flat_water_top_vertices += 1
             if not is_equal_approx(water_vertices[vertex_index].y, 3.0):
                 _fail("river water top is not level at y=3.0: vertex_y=%f" % water_vertices[vertex_index].y, 82)
                 return
+    if non_top_water_vertices > 0:
+        _fail("river water surface still contains side or bottom faces: %d vertices" % non_top_water_vertices, 84)
+        return
     if flat_water_top_vertices < 20:
         _fail("loaded chunks do not expose enough level river top vertices: %d" % flat_water_top_vertices, 83)
         return
