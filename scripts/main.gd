@@ -1099,6 +1099,27 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			tint = tint.lightened(0.035)
 		elif absf(normal.y) < 0.5:
 			tint = tint.darkened(0.045)
+		# Fade the water colour toward a soft turquoise at exposed shoreline
+		# edges. The fade is vertex-coloured on the existing top quad: it adds no
+		# geometry, collision, water voxels, draw calls, or chunk rebuild work.
+		var color_a := tint
+		var color_b := tint
+		var color_c := tint
+		var color_d := tint
+		if kind == "water" and normal.y > 0.5:
+			var shore_tint := Color("#a7ded5")
+			if str(blocks.get(pos + Vector3i(-1, 0, 0), "")) != "water":
+				color_a = tint.lerp(shore_tint, 0.34)
+				color_b = tint.lerp(shore_tint, 0.34)
+			if str(blocks.get(pos + Vector3i(1, 0, 0), "")) != "water":
+				color_c = tint.lerp(shore_tint, 0.34)
+				color_d = tint.lerp(shore_tint, 0.34)
+			if str(blocks.get(pos + Vector3i(0, 0, -1), "")) != "water":
+				color_a = color_a.lerp(shore_tint, 0.34)
+				color_d = color_d.lerp(shore_tint, 0.34)
+			if str(blocks.get(pos + Vector3i(0, 0, 1), "")) != "water":
+				color_b = color_b.lerp(shore_tint, 0.34)
+				color_c = color_c.lerp(shore_tint, 0.34)
 		var base_index := vertices.size()
 		if smoothed_face:
 			# A warped quad is two non-coplanar triangles. Give each triangle its
@@ -1129,7 +1150,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		else:
 			vertices.append_array(PackedVector3Array([a, b, c, d]))
 			normals.append_array(PackedVector3Array([normal, normal, normal, normal]))
-			colors.append_array(PackedColorArray([tint, tint, tint, tint]))
+			colors.append_array(PackedColorArray([color_a, color_b, color_c, color_d]))
 			indices.append_array(PackedInt32Array([base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]))
 	group["vertices"] = vertices
 	group["normals"] = normals
@@ -1162,6 +1183,11 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		# Preserve normal back-face culling after emitting clockwise front faces.
 		surface_material.cull_mode = BaseMaterial3D.CULL_BACK
 		surface_material.vertex_color_use_as_albedo = true
+		# Water vertex colours already contain the full display colour. A dark
+		# blue base albedo multiplied them a second time and crushed the river
+		# into near-navy polygons in the rendered gameplay camera.
+		if kind == "water":
+			surface_material.albedo_color = Color.WHITE
 		instance.material_override = surface_material
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(instance)
