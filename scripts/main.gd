@@ -1058,60 +1058,44 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 	var x := float(pos.x)
 	var y := float(pos.y)
 	var z := float(pos.z)
-	# Water is emitted as connected top-surface rectangles rather than one
-	# independently shaded quad per voxel. This keeps the river surface visually
-	# continuous while preserving the exact water-cell footprint and elevation.
+	# Emit one exact quad for every exposed water cell. A previous X-run merger
+	# could suppress a cell based on a neighbour outside the current chunk and
+	# made narrow diagonal channels vulnerable to visible gaps at run boundaries.
+	# Per-cell quads share identical edge coordinates, normals and tint, so they
+	# render as one uninterrupted surface while remaining independently owned
+	# by the chunk containing each water cell.
 	if kind == "water":
-		# Only the uppermost water cell contributes a visible surface.
 		if blocks.has(pos + Vector3i(0, 1, 0)):
 			return
-		# A lower water cell beside a taller water column still needs its own exposed top.
-		# Only suppress this row when the left neighbour has water at the same top height.
-		# Each chunk owns its own slice of the water surface. Never let a run
-		# begin in one chunk and extend into another: the owning chunk may unload
-		# while its neighbour remains resident, which previously exposed a gap.
-		var left_water := pos.x > chunk_min_x and str(blocks.get(pos + Vector3i(-1, 0, 0), "")) == "water" and not blocks.has(pos + Vector3i(-1, 1, 0))
-		if left_water:
-			return
-		var run_width := 1
-		while pos.x + run_width < chunk_max_x and str(blocks.get(pos + Vector3i(run_width, 0, 0), "")) == "water" and not blocks.has(pos + Vector3i(run_width, 1, 0)):
-			run_width += 1
-		# Merge each contiguous row independently. Adjacent rows share exact
-		# boundary vertices, avoiding holes when the river changes width.
-		var run_depth := 1
 		var water_vertices := PackedVector3Array([
-			Vector3(x, y + 1.0, z),
-			Vector3(x, y + 1.0, z + float(run_depth)),
-			Vector3(x + float(run_width), y + 1.0, z + float(run_depth)),
-			Vector3(x + float(run_width), y + 1.0, z)
+				Vector3(x, y + 1.0, z),
+				Vector3(x, y + 1.0, z + 1.0),
+				Vector3(x + 1.0, y + 1.0, z + 1.0),
+				Vector3(x + 1.0, y + 1.0, z)
 		])
-		var water_normals := PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP, Vector3.UP])
 		var water_tint := Color("#1d5366").lerp(Color("#367d83"), 0.16)
-		var water_colors := PackedColorArray([water_tint, water_tint, water_tint, water_tint])
-		var water_indices := PackedInt32Array([0, 2, 1, 0, 3, 2])
+		var base_index := vertices.size()
 		group["vertices"] = vertices + water_vertices
-		group["normals"] = normals + water_normals
-		group["colors"] = colors + water_colors
+		group["normals"] = normals + PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP, Vector3.UP])
+		group["colors"] = colors + PackedColorArray([water_tint, water_tint, water_tint, water_tint])
 		group["indices"] = indices + PackedInt32Array([
-			vertices.size(), vertices.size() + 2, vertices.size() + 1,
-			vertices.size(), vertices.size() + 3, vertices.size() + 2
+			base_index, base_index + 2, base_index + 1,
+			base_index, base_index + 3, base_index + 2
 		])
 		groups[kind] = group
 		var water_top := y + 1.0
 		var left_land := Vector2i(pos.x - 1, pos.z)
 		if str(blocks.get(pos + Vector3i(-1, 0, 0), "")) != "water" and terrain_surface_heights.has(left_land):
 			_append_shoreline_transition(groups, Vector3(x, 0.0, z), Vector3(x, 0.0, z + 1.0), Vector3(0.38, 0.0, 0.0), Vector2i(pos.x, pos.z), Vector2i(pos.x, pos.z + 1), water_top)
-		var right_land := Vector2i(pos.x + run_width, pos.z)
-		if str(blocks.get(pos + Vector3i(run_width, 0, 0), "")) != "water" and terrain_surface_heights.has(right_land):
-			_append_shoreline_transition(groups, Vector3(x + float(run_width), 0.0, z + 1.0), Vector3(x + float(run_width), 0.0, z), Vector3(-0.38, 0.0, 0.0), Vector2i(pos.x + run_width, pos.z + 1), Vector2i(pos.x + run_width, pos.z), water_top)
-		for offset_x in range(run_width):
-			var water_x := pos.x + offset_x
-			var north_land := Vector2i(water_x, pos.z - 1)
-			if str(blocks.get(Vector3i(water_x, pos.y, pos.z - 1), "")) != "water" and terrain_surface_heights.has(north_land):
-				_append_shoreline_transition(groups, Vector3(float(water_x + 1), 0.0, z), Vector3(float(water_x), 0.0, z), Vector3(0.0, 0.0, 0.38), Vector2i(water_x + 1, pos.z), Vector2i(water_x, pos.z), water_top)
-			var south_land := Vector2i(water_x, pos.z + 1)
-			if str(blocks.get(Vector3i(water_x, pos.y, pos.z + 1), "")) != "water" and terrain_surface_heights.has(south_land):
-				_append_shoreline_transition(groups, Vector3(float(water_x), 0.0, z + 1.0), Vector3(float(water_x + 1), 0.0, z + 1.0), Vector3(0.0, 0.0, -0.38), Vector2i(water_x, pos.z + 1), Vector2i(water_x + 1, pos.z + 1), water_top)
+		var right_land := Vector2i(pos.x + 1, pos.z)
+		if str(blocks.get(pos + Vector3i(1, 0, 0), "")) != "water" and terrain_surface_heights.has(right_land):
+			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z), Vector3(-0.38, 0.0, 0.0), Vector2i(pos.x + 1, pos.z + 1), Vector2i(pos.x + 1, pos.z), water_top)
+		var north_land := Vector2i(pos.x, pos.z - 1)
+		if str(blocks.get(pos + Vector3i(0, 0, -1), "")) != "water" and terrain_surface_heights.has(north_land):
+			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z), Vector3(x, 0.0, z), Vector3(0.0, 0.0, 0.38), Vector2i(pos.x + 1, pos.z), Vector2i(pos.x, pos.z), water_top)
+		var south_land := Vector2i(pos.x, pos.z + 1)
+		if str(blocks.get(pos + Vector3i(0, 0, 1), "")) != "water" and terrain_surface_heights.has(south_land):
+			_append_shoreline_transition(groups, Vector3(x, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z + 1.0), Vector3(0.0, 0.0, -0.38), Vector2i(pos.x, pos.z + 1), Vector2i(pos.x + 1, pos.z + 1), water_top)
 		return
 	var terrain_column := Vector2i(pos.x, pos.z)
 	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
