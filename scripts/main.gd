@@ -1026,7 +1026,7 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 		return
 	# The sand indices reverse the local (a,b,c) order; use the normal opposite
 	# to the indexed triangle winding, matching every other culled surface batch.
-	var outward := geometric.normalized()
+	var outward := -geometric.normalized()
 	var base := vertices.size()
 	vertices.append_array(PackedVector3Array([near_a, near_b, shore_b, shore_a]))
 	normals.append_array(PackedVector3Array([outward, outward, outward, outward]))
