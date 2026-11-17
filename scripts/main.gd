@@ -899,7 +899,7 @@ func _load_chunk(ck: Vector2i) -> void:
 					continue
 				if kind != "water":
 					collision_face_count += _append_exposed_collision_faces(collision_faces, pos)
-				_append_exposed_render_faces(render_groups, pos, kind)
+				_append_exposed_render_faces(render_groups, pos, kind, x0, x0 + CHUNK_SIZE)
 				block_count += 1
 	var render_triangles := 0
 	var render_vertex_bytes := 0
@@ -1047,7 +1047,7 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	group["indices"] = indices
 	groups["sand"] = group
 
-func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String) -> void:
+func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String, chunk_min_x: int = -2147483648, chunk_max_x: int = 2147483647) -> void:
 	if not groups.has(kind):
 		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
 	var group: Dictionary = groups[kind]
@@ -1067,11 +1067,14 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			return
 		# A lower water cell beside a taller water column still needs its own exposed top.
 		# Only suppress this row when the left neighbour has water at the same top height.
-		var left_water := str(blocks.get(pos + Vector3i(-1, 0, 0), "")) == "water" and not blocks.has(pos + Vector3i(-1, 1, 0))
+		# Each chunk owns its own slice of the water surface. Never let a run
+		# begin in one chunk and extend into another: the owning chunk may unload
+		# while its neighbour remains resident, which previously exposed a gap.
+		var left_water := pos.x > chunk_min_x and str(blocks.get(pos + Vector3i(-1, 0, 0), "")) == "water" and not blocks.has(pos + Vector3i(-1, 1, 0))
 		if left_water:
 			return
 		var run_width := 1
-		while str(blocks.get(pos + Vector3i(run_width, 0, 0), "")) == "water" and not blocks.has(pos + Vector3i(run_width, 1, 0)):
+		while pos.x + run_width < chunk_max_x and str(blocks.get(pos + Vector3i(run_width, 0, 0), "")) == "water" and not blocks.has(pos + Vector3i(run_width, 1, 0)):
 			run_width += 1
 		# Merge each contiguous row independently. Adjacent rows share exact
 		# boundary vertices, avoiding holes when the river changes width.
