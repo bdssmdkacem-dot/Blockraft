@@ -101,6 +101,30 @@ func _run_checks() -> void:
         return
     print("TERRAIN_SMOOTH_MESH_PASS: cached surface columns=", surface_cache.size(), " shared corners=", corner_cache.size(), " fractional slope corners=", fractional_terrain_corners, " blended shoreline corners=", blended_shore_corners.size(), " water columns=", water_surface_columns.size(), " flat water top vertices=", flat_water_top_vertices)
 
+    # Regression: a lower exposed water surface beside a taller water column
+    # must not be culled merely because the neighbouring cell also contains water.
+    var water_probe := Vector3i(1000, 2, 1000)
+    var old_water_probe: Variant = scene.blocks.get(water_probe, null)
+    var old_left_water: Variant = scene.blocks.get(water_probe + Vector3i.LEFT, null)
+    var old_left_water_top: Variant = scene.blocks.get(water_probe + Vector3i.LEFT + Vector3i.UP, null)
+    scene.blocks[water_probe] = "water"
+    scene.blocks[water_probe + Vector3i.LEFT] = "water"
+    scene.blocks[water_probe + Vector3i.LEFT + Vector3i.UP] = "water"
+    var exposed_water_groups: Dictionary = {}
+    scene.call("_append_exposed_render_faces", exposed_water_groups, water_probe, "water")
+    var exposed_water_group: Dictionary = exposed_water_groups.get("water", {})
+    var exposed_water_vertices: PackedVector3Array = exposed_water_group.get("vertices", PackedVector3Array())
+    if exposed_water_vertices.size() != 4:
+        _fail("lower water surface was culled beside a taller water column: vertices=%d" % exposed_water_vertices.size(), 85)
+        return
+    if old_water_probe == null: scene.blocks.erase(water_probe)
+    else: scene.blocks[water_probe] = old_water_probe
+    if old_left_water == null: scene.blocks.erase(water_probe + Vector3i.LEFT)
+    else: scene.blocks[water_probe + Vector3i.LEFT] = old_left_water
+    if old_left_water_top == null: scene.blocks.erase(water_probe + Vector3i.LEFT + Vector3i.UP)
+    else: scene.blocks[water_probe + Vector3i.LEFT + Vector3i.UP] = old_left_water_top
+    print("WATER_EXPOSED_TOP_REGRESSION_PASS: stepped water columns retain exposed lower top surfaces")
+
     # Every spawned plant must sit on a continuous, exposed terrain column.
     var flora := scene.get_node_or_null("FloraFauna")
     var flora_root := scene.get_node_or_null("Flora") as Node3D if flora != null else null
