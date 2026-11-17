@@ -539,10 +539,9 @@ func _generate_world() -> void:
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 				var key := Vector2i(x, z)
 				var info: Dictionary = heights[key]
-				# Only columns that actually contain water are exempt from dry-land
-				# slope relaxation. A river-marked column at/above water level is a
-				# dry bank and must obey the same one-block traversal limit.
-				if bool(info["river"]) and int(info["h"]) < 2:
+				# Preserve every generated river-floor column through integer quantization.
+				# Raising a shallow channel cell to water level turns it into a dry gap.
+				if bool(info["river"]):
 					continue
 				var current_height := int(info["h"])
 				var lower_bound := MIN_Y + 2
@@ -555,7 +554,9 @@ func _generate_world() -> void:
 						if not heights.has(neighbor_key):
 							continue
 						var neighbor: Dictionary = heights[neighbor_key]
-						if bool(neighbor["river"]) and int(neighbor["h"]) < 2:
+						# River columns are fixed channel geometry, not bank samples.
+						if bool(neighbor["river"]):
+							continue
 							continue
 						var neighbor_height := int(neighbor["h"])
 						lower_bound = maxi(lower_bound, neighbor_height - 1)
