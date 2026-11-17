@@ -1107,9 +1107,9 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var color_c := tint
 		var color_d := tint
 		if kind == "water" and normal.y > 0.5:
-			var shore_tint := Color("#a7ded5")
+			var shore_tint := Color("#6f9fa8")
 			if str(blocks.get(pos + Vector3i(-1, 0, 0), "")) != "water":
-				color_a = tint.lerp(shore_tint, 0.34)
+				color_a = tint.lerp(shore_tint, 0.12)
 				color_b = tint.lerp(shore_tint, 0.34)
 			if str(blocks.get(pos + Vector3i(1, 0, 0), "")) != "water":
 				color_c = tint.lerp(shore_tint, 0.34)
