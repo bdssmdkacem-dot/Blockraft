@@ -1036,7 +1036,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			Vector3(x + float(run_width), y + 1.0, z)
 		])
 		var water_normals := PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP, Vector3.UP])
-		var water_tint := Color("#236f98").lerp(Color("#459fbd"), 0.22)
+		var water_tint := Color("#1d5366").lerp(Color("#367d83"), 0.16)
 		var water_colors := PackedColorArray([water_tint, water_tint, water_tint, water_tint])
 		var water_indices := PackedInt32Array([0, 2, 1, 0, 3, 2])
 		group["vertices"] = vertices + water_vertices
@@ -1127,7 +1127,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 				# colour waves replace per-voxel contrast that made the water look tiled.
 				var depth_tint := 0.5 + 0.5 * sin(float(pos.x) * 0.075 + float(pos.z) * 0.061)
 				var water_variation := 0.97 + depth_tint * 0.045
-				tint = Color("#236f98").lerp(Color("#459fbd"), depth_tint * 0.30) * water_variation
+				tint = Color("#1d5366").lerp(Color("#367d83"), depth_tint * 0.18) * water_variation
 			"leaves":
 				tint = Color("#245c2c").lerp(Color("#69a83e"), broad_biome * 0.65 + fine_biome * 0.35) * variation
 		if normal.y > 0.5:
@@ -1142,10 +1142,10 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var color_c := tint
 		var color_d := tint
 		if kind == "water" and normal.y > 0.5:
-			var shore_tint := Color("#6f9fa8")
+			var shore_tint := Color("#668c83")
 			if str(blocks.get(pos + Vector3i(-1, 0, 0), "")) != "water":
-				color_a = tint.lerp(shore_tint, 0.12)
-				color_b = tint.lerp(shore_tint, 0.34)
+				color_a = tint.lerp(shore_tint, 0.08)
+				color_b = tint.lerp(shore_tint, 0.22)
 			if str(blocks.get(pos + Vector3i(1, 0, 0), "")) != "water":
 				color_c = tint.lerp(shore_tint, 0.34)
 				color_d = tint.lerp(shore_tint, 0.34)
