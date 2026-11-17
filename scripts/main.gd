@@ -1024,7 +1024,7 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var geometric := (shore_b - near_a).cross(near_b - near_a)
 	if geometric.length_squared() < 0.0001:
 		return
-	var outward := -geometric.normalized()
+	var outward := geometric.normalized()
 	var base := vertices.size()
 	vertices.append_array(PackedVector3Array([near_a, near_b, shore_b, shore_a]))
 	normals.append_array(PackedVector3Array([outward, outward, outward, outward]))
