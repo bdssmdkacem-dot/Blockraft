@@ -103,26 +103,26 @@ func _run_checks() -> void:
 
     # Regression: a lower exposed water surface beside a taller water column
     # must not be culled merely because the neighbouring cell also contains water.
-    var water_probe := Vector3i(1000, 2, 1000)
-    var old_water_probe: Variant = scene.blocks.get(water_probe, null)
-    var old_left_water: Variant = scene.blocks.get(water_probe + Vector3i.LEFT, null)
-    var old_left_water_top: Variant = scene.blocks.get(water_probe + Vector3i.LEFT + Vector3i.UP, null)
-    scene.blocks[water_probe] = "water"
-    scene.blocks[water_probe + Vector3i.LEFT] = "water"
-    scene.blocks[water_probe + Vector3i.LEFT + Vector3i.UP] = "water"
+    var stepped_water_probe := Vector3i(1000, 2, 1000)
+    var old_stepped_water_probe: Variant = scene.blocks.get(stepped_water_probe, null)
+    var old_left_water: Variant = scene.blocks.get(stepped_water_probe + Vector3i.LEFT, null)
+    var old_left_water_top: Variant = scene.blocks.get(stepped_water_probe + Vector3i.LEFT + Vector3i.UP, null)
+    scene.blocks[stepped_water_probe] = "water"
+    scene.blocks[stepped_water_probe + Vector3i.LEFT] = "water"
+    scene.blocks[stepped_water_probe + Vector3i.LEFT + Vector3i.UP] = "water"
     var exposed_water_groups: Dictionary = {}
-    scene.call("_append_exposed_render_faces", exposed_water_groups, water_probe, "water")
+    scene.call("_append_exposed_render_faces", exposed_water_groups, stepped_water_probe, "water")
     var exposed_water_group: Dictionary = exposed_water_groups.get("water", {})
     var exposed_water_vertices: PackedVector3Array = exposed_water_group.get("vertices", PackedVector3Array())
     if exposed_water_vertices.size() != 4:
         _fail("lower water surface was culled beside a taller water column: vertices=%d" % exposed_water_vertices.size(), 85)
         return
-    if old_water_probe == null: scene.blocks.erase(water_probe)
-    else: scene.blocks[water_probe] = old_water_probe
-    if old_left_water == null: scene.blocks.erase(water_probe + Vector3i.LEFT)
-    else: scene.blocks[water_probe + Vector3i.LEFT] = old_left_water
-    if old_left_water_top == null: scene.blocks.erase(water_probe + Vector3i.LEFT + Vector3i.UP)
-    else: scene.blocks[water_probe + Vector3i.LEFT + Vector3i.UP] = old_left_water_top
+    if old_stepped_water_probe == null: scene.blocks.erase(stepped_water_probe)
+    else: scene.blocks[stepped_water_probe] = old_stepped_water_probe
+    if old_left_water == null: scene.blocks.erase(stepped_water_probe + Vector3i.LEFT)
+    else: scene.blocks[stepped_water_probe + Vector3i.LEFT] = old_left_water
+    if old_left_water_top == null: scene.blocks.erase(stepped_water_probe + Vector3i.LEFT + Vector3i.UP)
+    else: scene.blocks[stepped_water_probe + Vector3i.LEFT + Vector3i.UP] = old_left_water_top
     print("WATER_EXPOSED_TOP_REGRESSION_PASS: stepped water columns retain exposed lower top surfaces")
 
     # Every spawned plant must sit on a continuous, exposed terrain column.
