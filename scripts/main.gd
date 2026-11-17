@@ -1017,6 +1017,9 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 	# independently shaded quad per voxel. This keeps the river surface visually
 	# continuous while preserving the exact water-cell footprint and elevation.
 	if kind == "water":
+		# Only the uppermost water cell contributes a visible surface.
+		if blocks.has(pos + Vector3i(0, 1, 0)):
+			return
 		var left_water := str(blocks.get(pos + Vector3i(-1, 0, 0), "")) == "water"
 		if left_water:
 			return
