@@ -1021,18 +1021,23 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var shore_b := end
 	shore_a.y = float(terrain_corner_heights.get(corner_a, water_top - 0.4))
 	shore_b.y = float(terrain_corner_heights.get(corner_b, water_top - 0.4))
-	var geometric := (shore_b - near_a).cross(near_b - near_a)
-	if geometric.length_squared() < 0.0001:
+	# Each half of the bevel is an independently shaded triangle. The shared
+	# shoreline corners can have different heights, so treating the four points
+	# as one planar quad gives the second triangle a subtly incorrect normal.
+	# Duplicate the shared vertices so each indexed triangle carries its exact
+	# geometric normal while preserving the same render-only shoreline surface.
+	var first_normal := (shore_b - near_a).cross(near_b - near_a)
+	var second_normal := (shore_a - near_a).cross(shore_b - near_a)
+	if first_normal.length_squared() < 0.0001 or second_normal.length_squared() < 0.0001:
 		return
-	# The sand indices reverse the local (a,b,c) order; use the normal opposite
-	# to the indexed triangle winding, matching every other culled surface batch.
-	var outward := -geometric.normalized()
 	var base := vertices.size()
-	vertices.append_array(PackedVector3Array([near_a, near_b, shore_b, shore_a]))
-	normals.append_array(PackedVector3Array([outward, outward, outward, outward]))
+	vertices.append_array(PackedVector3Array([near_a, shore_b, near_b, near_a, shore_a, shore_b]))
+	var first_outward := -first_normal.normalized()
+	var second_outward := -second_normal.normalized()
+	normals.append_array(PackedVector3Array([first_outward, first_outward, first_outward, second_outward, second_outward, second_outward]))
 	var sediment_tint := Color("#b7a276")
-	colors.append_array(PackedColorArray([sediment_tint, sediment_tint, sediment_tint, sediment_tint]))
-	indices.append_array(PackedInt32Array([base, base + 2, base + 1, base, base + 3, base + 2]))
+	colors.append_array(PackedColorArray([sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint]))
+	indices.append_array(PackedInt32Array([base, base + 1, base + 2, base + 3, base + 4, base + 5]))
 	group["vertices"] = vertices
 	group["normals"] = normals
 	group["colors"] = colors
