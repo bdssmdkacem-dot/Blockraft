@@ -961,14 +961,24 @@ func _rebuild_terrain_surface_cache_from_blocks() -> void:
 func _refresh_terrain_corner_height(corner: Vector2i) -> void:
 	var total := 0.0
 	var samples := 0
+	var touches_water := false
 	for ox in [-1, 0]:
 		for oz in [-1, 0]:
 			var column := Vector2i(corner.x + ox, corner.y + oz)
+			if str(blocks.get(Vector3i(column.x, 2, column.y), "")) == "water":
+				touches_water = true
 			if terrain_surface_heights.has(column):
 				total += float(terrain_surface_heights[column])
 				samples += 1
 	if samples > 0:
-		terrain_corner_heights[corner] = total / float(samples)
+		var blended_height := total / float(samples)
+		# A shared terrain corner may border both high land and a water column.
+		# Averaging only the dry samples let the bank mesh rise above the fixed
+		# y=3 water plane and overhang the river. Keep every river-edge corner
+		# just below the water so the water surface owns the visible boundary.
+		if touches_water:
+			blended_height = minf(blended_height, 2.92)
+		terrain_corner_heights[corner] = blended_height
 	else:
 		terrain_corner_heights.erase(corner)
 
