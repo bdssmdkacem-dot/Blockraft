@@ -981,19 +981,22 @@ func _build_protagonist() -> void:
 	rock_base.material_override = _material(Color("#68756d"), 0.98)
 	rock_base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	ledge.add_child(rock_base)
-	var turf_cap := MeshInstance3D.new()
-	turf_cap.name = "TurfCap"
-	var turf_mesh := SphereMesh.new()
-	turf_mesh.radius = 1.0
-	turf_mesh.height = 2.0
-	turf_mesh.radial_segments = 16
-	turf_mesh.rings = 8
-	turf_cap.mesh = turf_mesh
-	turf_cap.position = Vector3(-9.0, 1.62, 13.0)
-	turf_cap.scale = Vector3(2.48, 0.88, 2.38)
-	turf_cap.material_override = _material(Color("#477f3f"), 0.96)
-	turf_cap.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	ledge.add_child(turf_cap)
+	# Small, separated grass patches break up the rock silhouette without
+	# creating another oversized circular green platform.
+	for patch_index in range(5):
+		var patch_angle := TAU * float(patch_index) / 5.0
+		var grass_patch := MeshInstance3D.new()
+		var patch_mesh := SphereMesh.new()
+		patch_mesh.radius = 1.0
+		patch_mesh.height = 2.0
+		patch_mesh.radial_segments = 9
+		patch_mesh.rings = 5
+		grass_patch.mesh = patch_mesh
+		grass_patch.position = Vector3(-9.0 + cos(patch_angle) * 1.55, 1.43, 13.0 + sin(patch_angle) * 1.45)
+		grass_patch.scale = Vector3(0.62, 0.10, 0.48)
+		grass_patch.material_override = _material(Color("#477f3f") if patch_index % 2 == 0 else Color("#5b9149"), 0.96)
+		grass_patch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		ledge.add_child(grass_patch)
 	for rock_index in range(7):
 		var angle := TAU * float(rock_index) / 7.0
 		var pebble := MeshInstance3D.new()
@@ -1010,7 +1013,7 @@ func _build_protagonist() -> void:
 		ledge.add_child(pebble)
 	var hero := Node3D.new()
 	hero.name = "Protagonist"
-	hero.position = Vector3(-9.0, 2.5, 13.0)
+	hero.position = Vector3(-9.0, 1.36, 13.0)
 	hero.rotation_degrees = Vector3(0, 135, 0)
 	hero.scale = Vector3(1.28, 1.28, 1.28)
 	add_child(hero)
