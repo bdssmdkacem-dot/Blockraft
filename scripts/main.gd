@@ -1019,8 +1019,11 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var indices: PackedInt32Array = group["indices"]
 	var near_a := start + inward
 	var near_b := end + inward
-	near_a.y = water_top + 0.018
-	near_b.y = water_top + 0.018
+	# Keep the sediment bevel just below the water plane. The previous +1.8cm
+	# offset placed opaque sand triangles over the water surface, creating the
+	# blue gaps and triangular bank intrusions visible in the gameplay capture.
+	near_a.y = water_top - 0.035
+	near_b.y = water_top - 0.035
 	var shore_a := start
 	var shore_b := end
 	shore_a.y = float(terrain_corner_heights.get(corner_a, water_top - 0.4))
