@@ -37,8 +37,8 @@ func _run_checks() -> void:
         _fail("workbench crafting system or placed station is missing", 86)
         return
     var crafting_node: Node = scene.get("crafting")
-    var recipe_rows: Node = crafting_node.get_node_or_null("CraftingUI/Control/CraftingPanel")
-    if crafting_node.get("rows") == null or crafting_node.rows.get_child_count() != 3:
+    var rows_node := crafting_node.get("rows") as VBoxContainer
+    if rows_node == null or rows_node.get_child_count() != 3:
         _fail("workbench did not expose all three recipe rows", 87)
         return
     var inventory_before_crafting: Dictionary = scene.inventory.export_state()
