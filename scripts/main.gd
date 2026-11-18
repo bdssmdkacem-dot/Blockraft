@@ -570,7 +570,6 @@ func _generate_world() -> void:
 						# River columns are fixed channel geometry, not bank samples.
 						if bool(neighbor["river"]):
 							continue
-							continue
 						var neighbor_height := int(neighbor["h"])
 						lower_bound = maxi(lower_bound, neighbor_height - 1)
 						upper_bound = mini(upper_bound, neighbor_height + 1)
