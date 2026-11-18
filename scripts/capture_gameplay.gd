@@ -99,10 +99,10 @@ func _capture_gameplay() -> void:
 		return
 	var river_camera := Camera3D.new()
 	river_camera.name = "RiverReviewCamera"
-	river_camera.fov = 48.0
+	river_camera.fov = 52.0
 	gameplay.add_child(river_camera)
-	river_camera.global_position = Vector3(-30.0, 24.0, -20.0)
-	river_camera.look_at(Vector3(30.0, 1.5, -14.0), Vector3.UP)
+	river_camera.global_position = Vector3(-25.0, 45.0, -18.0)
+	river_camera.look_at(Vector3(25.0, 1.0, -15.0), Vector3.UP)
 	river_camera.make_current()
 	await process_frame
 	await RenderingServer.frame_post_draw
