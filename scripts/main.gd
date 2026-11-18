@@ -28,6 +28,7 @@ var chunk_root: Node3D
 var loaded_chunks: Dictionary = {}
 var player: CharacterBody3D
 var inventory: Node
+var crafting: Node
 var hotbar_ui: HBoxContainer
 var hotbar_slots: Array = []
 var backpack_label: Label
@@ -129,6 +130,10 @@ func _initialize_world_async() -> void:
 	flora_fauna.name = "FloraFauna"
 	add_child(flora_fauna)
 	flora_fauna.setup(self, blocks)
+	crafting = load("res://scripts/crafting.gd").new()
+	crafting.name = "Crafting"
+	add_child(crafting)
+	crafting.setup(self, inventory)
 	if player:
 		player.velocity = Vector3.ZERO
 		# A defensive final assertion prevents the old arbitrary-height fallback.
@@ -191,7 +196,9 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_E:
+		if event.keycode == KEY_C and crafting:
+			crafting.toggle()
+		elif event.keycode == KEY_E:
 			var surv = get_node_or_null("Survival")
 			if surv:
 				surv.try_eat()
@@ -234,6 +241,7 @@ func _setup_materials() -> void:
 		"coal": Color(0.12, 0.12, 0.14), "iron": Color(0.72, 0.58, 0.48),
 		"gold": Color(0.92, 0.78, 0.22), "crystal": Color(0.45, 0.85, 0.95),
 		"leaves": Color(0.15, 0.33, 0.16), "chest": Color(0.55, 0.32, 0.12),
+		"planks": Color(0.68, 0.43, 0.22), "stone_brick": Color(0.58, 0.61, 0.62),
 	}
 	for key in colors:
 		var mat := StandardMaterial3D.new()
