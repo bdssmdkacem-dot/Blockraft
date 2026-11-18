@@ -30,6 +30,7 @@ var player: CharacterBody3D
 var inventory: Node
 var crafting: Node
 var landmark_report: Dictionary = {}
+var landmark_state: Dictionary = {}
 var hotbar_ui: HBoxContainer
 var hotbar_slots: Array = []
 var backpack_label: Label
@@ -113,10 +114,18 @@ func _initialize_world_async() -> void:
 	if not restored:
 		_clear_spawn_camera_corridor()
 	_ensure_spawn_pad()
-	var landmark_builder = load("res://scripts/world_landmarks.gd").new()
-	landmark_report = landmark_builder.populate(blocks)
-	if not bool(landmark_report.get("ok", false)):
-		push_warning("Blockraft: could not find dry, level sites for castle and village")
+	if bool(landmark_state.get("generated", false)):
+		# Restored worlds must never regenerate landmarks over player edits.
+		landmark_report = landmark_state.duplicate(true)
+	else:
+		var landmark_builder = load("res://scripts/world_landmarks.gd").new()
+		landmark_report = landmark_builder.populate(blocks)
+		if bool(landmark_report.get("ok", false)):
+			landmark_state = landmark_report.duplicate(true)
+			landmark_state["generated"] = true
+			mark_world_dirty()
+		else:
+			push_warning("Blockraft: could not find dry, level sites for castle and village")
 	_rebuild_terrain_surface_cache_from_blocks()
 	_spawn_depot()
 	if player:
@@ -1514,6 +1523,7 @@ func save_world(show_feedback: bool = false) -> void:
 		"version": SAVE_VERSION,
 		"blocks": serialized,
 		"inventory": inventory.export_state() if inventory and inventory.has_method("export_state") else {},
+		"landmarks": landmark_state,
 		"saved_at": Time.get_datetime_string_from_system()
 	}
 	var encoded := JSON.stringify(payload)
@@ -1643,6 +1653,8 @@ func _load_world_snapshot() -> bool:
 			push_warning("Blockraft: too few valid blocks in " + candidate)
 			continue
 		blocks = restored
+		var saved_landmarks: Variant = parsed.get("landmarks", {})
+		landmark_state = saved_landmarks.duplicate(true) if typeof(saved_landmarks) == TYPE_DICTIONARY else {}
 		if version >= SAVE_VERSION and inventory and inventory.has_method("import_state"):
 			if not inventory.import_state(parsed.get("inventory", {})):
 				push_warning("Blockraft: inventory snapshot invalid; starting with default inventory")
