@@ -567,9 +567,8 @@ func _generate_world() -> void:
 						if not heights.has(neighbor_key):
 							continue
 						var neighbor: Dictionary = heights[neighbor_key]
-						# River columns are fixed channel geometry, not bank samples.
-						if bool(neighbor["river"]):
-							continue
+						# Keep river-floor columns fixed, but include their height when
+						# constraining adjacent dry banks to a one-block transition.
 						var neighbor_height := int(neighbor["h"])
 						lower_bound = maxi(lower_bound, neighbor_height - 1)
 						upper_bound = mini(upper_bound, neighbor_height + 1)
