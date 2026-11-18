@@ -31,6 +31,41 @@ func _run_checks() -> void:
     if scene.loaded_chunks.size() < 5:
         _fail("nearby world chunks did not stream in", 15)
         return
+    # Workbench and recipe economy: verify station/UI integration and atomic
+    # ingredient consumption without allowing failed crafts to mutate inventory.
+    if scene.get("crafting") == null or scene.get_node_or_null("CraftingBench") == null:
+        _fail("workbench crafting system or placed station is missing", 86)
+        return
+    var crafting_node: Node = scene.get("crafting")
+    var recipe_rows: Node = crafting_node.get_node_or_null("CraftingUI/Control/CraftingPanel")
+    if crafting_node.get("rows") == null or crafting_node.rows.get_child_count() != 3:
+        _fail("workbench did not expose all three recipe rows", 87)
+        return
+    var inventory_before_crafting: Dictionary = scene.inventory.export_state()
+    if not scene.inventory.consume_items({"stone": 4, "wood": 1}):
+        _fail("valid multi-item recipe could not consume its ingredients", 88)
+        return
+    scene.inventory.add_block("stone_brick", 4)
+    scene.inventory.add_block("planks", 4)
+    if scene.inventory.count_of("stone_brick") != 4 or scene.inventory.count_of("planks") != 4:
+        _fail("crafted output items were not added to inventory", 89)
+        return
+    var crafted_snapshot: Dictionary = scene.inventory.export_state()
+    if not scene.inventory.validate_state(crafted_snapshot):
+        _fail("crafted item inventory snapshot failed schema validation", 90)
+        return
+    var before_failed_craft: Dictionary = scene.inventory.export_state()
+    if scene.inventory.consume_items({"gold": 999999, "wood": 1}):
+        _fail("recipe accepted unavailable ingredients", 91)
+        return
+    if scene.inventory.export_state() != before_failed_craft:
+        _fail("failed recipe changed inventory despite insufficient ingredients", 92)
+        return
+    if not scene.inventory.import_state(inventory_before_crafting):
+        _fail("could not restore inventory after crafting acceptance fixture", 93)
+        return
+    print("CRAFTING_ACCEPTANCE_PASS: station, three recipes, atomic costs, crafted items and save schema verified")
+
     var surface_cache: Dictionary = scene.get("terrain_surface_heights")
     var corner_cache: Dictionary = scene.get("terrain_corner_heights")
     if surface_cache.size() < 10000 or corner_cache.size() < 10000:
