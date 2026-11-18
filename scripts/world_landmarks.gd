@@ -159,13 +159,19 @@ func _build_village(blocks: Dictionary, site: Vector2i) -> void:
 		if ground < 3:
 			continue
 		_build_house(blocks, hx, hz, ground, 5 if offset.x < 0 else 7, 5)
-	# Village square and a clear path of stone slabs between the houses.
-	var ground := _surface_y(blocks, x, z)
+	# Flush paving follows the actual ground height of each column. Placing a
+	# full gravel block one level above the terrain created artificial two-step
+	# spikes in both traversal and terrain-height acceptance checks.
 	for step in range(-5, 6):
-		_put(blocks, x, ground + 1, z + step, "stone_brick")
+		var path_z := z + step
+		var centre_ground := _surface_y(blocks, x, path_z)
+		if centre_ground >= 3:
+			_put(blocks, x, centre_ground, path_z, "gravel")
 		if step % 3 == 0:
-			_put(blocks, x - 1, ground + 1, z + step, "gravel")
-			_put(blocks, x + 1, ground + 1, z + step, "gravel")
+			for path_x in [x - 1, x + 1]:
+				var side_ground := _surface_y(blocks, path_x, path_z)
+				if side_ground >= 3:
+					_put(blocks, path_x, side_ground, path_z, "gravel")
 
 func _count_region(blocks: Dictionary, center: Vector2i, radius: int) -> int:
 	var count := 0
