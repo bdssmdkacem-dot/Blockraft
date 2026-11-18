@@ -26,9 +26,10 @@ func setup(world: Node3D, player_inventory: Node) -> void:
 func _build_station() -> void:
 	# Place the workbench beside the resource depot on supported ground.
 	var ground_y := 4
+	var world_blocks: Dictionary = host.get("blocks")
 	for y in range(30, -5, -1):
 		var cell := Vector3i(13, y, 8)
-		if host.blocks.has(cell) and str(host.blocks[cell]) in ["grass", "dirt", "stone", "rock"]:
+		if world_blocks.has(cell) and str(world_blocks[cell]) in ["grass", "dirt", "stone", "rock"]:
 			ground_y = y
 			break
 	station_position = Vector3(13.5, float(ground_y) + 1.31, 8.5)
@@ -126,7 +127,7 @@ func _process(_delta: float) -> void:
 func toggle() -> void:
 	if not _near_station:
 		if host and host.has_method("_show_toast"):
-			host._show_toast("Move closer to the workbench", 1.8)
+			host.call("_show_toast", "Move closer to the workbench", 1.8)
 		return
 	panel.visible = not panel.visible
 	if panel.visible:
@@ -163,7 +164,7 @@ func _refresh_recipes() -> void:
 func _cost_text(cost: Dictionary) -> String:
 	var parts := PackedStringArray()
 	for item in cost:
-		parts.append("%s %d/%d" % [str(item).capitalize(), inventory.total_of(str(item)), int(cost[item])])
+		parts.append("%s %d/%d" % [str(item).capitalize(), int(inventory.call("total_of", str(item))), int(cost[item])])
 	return "Needs: " + ", ".join(parts)
 
 func _can_craft(recipe: Dictionary) -> bool:
@@ -180,13 +181,13 @@ func _craft(recipe_id: String) -> void:
 		if not _can_craft(recipe):
 			hint.text = "Not enough materials."
 			return
-		if not inventory.consume_items(recipe["input"]):
+		if not bool(inventory.call("consume_items", recipe["input"])):
 			hint.text = "Materials changed. Try again."
 			_refresh_recipes()
 			return
-		inventory.add_block(str(recipe["output"]), int(recipe["amount"]))
+		inventory.call("add_block", str(recipe["output"]), int(recipe["amount"]))
 		hint.text = "Crafted %d %s." % [int(recipe["amount"]), str(recipe["output"]).replace("_", " ")]
 		_refresh_recipes()
 		if host and host.has_method("mark_world_dirty"):
-			host.mark_world_dirty()
+			host.call("mark_world_dirty")
 		return
