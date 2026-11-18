@@ -31,7 +31,7 @@ func _build_station() -> void:
 		if host.blocks.has(cell) and str(host.blocks[cell]) in ["grass", "dirt", "stone", "rock"]:
 			ground_y = y
 			break
-	station_position = Vector3(13.5, float(ground_y) + 1.0, 8.5)
+	station_position = Vector3(13.5, float(ground_y) + 1.31, 8.5)
 	var root := Node3D.new()
 	root.name = "CraftingBench"
 	root.position = station_position
