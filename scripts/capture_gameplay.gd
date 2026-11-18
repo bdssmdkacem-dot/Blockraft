@@ -99,11 +99,29 @@ func _capture_gameplay() -> void:
 		return
 	var river_camera := Camera3D.new()
 	river_camera.name = "RiverReviewCamera"
-	river_camera.fov = 52.0
+	river_camera.fov = 60.0
 	gameplay.add_child(river_camera)
-	river_camera.global_position = Vector3(-25.0, 45.0, -18.0)
-	river_camera.look_at(Vector3(25.0, 1.0, -15.0), Vector3.UP)
+	# Near-overhead inspection removes terrain occlusion and makes the entire
+	# generated channel footprint and both banks visible in one frame.
+	river_camera.global_position = Vector3(0.75, 50.0, -15.0)
+	river_camera.look_at(Vector3(0.0, 0.0, -15.0), Vector3.FORWARD)
 	river_camera.make_current()
+	var river_hidden_controls: Array[Control] = []
+	for control_node in gameplay.find_children("*", "Control", true, false):
+		var control := control_node as Control
+		if control:
+			river_hidden_controls.append(control)
+			control.visible = false
+	var river_hidden_models: Array[Node3D] = []
+	var river_player := gameplay.get_node_or_null("Player") as Node3D
+	if river_player:
+		river_hidden_models.append(river_player)
+		river_player.visible = false
+	for animal_node in gameplay.find_children("Animal_*", "CharacterBody3D", true, false):
+		var animal_model := animal_node as Node3D
+		if animal_model:
+			river_hidden_models.append(animal_model)
+			animal_model.visible = false
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var river_image := root.get_texture().get_image()
@@ -119,8 +137,12 @@ func _capture_gameplay() -> void:
 		quit(15)
 		return
 	print("RIVER_REVIEW_CAPTURE_PASS path=%s real_water_cells=%d camera=%s target=%s" % [
-		river_output_path, river_cells, river_camera.global_position, Vector3(0.0, 2.0, -24.0)
+		river_output_path, river_cells, river_camera.global_position, Vector3(0.0, 0.0, -15.0)
 	])
+	for hidden_control in river_hidden_controls:
+		hidden_control.visible = true
+	for hidden_model in river_hidden_models:
+		hidden_model.visible = true
 	river_camera.queue_free()
 	await process_frame
 
