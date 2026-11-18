@@ -153,22 +153,36 @@ func _run_checks() -> void:
         return
     print("WATER_GRID_CONNECTIVITY_PASS: largest 4-connected surface region=", largest_water_component)
 
-    # Guard the primary river centreline cell-by-cell. A large connected
-    # component can still hide short local holes, so every sampled centreline
-    # column across the visible valley must contain water at the fixed surface
-    # level. This catches one-cell gaps that are visually obvious in gameplay.
+    # The deterministic spawn landing pad and its one-block ramp occupy the
+    # full [-8, 8] square. It intentionally replaces terrain (including any
+    # procedural channel samples) so the player always starts on a dry, level
+    # surface. Assert that contract explicitly instead of demanding river water
+    # underneath the protected pad.
+    var spawn_pad_water_cells: Array[Vector2i] = []
+    for pad_x in range(-8, 9):
+        for pad_z in range(-8, 9):
+            if str(scene.blocks.get(Vector3i(pad_x, 2, pad_z), "")) == "water":
+                spawn_pad_water_cells.append(Vector2i(pad_x, pad_z))
+    if not spawn_pad_water_cells.is_empty():
+        _fail("protected spawn pad overlaps river water: %s" % str(spawn_pad_water_cells), 87)
+        return
+
+    # Guard the primary river centreline cell-by-cell outside the protected
+    # spawn-pad footprint. A large connected component can still hide short
+    # local holes, so every exposed centreline sample must contain water at the
+    # fixed surface level.
     var missing_river_center_cells: Array[Vector2i] = []
     for river_x in range(-30, 31):
         var river_z := int(round(sin(float(river_x) * 0.055) * 8.0 + cos(float(river_x) * 0.025) * 3.0))
-        if Vector2(float(river_x), float(river_z)).length() <= 7.0:
+        if absi(river_x) <= 8 and absi(river_z) <= 8:
             continue
         var river_center := Vector3i(river_x, 2, river_z)
         if str(scene.blocks.get(river_center, "")) != "water":
             missing_river_center_cells.append(Vector2i(river_x, river_z))
     if not missing_river_center_cells.is_empty():
-        _fail("primary river has local centreline gaps: %s" % str(missing_river_center_cells), 87)
+        _fail("primary river has local centreline gaps outside the protected spawn pad: %s" % str(missing_river_center_cells), 88)
         return
-    print("WATER_LOCAL_CONTINUITY_PASS: primary river centreline has no missing water cells across sampled valley")
+    print("WATER_LOCAL_CONTINUITY_PASS: primary river centreline is continuous outside the protected dry spawn pad")
 
     # A water run crossing a 16-cell chunk seam must be split at the seam.
     # Both chunk meshes must own one side and meet exactly at x=16, so unloading
