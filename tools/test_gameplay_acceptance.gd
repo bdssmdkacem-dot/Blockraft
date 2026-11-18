@@ -66,6 +66,34 @@ func _run_checks() -> void:
         return
     print("CRAFTING_ACCEPTANCE_PASS: station, three recipes, atomic costs, crafted items and save schema verified")
 
+    # Persistent world landmarks: the playable world must contain an
+    # explorable multi-tower castle and a separate multi-house village.
+    var landmark_data: Dictionary = scene.get("landmark_report")
+    if not bool(landmark_data.get("ok", false)):
+        _fail("castle and village could not find valid dry terrain sites", 94)
+        return
+    if int(landmark_data.get("castle_blocks", 0)) < 350 or int(landmark_data.get("village_blocks", 0)) < 180:
+        _fail("castle or village voxel architecture is incomplete", 95)
+        return
+    var castle_center: Vector2i = landmark_data.get("castle", Vector2i.ZERO)
+    var village_center: Vector2i = landmark_data.get("village", Vector2i.ZERO)
+    if castle_center.distance_to(village_center) < 25.0:
+        _fail("castle and village landmarks are not spatially distinct", 96)
+        return
+    var castle_materials := 0
+    var village_materials := 0
+    for block_position in scene.blocks:
+        var cell: Vector3i = block_position
+        var kind := str(scene.blocks[cell])
+        if Vector2(float(cell.x - castle_center.x), float(cell.z - castle_center.y)).length() <= 9.0 and kind in ["stone_brick", "planks", "crystal"]:
+            castle_materials += 1
+        if Vector2(float(cell.x - village_center.x), float(cell.z - village_center.y)).length() <= 13.0 and kind in ["stone_brick", "planks", "wood", "crystal"]:
+            village_materials += 1
+    if castle_materials < 350 or village_materials < 180:
+        _fail("landmark material audit did not find enough architectural blocks", 97)
+        return
+    print("WORLD_LANDMARKS_ACCEPTANCE_PASS: persistent castle towers/keep/causeway and four-house village generated on dry sites")
+
     var surface_cache: Dictionary = scene.get("terrain_surface_heights")
     var corner_cache: Dictionary = scene.get("terrain_corner_heights")
     if surface_cache.size() < 10000 or corner_cache.size() < 10000:
