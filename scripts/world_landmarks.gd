@@ -68,10 +68,17 @@ func _fill(blocks: Dictionary, x0: int, x1: int, y0: int, y1: int, z0: int, z1: 
 func _build_castle(blocks: Dictionary, site: Vector2i) -> void:
 	var x := site.x
 	var z := site.y
-	var ground := _surface_y(blocks, x, z)
+	var ground := -999
+	for px in range(x - 8, x + 9):
+		for pz in range(z - 8, z + 9):
+			ground = maxi(ground, _surface_y(blocks, px, pz))
 	var base := ground + 1
-	# A broad stone plinth anchors the keep and its four corner towers.
-	_fill(blocks, x - 8, x + 8, base, base + 1, z - 8, z + 8, "stone_brick")
+	# A stepped stone plinth follows every terrain column and never floats.
+	for px in range(x - 8, x + 9):
+		for pz in range(z - 8, z + 9):
+			var column_ground := _surface_y(blocks, px, pz)
+			for py in range(column_ground + 1, base + 2):
+				_put(blocks, px, py, pz, "stone_brick")
 	# Outer curtain walls. The south gate is left open for a walkable entrance.
 	for y in range(base + 2, base + 6):
 		for offset in range(-7, 8):
@@ -92,7 +99,11 @@ func _build_castle(blocks: Dictionary, site: Vector2i) -> void:
 				_put(blocks, x + tx, base + 11, z + tz + edge, "stone_brick")
 	# Main keep: solid lower walls, upper hall, recessed windows and layered roof.
 	_fill(blocks, x - 4, x + 4, base + 2, base + 7, z - 4, z + 4, "stone_brick")
-	_fill(blocks, x - 3, x + 3, base + 3, base + 6, z - 3, z + 3, "wood")
+	for ix in range(x - 3, x + 4):
+		for iy in range(base + 3, base + 7):
+			for iz in range(z - 3, z + 4):
+				_clear(blocks, ix, iy, iz)
+	_fill(blocks, x - 3, x + 3, base + 2, base + 2, z - 3, z + 3, "wood")
 	for wx in [-2, 0, 2]:
 		for wy in [base + 4, base + 6]:
 			_put(blocks, x + wx, wy, z - 4, "crystal")
