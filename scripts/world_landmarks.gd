@@ -153,8 +153,8 @@ func _build_village(blocks: Dictionary, site: Vector2i) -> void:
 	var x := site.x
 	var z := site.y
 	for offset in [Vector2i(-5, -4), Vector2i(5, -3), Vector2i(-4, 5), Vector2i(5, 6)]:
-		var hx := x + offset.x
-		var hz := z + offset.y
+		var hx: int = x + offset.x
+		var hz: int = z + offset.y
 		var ground := _surface_y(blocks, hx, hz)
 		if ground < 3:
 			continue
