@@ -257,10 +257,14 @@ func _run_checks() -> void:
     var actual_z_seam_pairs := 0
     for cell_variant in scene.blocks.keys():
         var water_cell: Vector3i = cell_variant
-        if water_cell.y != 2 or str(scene.blocks[water_cell]) != "water":
+        if str(scene.blocks[water_cell]) != "water":
+            continue
+        # Only the topmost voxel in each water column owns a visible surface.
+        # Lower water voxels are intentionally culled by the production mesher.
+        if scene.blocks.has(water_cell + Vector3i.UP):
             continue
         var east_cell := water_cell + Vector3i.RIGHT
-        if (water_cell.x + 1) % 16 == 0 and str(scene.blocks.get(east_cell, "")) == "water":
+        if (water_cell.x + 1) % 16 == 0 and str(scene.blocks.get(east_cell, "")) == "water" and not scene.blocks.has(east_cell + Vector3i.UP):
             var west_groups: Dictionary = {}
             var east_groups: Dictionary = {}
             scene.call("_append_exposed_render_faces", west_groups, water_cell, "water")
@@ -281,7 +285,7 @@ func _run_checks() -> void:
                 return
             actual_x_seam_pairs += 1
         var south_cell := water_cell + Vector3i(0, 0, 1)
-        if (water_cell.z + 1) % 16 == 0 and str(scene.blocks.get(south_cell, "")) == "water":
+        if (water_cell.z + 1) % 16 == 0 and str(scene.blocks.get(south_cell, "")) == "water" and not scene.blocks.has(south_cell + Vector3i.UP):
             var north_groups: Dictionary = {}
             var south_groups: Dictionary = {}
             scene.call("_append_exposed_render_faces", north_groups, water_cell, "water")
