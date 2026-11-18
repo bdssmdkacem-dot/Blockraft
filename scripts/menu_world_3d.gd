@@ -41,6 +41,7 @@ func _ready() -> void:
 	_build_gatehouse_castle()
 	_build_castle_surface_details()
 	_build_landmark_details()
+	_build_castle_compound_pass()
 	_build_protagonist()
 
 func _material(color: Color, roughness: float = 0.88, metallic: float = 0.0) -> StandardMaterial3D:
@@ -897,6 +898,66 @@ func _build_castle_surface_details() -> void:
 		_box(castle, Vector3(side_x, 5.6, 4.55), Vector3(0.22, 0.5, 0.16), Color("#f3bd68"), 0.25)
 		_box(castle, Vector3(side_x, 5.6, 4.64), Vector3(0.42, 0.18, 0.12), Color("#ffd98a"), 0.22)
 
+
+
+func _build_castle_compound_pass() -> void:
+	# A varied outer compound gives the landmark a readable skyline beyond the
+	# central gatehouse: a chapel, two inhabited bastions and a stepped curtain.
+	var castle := get_node_or_null("GatehouseCastle") as Node3D
+	if castle == null:
+		return
+	var stone := Color("#78857e")
+	var trim := Color("#b9c2b5")
+	var roof_a := Color("#75463b")
+	var roof_b := Color("#a85e43")
+	var window_glow := Color("#ffd58a")
+	# Rear chapel: a narrower footprint and a tall gabled roof break the
+	# repeated square-tower rhythm of the original gatehouse.
+	var chapel := Node3D.new()
+	chapel.name = "CastleChapel"
+	chapel.position = Vector3(0.0, 0.0, -10.0)
+	castle.add_child(chapel)
+	_box(chapel, Vector3(0.0, 4.0, -1.0), Vector3(8.0, 7.0, 7.0), stone)
+	_box(chapel, Vector3(0.0, 7.65, -1.0), Vector3(8.6, 0.28, 7.6), trim)
+	for side in [-1.0, 1.0]:
+		var slope := _box(chapel, Vector3(side * 1.65, 9.0, -1.0), Vector3(4.2, 0.24, 8.0), roof_a if side < 0.0 else roof_b)
+		slope.rotation.z = deg_to_rad(side * 34.0)
+	_box(chapel, Vector3(0.0, 10.25, -1.0), Vector3(0.22, 0.20, 8.2), Color("#d19a68"))
+	for window_z in [-3.0, -0.8, 1.4]:
+		_box(chapel, Vector3(-4.08, 4.9, window_z), Vector3(0.10, 1.35, 0.68), Color("#263b48"))
+		_box(chapel, Vector3(-4.15, 4.9, window_z), Vector3(0.07, 0.86, 0.34), window_glow)
+	# Outer bastions are deliberately asymmetric in height and roof treatment.
+	for side in [-1.0, 1.0]:
+		var bastion := Node3D.new()
+		bastion.name = "OuterBastionWest" if side < 0.0 else "OuterBastionEast"
+		bastion.position = Vector3(side * 17.2, 0.0, -2.0 if side < 0.0 else -4.0)
+		castle.add_child(bastion)
+		var height := 7.2 if side < 0.0 else 5.8
+		_box(bastion, Vector3(0.0, height * 0.5, 0.0), Vector3(4.6, height, 5.2), stone.darkened(0.04 if side < 0.0 else 0.0))
+		_box(bastion, Vector3(0.0, height + 0.12, 0.0), Vector3(5.0, 0.28, 5.6), trim)
+		if side < 0.0:
+			# West bastion uses a steep octagonal-looking spire.
+			_pyramid(bastion, Vector3(0.0, height + 0.18, 0.0), 2.8, 4.8, roof_a)
+		else:
+			# East bastion has a broad stepped roof and a small lantern crown.
+			for level in range(3):
+				var half := 2.45 - float(level) * 0.55
+				_box(bastion, Vector3(0.0, height + 0.42 + float(level) * 0.72, 0.0), Vector3(half * 2.0, 0.42, half * 2.0), roof_b.darkened(float(level) * 0.06))
+			_box(bastion, Vector3(0.0, height + 2.75, 0.0), Vector3(0.8, 0.8, 0.8), trim)
+		for window_y in [2.4, 4.6]:
+			_box(bastion, Vector3(0.0, window_y, 2.66), Vector3(0.58, 0.92, 0.10), Color("#263b48"))
+			_box(bastion, Vector3(0.0, window_y, 2.73), Vector3(0.24, 0.58, 0.05), window_glow)
+		# Small merlons articulate the outer parapet rather than leaving a flat cap.
+		for edge in [-1.7, -0.55, 0.55, 1.7]:
+			_box(bastion, Vector3(edge, height + 0.52, 0.0), Vector3(0.42, 0.62, 0.52), trim)
+	# Low connecting curtain walls and a central courtyard stair anchor the
+	# separate masses to one continuous fortified site.
+	for side in [-1.0, 1.0]:
+		_box(castle, Vector3(side * 13.4, 2.2, 4.8), Vector3(5.2, 4.4, 0.72), stone)
+		for merlon in range(4):
+			_box(castle, Vector3(side * (11.4 + float(merlon) * 1.3), 4.65, 4.8), Vector3(0.62, 0.58, 0.78), trim)
+	for step in range(4):
+		_box(castle, Vector3(0.0, 0.18 + float(step) * 0.22, 10.2 + float(step) * 0.72), Vector3(5.2 - float(step) * 0.45, 0.32, 0.82), Color("#9b9a88"))
 
 func _build_protagonist() -> void:
 	# Larger, layered hero silhouette based on the approved Blockraft character:
