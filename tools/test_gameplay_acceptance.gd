@@ -198,6 +198,33 @@ func _run_checks() -> void:
             return
     print("WATER_SHORELINE_CLEARANCE_PASS: opaque sediment bevel remains below the y=3 water plane")
 
+    # The smoothed dry-bank mesh must never rise above the fixed water
+    # surface at any corner shared with an actual generated water column.
+    var checked_river_edge_corners := 0
+    for water_variant in scene.blocks.keys():
+        var water_cell: Vector3i = water_variant
+        if water_cell.y != 2 or str(scene.blocks[water_cell]) != "water":
+            continue
+        if scene.blocks.has(water_cell + Vector3i.UP):
+            continue
+        for corner in [
+            Vector2i(water_cell.x, water_cell.z),
+            Vector2i(water_cell.x + 1, water_cell.z),
+            Vector2i(water_cell.x, water_cell.z + 1),
+            Vector2i(water_cell.x + 1, water_cell.z + 1)
+        ]:
+            if not scene.terrain_corner_heights.has(corner):
+                continue
+            var edge_height := float(scene.terrain_corner_heights[corner])
+            if edge_height > 2.92:
+                _fail("smoothed bank corner rises above the river edge at %s: y=%f" % [str(corner), edge_height], 98)
+                return
+            checked_river_edge_corners += 1
+    if checked_river_edge_corners < 100:
+        _fail("too few actual river-edge terrain corners were checked: %d" % checked_river_edge_corners, 99)
+        return
+    print("WATER_BANK_CLEARANCE_PASS: actual river-edge corners=%d remain at or below y=2.92" % checked_river_edge_corners)
+
     # Exercise both vertical and horizontal chunk boundaries at negative and
     # positive coordinates. Each neighbouring chunk must own its water cell
     # while the resulting quads meet exactly on the shared world-space edge.
