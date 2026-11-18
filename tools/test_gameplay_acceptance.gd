@@ -389,8 +389,8 @@ func _run_checks() -> void:
 
     var water_material := scene.block_materials.get("water") as StandardMaterial3D
     var gameplay_environment := scene.get_node_or_null("WorldEnvironment") as WorldEnvironment
-    if water_material == null or water_material.roughness < 0.40 or water_material.metallic > 0.02 or water_material.specular_mode != BaseMaterial3D.SPECULAR_DISABLED or water_material.metallic_specular > 0.02 or water_material.albedo_color.a < 0.70 or water_material.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA:
-        _fail("gameplay water material is too glossy, metallic, or transparent for readable water", 73)
+    if water_material == null or water_material.roughness < 0.40 or water_material.metallic > 0.02 or water_material.specular_mode != BaseMaterial3D.SPECULAR_DISABLED or water_material.metallic_specular > 0.02 or water_material.albedo_color.a < 0.98 or water_material.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA:
+        _fail("gameplay water material is too glossy, metallic, or transparent for a coherent river surface", 73)
         return
     if gameplay_environment == null or gameplay_environment.environment == null or gameplay_environment.environment.background_mode != Environment.BG_SKY:
         _fail("gameplay world is not rendering its configured sky environment", 74)
