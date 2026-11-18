@@ -85,6 +85,45 @@ func _capture_gameplay() -> void:
 		toast_label.text = ""
 		toast_label.modulate.a = 0.0
 
+	# Dedicated elevated river review: aim along the generated scenic channel
+	# from above, independently of the production third-person camera. The
+	# screenshot is saved as its own artifact for direct shoreline inspection.
+	var river_cells := 0
+	for water_x in range(-12, 13):
+		for water_z in range(-30, -8):
+			if str(world_blocks.get(Vector3i(water_x, 2, water_z), "")) == "water":
+				river_cells += 1
+	if river_cells < 20:
+		push_error("River observer region contains too few real water cells: %d" % river_cells)
+		quit(13)
+		return
+	var river_camera := Camera3D.new()
+	river_camera.name = "RiverReviewCamera"
+	river_camera.fov = 52.0
+	gameplay.add_child(river_camera)
+	river_camera.global_position = Vector3(0.0, 16.0, -3.0)
+	river_camera.look_at(Vector3(0.0, 2.0, -24.0), Vector3.UP)
+	river_camera.make_current()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var river_image := root.get_texture().get_image()
+	if river_image.is_empty() or river_image.get_width() != 1280 or river_image.get_height() != 720:
+		push_error("Dedicated river review camera returned an invalid frame.")
+		quit(14)
+		return
+	var river_output_dir := ProjectSettings.globalize_path("res://artifacts")
+	DirAccess.make_dir_recursive_absolute(river_output_dir)
+	var river_output_path := river_output_dir.path_join("river-corridor-review.png")
+	if river_image.save_png(river_output_path) != OK:
+		push_error("Could not save dedicated river corridor screenshot.")
+		quit(15)
+		return
+	print("RIVER_REVIEW_CAPTURE_PASS path=%s real_water_cells=%d camera=%s target=%s" % [
+		river_output_path, river_cells, river_camera.global_position, Vector3(0.0, 2.0, -24.0)
+	])
+	river_camera.queue_free()
+	await process_frame
+
 	var player := gameplay.get_node_or_null("Player") as CharacterBody3D
 	var camera := player.get_node_or_null("PlayerCamera") as Camera3D if player else null
 	if camera == null:
