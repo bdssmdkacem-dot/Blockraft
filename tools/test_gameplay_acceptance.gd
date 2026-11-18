@@ -250,6 +250,62 @@ func _run_checks() -> void:
         scene.blocks.erase(south_cell)
     print("WATER_CHUNK_SEAMS_PASS: water quads meet at five x seams and five z seams")
 
+    # Validate chunk seams against the actual generated river footprint, not
+    # synthetic cells. Every real pair crossing a 16-cell chunk boundary must
+    # produce two complete water quads sharing the exact world-space edge.
+    var actual_x_seam_pairs := 0
+    var actual_z_seam_pairs := 0
+    for cell_variant in scene.blocks.keys():
+        var water_cell: Vector3i = cell_variant
+        if water_cell.y != 2 or str(scene.blocks[water_cell]) != "water":
+            continue
+        var east_cell := water_cell + Vector3i.RIGHT
+        if (water_cell.x + 1) % 16 == 0 and str(scene.blocks.get(east_cell, "")) == "water":
+            var west_groups: Dictionary = {}
+            var east_groups: Dictionary = {}
+            scene.call("_append_exposed_render_faces", west_groups, water_cell, "water")
+            scene.call("_append_exposed_render_faces", east_groups, east_cell, "water")
+            var west_vertices: PackedVector3Array = west_groups.get("water", {}).get("vertices", PackedVector3Array())
+            var east_vertices: PackedVector3Array = east_groups.get("water", {}).get("vertices", PackedVector3Array())
+            if west_vertices.size() < 4 or east_vertices.size() < 4:
+                _fail("actual river water cell at x seam did not emit a complete surface quad: %s" % str(water_cell), 93)
+                return
+            var west_edge := -INF
+            var east_edge := INF
+            for vertex in west_vertices:
+                west_edge = maxf(west_edge, vertex.x)
+            for vertex in east_vertices:
+                east_edge = minf(east_edge, vertex.x)
+            if not is_equal_approx(west_edge, float(water_cell.x + 1)) or not is_equal_approx(east_edge, float(east_cell.x)):
+                _fail("actual river surface does not meet at x chunk boundary near %s" % str(water_cell), 94)
+                return
+            actual_x_seam_pairs += 1
+        var south_cell := water_cell + Vector3i(0, 0, 1)
+        if (water_cell.z + 1) % 16 == 0 and str(scene.blocks.get(south_cell, "")) == "water":
+            var north_groups: Dictionary = {}
+            var south_groups: Dictionary = {}
+            scene.call("_append_exposed_render_faces", north_groups, water_cell, "water")
+            scene.call("_append_exposed_render_faces", south_groups, south_cell, "water")
+            var north_vertices: PackedVector3Array = north_groups.get("water", {}).get("vertices", PackedVector3Array())
+            var south_vertices: PackedVector3Array = south_groups.get("water", {}).get("vertices", PackedVector3Array())
+            if north_vertices.size() < 4 or south_vertices.size() < 4:
+                _fail("actual river water cell at z seam did not emit a complete surface quad: %s" % str(water_cell), 95)
+                return
+            var north_edge := -INF
+            var south_edge := INF
+            for vertex in north_vertices:
+                north_edge = maxf(north_edge, vertex.z)
+            for vertex in south_vertices:
+                south_edge = minf(south_edge, vertex.z)
+            if not is_equal_approx(north_edge, float(water_cell.z + 1)) or not is_equal_approx(south_edge, float(south_cell.z)):
+                _fail("actual river surface does not meet at z chunk boundary near %s" % str(water_cell), 96)
+                return
+            actual_z_seam_pairs += 1
+    if actual_x_seam_pairs == 0 or actual_z_seam_pairs == 0:
+        _fail("generated river does not exercise both chunk axes: x_pairs=%d z_pairs=%d" % [actual_x_seam_pairs, actual_z_seam_pairs], 97)
+        return
+    print("WATER_REAL_CHUNK_SEAMS_PASS: generated river cells verified across x=%d z=%d chunk-boundary pairs" % [actual_x_seam_pairs, actual_z_seam_pairs])
+
     # Every spawned plant must sit on a continuous, exposed terrain column.
     var flora := scene.get_node_or_null("FloraFauna")
     var flora_root := scene.get_node_or_null("Flora") as Node3D if flora != null else null
