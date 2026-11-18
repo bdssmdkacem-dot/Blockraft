@@ -965,8 +965,49 @@ func _build_protagonist() -> void:
 	var ledge := Node3D.new()
 	ledge.name = "HeroForegroundLedge"
 	add_child(ledge)
-	_box(ledge, Vector3(-9.0, 1.75, 13.0), Vector3(5.0, 1.5, 5.0), MAT_GRASS)
-	_box(ledge, Vector3(-9.0, 0.5, 13.0), Vector3(5.2, 1.0, 5.2), MAT_STONE)
+	# Replace the conspicuous two-tier square plinth with a low, irregular
+	# natural outcrop. Overlapping ellipsoids keep a stable hero perch while
+	# removing the giant cube silhouette that dominated the menu foreground.
+	var rock_base := MeshInstance3D.new()
+	rock_base.name = "RockyOutcropBase"
+	var base_mesh := SphereMesh.new()
+	base_mesh.radius = 1.0
+	base_mesh.height = 2.0
+	base_mesh.radial_segments = 12
+	base_mesh.rings = 7
+	rock_base.mesh = base_mesh
+	rock_base.position = Vector3(-9.0, 0.92, 13.0)
+	rock_base.scale = Vector3(2.62, 0.60, 2.48)
+	rock_base.material_override = _material(Color("#68756d"), 0.98)
+	rock_base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	ledge.add_child(rock_base)
+	var turf_cap := MeshInstance3D.new()
+	turf_cap.name = "TurfCap"
+	var turf_mesh := SphereMesh.new()
+	turf_mesh.radius = 1.0
+	turf_mesh.height = 2.0
+	turf_mesh.radial_segments = 16
+	turf_mesh.rings = 8
+	turf_cap.mesh = turf_mesh
+	turf_cap.position = Vector3(-9.0, 1.62, 13.0)
+	turf_cap.scale = Vector3(2.48, 0.88, 2.38)
+	turf_cap.material_override = _material(Color("#477f3f"), 0.96)
+	turf_cap.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ledge.add_child(turf_cap)
+	for rock_index in range(7):
+		var angle := TAU * float(rock_index) / 7.0
+		var pebble := MeshInstance3D.new()
+		var pebble_mesh := SphereMesh.new()
+		pebble_mesh.radius = 0.42
+		pebble_mesh.height = 0.62
+		pebble_mesh.radial_segments = 8
+		pebble_mesh.rings = 5
+		pebble.mesh = pebble_mesh
+		pebble.position = Vector3(-9.0 + cos(angle) * 2.25, 1.45, 13.0 + sin(angle) * 2.05)
+		pebble.scale = Vector3(0.75, 0.52, 0.68)
+		pebble.material_override = _material(Color("#788078") if rock_index % 2 == 0 else Color("#8c8978"), 0.98)
+		pebble.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		ledge.add_child(pebble)
 	var hero := Node3D.new()
 	hero.name = "Protagonist"
 	hero.position = Vector3(-9.0, 2.5, 13.0)
