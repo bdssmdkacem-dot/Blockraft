@@ -184,30 +184,71 @@ func _run_checks() -> void:
         return
     print("WATER_LOCAL_CONTINUITY_PASS: primary river centreline is continuous outside the protected dry spawn pad")
 
-    # A water run crossing a 16-cell chunk seam must be split at the seam.
-    # Both chunk meshes must own one side and meet exactly at x=16, so unloading
-    # either chunk cannot remove the neighbour's water surface.
-    var seam_water_cells := [Vector3i(15, 2, 1000), Vector3i(16, 2, 1000), Vector3i(17, 2, 1000)]
-    for seam_cell in seam_water_cells:
-        scene.blocks[seam_cell] = "water"
-    var left_chunk_water: Dictionary = {}
-    var right_chunk_water: Dictionary = {}
-    scene.call("_append_exposed_render_faces", left_chunk_water, seam_water_cells[0], "water", 0, 16)
-    scene.call("_append_exposed_render_faces", right_chunk_water, seam_water_cells[1], "water", 16, 32)
-    var left_seam_vertices: PackedVector3Array = left_chunk_water.get("water", {}).get("vertices", PackedVector3Array())
-    var right_seam_vertices: PackedVector3Array = right_chunk_water.get("water", {}).get("vertices", PackedVector3Array())
-    var left_max_x := -INF
-    var right_min_x := INF
-    for vertex in left_seam_vertices:
-        left_max_x = maxf(left_max_x, vertex.x)
-    for vertex in right_seam_vertices:
-        right_min_x = minf(right_min_x, vertex.x)
-    if not is_equal_approx(left_max_x, 16.0) or not is_equal_approx(right_min_x, 16.0):
-        _fail("water mesh does not meet exactly at chunk seam x=16: left_max=%f right_min=%f" % [left_max_x, right_min_x], 87)
+    # Shoreline sediment must never be drawn above the water plane: opaque
+    # bevel triangles above y=3.0 masked water cells and appeared as blue gaps.
+    var bevel_groups: Dictionary = {}
+    scene.call("_append_shoreline_transition", bevel_groups, Vector3(100.0, 0.0, 100.0), Vector3(100.0, 0.0, 101.0), Vector3(0.38, 0.0, 0.0), Vector2i(100, 100), Vector2i(100, 101), 3.0)
+    var bevel_vertices: PackedVector3Array = bevel_groups.get("sand", {}).get("vertices", PackedVector3Array())
+    if bevel_vertices.size() != 6:
+        _fail("shoreline bevel did not emit its expected two triangles: vertices=%d" % bevel_vertices.size(), 89)
         return
-    for seam_cell in seam_water_cells:
-        scene.blocks.erase(seam_cell)
-    print("WATER_CHUNK_SEAM_PASS: adjacent chunk surfaces meet exactly at x=16")
+    for bevel_vertex in bevel_vertices:
+        if bevel_vertex.y > 2.97:
+            _fail("shoreline bevel overlaps the visible water plane: y=%f" % bevel_vertex.y, 90)
+            return
+    print("WATER_SHORELINE_CLEARANCE_PASS: opaque sediment bevel remains below the y=3 water plane")
+
+    # Exercise both vertical and horizontal chunk boundaries at negative and
+    # positive coordinates. Each neighbouring chunk must own its water cell
+    # while the resulting quads meet exactly on the shared world-space edge.
+    var seam_x_values := [-32, -16, 0, 16, 32]
+    for seam_x in seam_x_values:
+        var left_cell := Vector3i(seam_x - 1, 2, 1000 + seam_x)
+        var right_cell := Vector3i(seam_x, 2, 1000 + seam_x)
+        scene.blocks[left_cell] = "water"
+        scene.blocks[right_cell] = "water"
+        var left_groups: Dictionary = {}
+        var right_groups: Dictionary = {}
+        scene.call("_append_exposed_render_faces", left_groups, left_cell, "water", seam_x - 16, seam_x)
+        scene.call("_append_exposed_render_faces", right_groups, right_cell, "water", seam_x, seam_x + 16)
+        var left_vertices: PackedVector3Array = left_groups.get("water", {}).get("vertices", PackedVector3Array())
+        var right_vertices: PackedVector3Array = right_groups.get("water", {}).get("vertices", PackedVector3Array())
+        var left_edge := -INF
+        var right_edge := INF
+        for vertex in left_vertices:
+            left_edge = maxf(left_edge, vertex.x)
+        for vertex in right_vertices:
+            right_edge = minf(right_edge, vertex.x)
+        if not is_equal_approx(left_edge, float(seam_x)) or not is_equal_approx(right_edge, float(seam_x)):
+            _fail("water quads do not meet at x chunk seam %d: left=%f right=%f" % [seam_x, left_edge, right_edge], 91)
+            return
+        scene.blocks.erase(left_cell)
+        scene.blocks.erase(right_cell)
+
+    var seam_z_values := [-32, -16, 0, 16, 32]
+    for seam_z in seam_z_values:
+        var north_cell := Vector3i(1000 + seam_z, 2, seam_z - 1)
+        var south_cell := Vector3i(1000 + seam_z, 2, seam_z)
+        scene.blocks[north_cell] = "water"
+        scene.blocks[south_cell] = "water"
+        var north_groups: Dictionary = {}
+        var south_groups: Dictionary = {}
+        scene.call("_append_exposed_render_faces", north_groups, north_cell, "water")
+        scene.call("_append_exposed_render_faces", south_groups, south_cell, "water")
+        var north_vertices: PackedVector3Array = north_groups.get("water", {}).get("vertices", PackedVector3Array())
+        var south_vertices: PackedVector3Array = south_groups.get("water", {}).get("vertices", PackedVector3Array())
+        var north_edge := -INF
+        var south_edge := INF
+        for vertex in north_vertices:
+            north_edge = maxf(north_edge, vertex.z)
+        for vertex in south_vertices:
+            south_edge = minf(south_edge, vertex.z)
+        if not is_equal_approx(north_edge, float(seam_z)) or not is_equal_approx(south_edge, float(seam_z)):
+            _fail("water quads do not meet at z chunk seam %d: north=%f south=%f" % [seam_z, north_edge, south_edge], 92)
+            return
+        scene.blocks.erase(north_cell)
+        scene.blocks.erase(south_cell)
+    print("WATER_CHUNK_SEAMS_PASS: water quads meet at five x seams and five z seams")
 
     # Every spawned plant must sit on a continuous, exposed terrain column.
     var flora := scene.get_node_or_null("FloraFauna")
