@@ -29,6 +29,7 @@ var loaded_chunks: Dictionary = {}
 var player: CharacterBody3D
 var inventory: Node
 var crafting: Node
+var landmark_report: Dictionary = {}
 var hotbar_ui: HBoxContainer
 var hotbar_slots: Array = []
 var backpack_label: Label
@@ -112,6 +113,10 @@ func _initialize_world_async() -> void:
 	if not restored:
 		_clear_spawn_camera_corridor()
 	_ensure_spawn_pad()
+	var landmark_builder = load("res://scripts/world_landmarks.gd").new()
+	landmark_report = landmark_builder.populate(blocks)
+	if not bool(landmark_report.get("ok", false)):
+		push_warning("Blockraft: could not find dry, level sites for castle and village")
 	_rebuild_terrain_surface_cache_from_blocks()
 	_spawn_depot()
 	if player:
