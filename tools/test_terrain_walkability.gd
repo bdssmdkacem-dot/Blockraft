@@ -147,6 +147,16 @@ func _run() -> void:
 	# After the 0.45-block slope relaxation, adjacent dry ground must round to
 	# at most one voxel step; any two-block edge is a real traversal defect.
 	if worst_step > 1 or steep_edges > 0:
+		var diagnostic_rows: Array[String] = []
+		for debug_z in range(24, 35):
+			var row: Array[String] = []
+			for debug_x in range(-33, -27):
+				var debug_key := Vector2i(debug_x, debug_z)
+				var debug_height := int(surface_heights.get(debug_key, -999))
+				var wet_marker := "W" if water_columns.has(debug_key) else "-"
+				row.append("%d%s" % [debug_height, wet_marker])
+			diagnostic_rows.append("%d: %s" % [debug_z, " ".join(row)])
+		push_error("TERRAIN_WALKABILITY_GRID x=-33..-28 z=24..34: " + " | ".join(diagnostic_rows))
 		push_error("Terrain edge samples: " + str(samples))
 		_fail("Generated terrain still contains %d abrupt edges; worst adjacent height difference is %d blocks at %s" % [steep_edges, worst_step, worst_edge])
 		return
