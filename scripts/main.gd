@@ -1523,7 +1523,7 @@ func save_world(show_feedback: bool = false) -> void:
 		"version": SAVE_VERSION,
 		"blocks": serialized,
 		"inventory": inventory.export_state() if inventory and inventory.has_method("export_state") else {},
-		"landmarks": landmark_state,
+		"landmarks": _serialize_landmark_state(),
 		"saved_at": Time.get_datetime_string_from_system()
 	}
 	var encoded := JSON.stringify(payload)
@@ -1654,13 +1654,37 @@ func _load_world_snapshot() -> bool:
 			continue
 		blocks = restored
 		var saved_landmarks: Variant = parsed.get("landmarks", {})
-		landmark_state = saved_landmarks.duplicate(true) if typeof(saved_landmarks) == TYPE_DICTIONARY else {}
+		landmark_state = _deserialize_landmark_state(saved_landmarks)
 		if version >= SAVE_VERSION and inventory and inventory.has_method("import_state"):
 			if not inventory.import_state(parsed.get("inventory", {})):
 				push_warning("Blockraft: inventory snapshot invalid; starting with default inventory")
 		print("Blockraft: restored save candidate=", candidate, " blocks=", blocks.size(), " version=", version)
 		return true
 	return false
+
+func _serialize_landmark_state() -> Dictionary:
+	var data := landmark_state.duplicate(true)
+	for key in ["castle", "village"]:
+		var position: Variant = data.get(key, Vector2i.ZERO)
+		if typeof(position) == TYPE_VECTOR2I:
+			data[key] = [position.x, position.y]
+	return data
+
+func _deserialize_landmark_state(value: Variant) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	var data: Dictionary = value.duplicate(true)
+	for key in ["castle", "village"]:
+		var position: Variant = data.get(key, null)
+		if typeof(position) == TYPE_ARRAY and position.size() >= 2:
+			data[key] = Vector2i(int(position[0]), int(position[1]))
+		elif typeof(position) == TYPE_STRING:
+			# Backward compatibility for version-15 saves written before the
+			# explicit coordinate-array representation was introduced.
+			var parts := str(position).replace("(", "").replace(")", "").split(",")
+			if parts.size() >= 2:
+				data[key] = Vector2i(int(parts[0].strip_edges()), int(parts[1].strip_edges()))
+	return data
 
 func _setup_ui() -> void:
 	var layer := CanvasLayer.new()
