@@ -99,28 +99,28 @@ func _capture_gameplay() -> void:
 		return
 	var river_camera := Camera3D.new()
 	river_camera.name = "RiverReviewCamera"
-	river_camera.fov = 60.0
+	river_camera.fov = 55.0
 	gameplay.add_child(river_camera)
 	# Near-overhead inspection removes terrain occlusion and makes the entire
 	# generated channel footprint and both banks visible in one frame.
-	river_camera.global_position = Vector3(0.75, 50.0, -15.0)
+	river_camera.global_position = Vector3(0.75, 18.0, -15.0)
 	river_camera.look_at(Vector3(0.0, 0.0, -15.0), Vector3.FORWARD)
 	river_camera.make_current()
-	var river_hidden_controls: Array[Control] = []
+	var river_control_visibility: Dictionary = {}
 	for control_node in gameplay.find_children("*", "Control", true, false):
 		var control := control_node as Control
 		if control:
-			river_hidden_controls.append(control)
+			river_control_visibility[control.get_instance_id()] = control.visible
 			control.visible = false
-	var river_hidden_models: Array[Node3D] = []
+	var river_model_visibility: Dictionary = {}
 	var river_player := gameplay.get_node_or_null("Player") as Node3D
 	if river_player:
-		river_hidden_models.append(river_player)
+		river_model_visibility[river_player.get_instance_id()] = river_player.visible
 		river_player.visible = false
 	for animal_node in gameplay.find_children("Animal_*", "CharacterBody3D", true, false):
 		var animal_model := animal_node as Node3D
 		if animal_model:
-			river_hidden_models.append(animal_model)
+			river_model_visibility[animal_model.get_instance_id()] = animal_model.visible
 			animal_model.visible = false
 	await process_frame
 	await RenderingServer.frame_post_draw
@@ -139,10 +139,16 @@ func _capture_gameplay() -> void:
 	print("RIVER_REVIEW_CAPTURE_PASS path=%s real_water_cells=%d camera=%s target=%s" % [
 		river_output_path, river_cells, river_camera.global_position, Vector3(0.0, 0.0, -15.0)
 	])
-	for hidden_control in river_hidden_controls:
-		hidden_control.visible = true
-	for hidden_model in river_hidden_models:
-		hidden_model.visible = true
+	for control_node in gameplay.find_children("*", "Control", true, false):
+		var control := control_node as Control
+		if control and river_control_visibility.has(control.get_instance_id()):
+			control.visible = bool(river_control_visibility[control.get_instance_id()])
+	var visible_models := [river_player]
+	visible_models.append_array(gameplay.find_children("Animal_*", "CharacterBody3D", true, false))
+	for model_node in visible_models:
+		var model := model_node as Node3D
+		if model and river_model_visibility.has(model.get_instance_id()):
+			model.visible = bool(river_model_visibility[model.get_instance_id()])
 	river_camera.queue_free()
 	await process_frame
 
