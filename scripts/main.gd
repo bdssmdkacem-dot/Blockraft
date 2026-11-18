@@ -1017,7 +1017,7 @@ func _smooth_terrain_vertex(vertex: Vector3) -> Vector3:
 	return vertex
 
 func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vector3, inward: Vector3, corner_a: Vector2i, corner_b: Vector2i, water_top: float) -> void:
-	# Render-only sediment bevel: it overlaps the outermost water fringe and
+	# Render-only narrow sediment bevel: it softens the outermost water fringe and
 	# meets the smoothed dry-bank corner heights. It never changes voxel data,
 	# terrain collision, water collision, or the generated river footprint.
 	if not groups.has("sand"):
@@ -1102,16 +1102,16 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var water_top := y + 1.0
 		var left_land := Vector2i(pos.x - 1, pos.z)
 		if str(blocks.get(pos + Vector3i(-1, 0, 0), "")) != "water" and terrain_surface_heights.has(left_land):
-			_append_shoreline_transition(groups, Vector3(x, 0.0, z), Vector3(x, 0.0, z + 1.0), Vector3(0.38, 0.0, 0.0), Vector2i(pos.x, pos.z), Vector2i(pos.x, pos.z + 1), water_top)
+			_append_shoreline_transition(groups, Vector3(x, 0.0, z), Vector3(x, 0.0, z + 1.0), Vector3(0.22, 0.0, 0.0), Vector2i(pos.x, pos.z), Vector2i(pos.x, pos.z + 1), water_top)
 		var right_land := Vector2i(pos.x + 1, pos.z)
 		if str(blocks.get(pos + Vector3i(1, 0, 0), "")) != "water" and terrain_surface_heights.has(right_land):
-			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z), Vector3(-0.38, 0.0, 0.0), Vector2i(pos.x + 1, pos.z + 1), Vector2i(pos.x + 1, pos.z), water_top)
+			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z), Vector3(-0.22, 0.0, 0.0), Vector2i(pos.x + 1, pos.z + 1), Vector2i(pos.x + 1, pos.z), water_top)
 		var north_land := Vector2i(pos.x, pos.z - 1)
 		if str(blocks.get(pos + Vector3i(0, 0, -1), "")) != "water" and terrain_surface_heights.has(north_land):
-			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z), Vector3(x, 0.0, z), Vector3(0.0, 0.0, 0.38), Vector2i(pos.x + 1, pos.z), Vector2i(pos.x, pos.z), water_top)
+			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z), Vector3(x, 0.0, z), Vector3(0.0, 0.0, 0.22), Vector2i(pos.x + 1, pos.z), Vector2i(pos.x, pos.z), water_top)
 		var south_land := Vector2i(pos.x, pos.z + 1)
 		if str(blocks.get(pos + Vector3i(0, 0, 1), "")) != "water" and terrain_surface_heights.has(south_land):
-			_append_shoreline_transition(groups, Vector3(x, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z + 1.0), Vector3(0.0, 0.0, -0.38), Vector2i(pos.x, pos.z + 1), Vector2i(pos.x + 1, pos.z + 1), water_top)
+			_append_shoreline_transition(groups, Vector3(x, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z + 1.0), Vector3(0.0, 0.0, -0.22), Vector2i(pos.x, pos.z + 1), Vector2i(pos.x + 1, pos.z + 1), water_top)
 		return
 	var terrain_column := Vector2i(pos.x, pos.z)
 	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
