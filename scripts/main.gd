@@ -240,10 +240,10 @@ func _setup_materials() -> void:
 		mat.albedo_color = colors[key]
 		mat.roughness = 0.92
 		if key == "water":
-			# Retain the project's alpha water contract, but keep opacity high so
-			# shoreline terrain cannot dominate the river colour through blending.
+			# Retain the project's alpha water contract, but keep opacity near-opaque so
+			# submerged bank geometry cannot break the visible water sheet.
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			mat.albedo_color.a = 0.94
+			mat.albedo_color.a = 0.985
 			# Matte, non-metallic water avoids glossy highlights while preserving
 			# a subtle depth impression at the river edge.
 			mat.roughness = 0.86
