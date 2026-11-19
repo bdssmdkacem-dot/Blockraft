@@ -662,13 +662,15 @@ func _generate_world() -> void:
 	# trunks stay grounded and never spawn in water or inside the clear corridor.
 	var flank_tree_count := 0
 	var flank_candidates := [
-		Vector2i(-9, -12), Vector2i(9, -14), Vector2i(-13, -27), Vector2i(13, -29),
-		Vector2i(-18, -8), Vector2i(18, -8), Vector2i(-16, -25), Vector2i(16, -25),
-		Vector2i(-22, -8), Vector2i(22, -8), Vector2i(-10, -31), Vector2i(10, -31),
-		Vector2i(-20, -26), Vector2i(20, -26)
+		# Keep guaranteed trunks in the middle distance. Trees near x=+/-9 and
+		# z=-12 were so close to the third-person camera that their crowns filled
+		# the top of the frame instead of framing the valley.
+		Vector2i(-18, -22), Vector2i(18, -22),
+		Vector2i(-23, -28), Vector2i(23, -28),
+		Vector2i(-14, -31), Vector2i(14, -31)
 	]
 	for flank_tree in flank_candidates:
-		if flank_tree_count >= 10:
+		if flank_tree_count >= 6:
 			break
 		if not heights.has(flank_tree):
 			continue
