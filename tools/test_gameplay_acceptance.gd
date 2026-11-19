@@ -18,6 +18,13 @@ func _run_checks() -> void:
     if scene == null:
         _fail("gameplay root is not Node3D", 3)
         return
+    # The menu end-to-end test launches gameplay first and may leave a save
+    # snapshot in the shared CI user-data directory. This acceptance test must
+    # measure the current procedural generator, not inherit that prior world.
+    scene.call("_clear_old_save")
+    var stale_backup := "user://world_blocks.json.bak"
+    if FileAccess.file_exists(stale_backup):
+        DirAccess.remove_absolute(ProjectSettings.globalize_path(stale_backup))
     root.add_child(scene)
     current_scene = scene
     var waited := 0
