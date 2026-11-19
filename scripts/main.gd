@@ -1100,6 +1100,46 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	group["indices"] = indices
 	groups["sand"] = group
 
+func _water_surface_corner(corner: Vector2i, water_y: int) -> Vector3:
+	# Compute a shared rounded corner from the four global water cells around it.
+	# Every chunk uses the same neighbourhood, so seam vertices remain identical.
+	var centroid := Vector2.ZERO
+	var samples := 0
+	for offset in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i(0, 0)]:
+		var cell := Vector3i(corner.x + offset.x, water_y, corner.y + offset.y)
+		if str(blocks.get(cell, "")) != "water":
+			continue
+		centroid += Vector2(float(offset.x) + 0.5, float(offset.y) + 0.5)
+		samples += 1
+	var position := Vector2(float(corner.x), float(corner.y))
+	if samples > 0:
+		var inward := centroid / float(samples)
+		if inward.length_squared() > 0.0001:
+			position += inward.normalized() * (0.20 if samples <= 2 else 0.12)
+	return Vector3(position.x, float(water_y + 1), position.y)
+
+func _water_surface_polygon(pos: Vector3i) -> PackedVector3Array:
+	var corners := [
+		_water_surface_corner(Vector2i(pos.x, pos.z), pos.y),
+		_water_surface_corner(Vector2i(pos.x, pos.z + 1), pos.y),
+		_water_surface_corner(Vector2i(pos.x + 1, pos.z + 1), pos.y),
+		_water_surface_corner(Vector2i(pos.x + 1, pos.z), pos.y)
+	]
+	var edge_neighbors := [Vector3i(0, 0, 1), Vector3i(1, 0, 0), Vector3i(0, 0, -1), Vector3i(-1, 0, 0)]
+	var center := Vector3(float(pos.x) + 0.5, float(pos.y + 1), float(pos.z) + 0.5)
+	var polygon := PackedVector3Array()
+	for edge_index in range(4):
+		var a: Vector3 = corners[edge_index]
+		var b: Vector3 = corners[(edge_index + 1) % 4]
+		polygon.append(a)
+		var midpoint := (a + b) * 0.5
+		if str(blocks.get(pos + edge_neighbors[edge_index], "")) != "water":
+			var inward := center - midpoint
+			if inward.length_squared() > 0.0001:
+				midpoint += inward.normalized() * 0.18
+		polygon.append(midpoint)
+	return polygon
+
 func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String, chunk_min_x: int = -2147483648, chunk_max_x: int = 2147483647) -> void:
 	if not groups.has(kind):
 		groups[kind] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
@@ -1120,23 +1160,22 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 	if kind == "water":
 		if blocks.has(pos + Vector3i(0, 1, 0)):
 			return
-		var water_vertices := PackedVector3Array([
-				Vector3(x, y + 1.0, z),
-				Vector3(x, y + 1.0, z + 1.0),
-				Vector3(x + 1.0, y + 1.0, z + 1.0),
-				Vector3(x + 1.0, y + 1.0, z)
-		])
+		var water_vertices := _water_surface_polygon(pos)
 		var water_tint := Color("#1d5366").lerp(Color("#367d83"), 0.16)
 		var base_index := vertices.size()
 		group["vertices"] = vertices + water_vertices
-		group["normals"] = normals + PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP, Vector3.UP])
-		group["colors"] = colors + PackedColorArray([water_tint, water_tint, water_tint, water_tint])
-		group["indices"] = indices + PackedInt32Array([
-			# Godot's voxel surface convention uses clockwise front faces here;
-			# keep the water winding aligned with the outward top normals.
-			base_index, base_index + 2, base_index + 1,
-			base_index, base_index + 3, base_index + 2
-		])
+		var water_normals := PackedVector3Array()
+		var water_colors := PackedColorArray()
+		var water_indices := PackedInt32Array()
+		for _vertex_index in range(water_vertices.size()):
+			water_normals.append(Vector3.UP)
+			water_colors.append(water_tint)
+		# Clockwise triangle fan preserves the existing outward top-face winding.
+		for triangle_index in range(1, water_vertices.size() - 1):
+			water_indices.append_array(PackedInt32Array([base_index, base_index + triangle_index + 1, base_index + triangle_index]))
+		group["normals"] = normals + water_normals
+		group["colors"] = colors + water_colors
+		group["indices"] = indices + water_indices
 		groups[kind] = group
 		var water_top := y + 1.0
 		var left_land := Vector2i(pos.x - 1, pos.z)
