@@ -91,6 +91,10 @@ func _check_layout(game: Node, survival: Node, compact: bool, viewport_size: Vec
 	if _rect(bag).intersects(_rect(upgrade)):
 		_fail("backpack label overlaps the depot/upgrade button", 10)
 		return false
+	var craft_button := game.find_child("CraftButton", true, false) as Button
+	if craft_button != null and (_rect(bag).intersects(_rect(craft_button)) or _rect(upgrade).intersects(_rect(craft_button))):
+		_fail("backpack/depot controls overlap the workbench CRAFT action at width %d" % int(viewport_size.x), 21)
+		return false
 
 	var hotbar_rect := _rect(hotbar)
 	if hotbar_rect.size.x <= 0.0 or hotbar_rect.size.y <= 0.0:
