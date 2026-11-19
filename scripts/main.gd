@@ -759,7 +759,15 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 				if dy == -1 and dist > 1:
 					continue
 				var p := Vector3i(x + dx, canopy_y + dy, z + dz)
-				if not blocks.has(p):
+				# Keep every leaf cell physically connected to the trunk or an
+				# earlier canopy layer; random gaps must not create floating leaves.
+				var connected_to_tree := false
+				for support_offset in [Vector3i.UP, Vector3i.DOWN, Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+					var support_kind := str(blocks.get(p + support_offset, ""))
+					if support_kind in ["wood", "leaves"]:
+						connected_to_tree = true
+						break
+				if not blocks.has(p) and connected_to_tree:
 					blocks[p] = "leaves"
 
 func _ensure_spawn_pad() -> void:
