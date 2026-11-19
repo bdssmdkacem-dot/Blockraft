@@ -216,6 +216,13 @@ func _run_checks() -> void:
     if exposed_water_vertices.size() != 8:
         _fail("lower water surface did not retain its rounded perimeter beside a taller water column: vertices=%d" % exposed_water_vertices.size(), 85)
         return
+    var rounded_water_vertex_count := 0
+    for water_vertex in exposed_water_vertices:
+        if not is_equal_approx(water_vertex.x, roundf(water_vertex.x)) or not is_equal_approx(water_vertex.z, roundf(water_vertex.z)):
+            rounded_water_vertex_count += 1
+    if rounded_water_vertex_count < 4:
+        _fail("water perimeter did not create enough sub-cell contour vertices: %d" % rounded_water_vertex_count, 55)
+        return
     if old_stepped_water_probe == null: scene.blocks.erase(stepped_water_probe)
     else: scene.blocks[stepped_water_probe] = old_stepped_water_probe
     if old_left_water == null: scene.blocks.erase(stepped_water_probe + Vector3i.LEFT)
