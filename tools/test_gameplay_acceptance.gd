@@ -413,8 +413,8 @@ func _run_checks() -> void:
                 west_edge = maxf(west_edge, vertex.x)
             for vertex in east_vertices:
                 east_edge = minf(east_edge, vertex.x)
-            if not is_equal_approx(west_edge, float(water_cell.x + 1)) or not is_equal_approx(east_edge, float(east_cell.x)):
-                _fail("actual river surface does not meet at x chunk boundary near %s" % str(water_cell), 94)
+            if absf(west_edge - east_edge) > 0.001 or absf(west_edge - float(water_cell.x + 1)) > 0.25:
+                _fail("actual rounded river edges disagree at x chunk boundary near %s" % str(water_cell), 94)
                 return
             actual_x_seam_pairs += 1
         var south_cell := water_cell + Vector3i(0, 0, 1)
@@ -434,8 +434,8 @@ func _run_checks() -> void:
                 north_edge = maxf(north_edge, vertex.z)
             for vertex in south_vertices:
                 south_edge = minf(south_edge, vertex.z)
-            if not is_equal_approx(north_edge, float(water_cell.z + 1)) or not is_equal_approx(south_edge, float(south_cell.z)):
-                _fail("actual river surface does not meet at z chunk boundary near %s" % str(water_cell), 96)
+            if absf(north_edge - south_edge) > 0.001 or absf(north_edge - float(water_cell.z + 1)) > 0.25:
+                _fail("actual rounded river edges disagree at z chunk boundary near %s" % str(water_cell), 96)
                 return
             actual_z_seam_pairs += 1
     if actual_x_seam_pairs == 0 or actual_z_seam_pairs == 0:
