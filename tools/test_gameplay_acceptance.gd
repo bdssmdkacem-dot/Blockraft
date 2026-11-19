@@ -31,6 +31,29 @@ func _run_checks() -> void:
     if scene.loaded_chunks.size() < 5:
         _fail("nearby world chunks did not stream in", 15)
         return
+
+    # The starter camera must show a real forest framing both sides of the
+    # river approach. A previous 57-column cleanup wedge erased every nearby
+    # tree while all terrain/interaction tests still passed.
+    var flank_canopy_cells := 0
+    var flank_tree_trunks := 0
+    for block_position in scene.blocks:
+        var forest_cell: Vector3i = block_position
+        if forest_cell.y < 5 or forest_cell.y > 24 or forest_cell.z > -5 or forest_cell.z < -36:
+            continue
+        if abs(forest_cell.x) < 5 or abs(forest_cell.x) > 24:
+            continue
+        var forest_kind := str(scene.blocks[forest_cell])
+        if forest_kind == "leaves":
+            flank_canopy_cells += 1
+        elif forest_kind == "wood" and str(scene.blocks.get(forest_cell + Vector3i.UP, "")) == "wood" and str(scene.blocks.get(forest_cell + Vector3i.UP * 2, "")) == "wood":
+            var forest_ground := str(scene.blocks.get(forest_cell + Vector3i.DOWN, ""))
+            if forest_ground in ["grass", "dirt", "stone", "rock", "sand", "gravel"]:
+                flank_tree_trunks += 1
+    if flank_tree_trunks < 6 or flank_canopy_cells < 180:
+        _fail("starter valley forest is visually empty: grounded_flank_trunks=%d canopy_cells=%d" % [flank_tree_trunks, flank_canopy_cells], 98)
+        return
+    print("STARTER_FOREST_VISIBILITY_PASS: grounded_flank_trunks=", flank_tree_trunks, " canopy_cells=", flank_canopy_cells)
     # Workbench and recipe economy: verify station/UI integration and atomic
     # ingredient consumption without allowing failed crafts to mutate inventory.
     if scene.get("crafting") == null or scene.get_node_or_null("CraftingBench") == null:
