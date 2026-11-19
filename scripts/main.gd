@@ -1828,13 +1828,16 @@ func _layout_backpack_ui(viewport_size: Vector2 = Vector2.ZERO) -> void:
 	# quadrant. Keep the backpack readout in a dedicated top-right strip above
 	# that panel instead of letting its 42px Y offset collide at 360px width.
 	backpack_label.size = Vector2(label_width, 28.0 if compact else 20.0)
-	backpack_label.position = Vector2(vs.x - label_width - 20.0, 4.0 if compact else 42.0)
+	# The workbench CRAFT action occupies the upper-right 42px band on
+	# desktop and touch layouts. Place the backpack readout beneath it, then
+	# the depot action, so the three controls never paint over one another.
+	backpack_label.position = Vector2(vs.x - label_width - 20.0, 64.0)
 	backpack_label.clip_text = false
 	backpack_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	backpack_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	backpack_label.add_theme_font_size_override("font_size", 11 if compact else 12)
 	upgrade_btn.size = Vector2(button_width, 28.0)
-	upgrade_btn.position = Vector2(vs.x - button_width - 12.0, 84.0)
+	upgrade_btn.position = Vector2(vs.x - button_width - 12.0, 96.0)
 
 func _build_backpack_ui(layer: CanvasLayer) -> void:
 	backpack_label = Label.new()
