@@ -1057,9 +1057,10 @@ func _smooth_terrain_vertex(vertex: Vector3) -> Vector3:
 	return vertex
 
 func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vector3, inward: Vector3, corner_a: Vector2i, corner_b: Vector2i, water_top: float) -> void:
-	# Render-only narrow sediment bevel: it softens the outermost water fringe and
-	# meets the smoothed dry-bank corner heights. It never changes voxel data,
-	# terrain collision, water collision, or the generated river footprint.
+	# A render-only sediment ramp sits OUTSIDE the water footprint. The water-edge
+	# vertices stay just below the water plane; the outer vertices follow the
+	# neighbouring dry-bank corner heights. This replaces the old submerged bevel,
+	# which could not soften the visible shoreline from the gameplay camera.
 	if not groups.has("sand"):
 		groups["sand"] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
 	var group: Dictionary = groups["sand"]
@@ -1067,28 +1068,26 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var normals: PackedVector3Array = group["normals"]
 	var colors: PackedColorArray = group["colors"]
 	var indices: PackedInt32Array = group["indices"]
-	var near_a := start + inward
-	var near_b := end + inward
-	# Keep the sediment bevel just below the water plane. The previous +1.8cm
-	# offset placed opaque sand triangles over the water surface, creating the
-	# blue gaps and triangular bank intrusions visible in the gameplay capture.
-	near_a.y = water_top - 0.015
-	near_b.y = water_top - 0.015
-	var shore_a := start
-	var shore_b := end
-	shore_a.y = float(terrain_corner_heights.get(corner_a, water_top - 0.4))
-	shore_b.y = float(terrain_corner_heights.get(corner_b, water_top - 0.4))
-	# Each half of the bevel is an independently shaded triangle. The shared
-	# shoreline corners can have different heights, so treating the four points
-	# as one planar quad gives the second triangle a subtly incorrect normal.
-	# Duplicate the shared vertices so each indexed triangle carries its exact
-	# geometric normal while preserving the same render-only shoreline surface.
-	var first_normal := (shore_b - near_a).cross(near_b - near_a)
-	var second_normal := (shore_a - near_a).cross(shore_b - near_a)
+	var edge_a := start
+	var edge_b := end
+	edge_a.y = water_top - 0.025
+	edge_b.y = water_top - 0.025
+	var landward_offset := Vector2i(-signi(roundi(inward.x)), -signi(roundi(inward.z)))
+	var land_a := start - inward
+	var land_b := end - inward
+	var land_corner_a := corner_a + landward_offset
+	var land_corner_b := corner_b + landward_offset
+	land_a.y = float(terrain_corner_heights.get(land_corner_a, terrain_corner_heights.get(corner_a, water_top - 0.4)))
+	land_b.y = float(terrain_corner_heights.get(land_corner_b, terrain_corner_heights.get(corner_b, water_top - 0.4)))
+	# Keep the ramp bounded and below the waterline at its inner edge.
+	land_a.y = clampf(land_a.y, float(MIN_Y), water_top - 0.08)
+	land_b.y = clampf(land_b.y, float(MIN_Y), water_top - 0.08)
+	var first_normal := (land_b - edge_a).cross(edge_b - edge_a)
+	var second_normal := (land_a - edge_a).cross(land_b - edge_a)
 	if first_normal.length_squared() < 0.0001 or second_normal.length_squared() < 0.0001:
 		return
 	var base := vertices.size()
-	vertices.append_array(PackedVector3Array([near_a, shore_b, near_b, near_a, shore_a, shore_b]))
+	vertices.append_array(PackedVector3Array([edge_a, land_b, edge_b, edge_a, land_a, land_b]))
 	var first_outward := -first_normal.normalized()
 	var second_outward := -second_normal.normalized()
 	normals.append_array(PackedVector3Array([first_outward, first_outward, first_outward, second_outward, second_outward, second_outward]))
