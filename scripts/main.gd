@@ -1822,7 +1822,7 @@ func _layout_backpack_ui(viewport_size: Vector2 = Vector2.ZERO) -> void:
 	var compact := vs.x < 700.0
 	# Keep the bag label comfortably inside the safe area; a wide right-aligned
 	# control can appear clipped on narrow devices even when its text is short.
-	var label_width := minf(320.0, maxf(120.0, vs.x * (0.48 if compact else 0.34)))
+	var label_width := minf(160.0, maxf(120.0, vs.x * 0.44)) if compact else minf(320.0, vs.x * 0.34)
 	var button_width := minf(156.0, maxf(112.0, vs.x * 0.42))
 	# On narrow touch screens the survival panel occupies the upper-left
 	# quadrant. Keep the backpack readout in a dedicated top-right strip above
