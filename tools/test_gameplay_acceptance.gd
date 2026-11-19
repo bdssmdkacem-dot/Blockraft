@@ -44,19 +44,25 @@ func _run_checks() -> void:
     # tree while all terrain/interaction tests still passed.
     var flank_canopy_cells := 0
     var flank_tree_trunks := 0
+    var near_camera_foliage_cells := 0
     for block_position in scene.blocks:
         var forest_cell: Vector3i = block_position
+        var forest_kind := str(scene.blocks[forest_cell])
+        if forest_cell.y >= 5 and forest_cell.y <= 24 and Vector2(float(forest_cell.x), float(forest_cell.z)).length() < 16.0 and forest_kind in ["wood", "leaves"]:
+            near_camera_foliage_cells += 1
         if forest_cell.y < 5 or forest_cell.y > 24 or forest_cell.z > -16 or forest_cell.z < -36:
             continue
         if abs(forest_cell.x) < 12 or abs(forest_cell.x) > 25:
             continue
-        var forest_kind := str(scene.blocks[forest_cell])
         if forest_kind == "leaves":
             flank_canopy_cells += 1
         elif forest_kind == "wood" and str(scene.blocks.get(forest_cell + Vector3i.UP, "")) == "wood" and str(scene.blocks.get(forest_cell + Vector3i.UP * 2, "")) == "wood":
             var forest_ground := str(scene.blocks.get(forest_cell + Vector3i.DOWN, ""))
             if forest_ground in ["grass", "dirt", "stone", "rock", "sand", "gravel"]:
                 flank_tree_trunks += 1
+    if near_camera_foliage_cells > 0:
+        _fail("starter camera still has foliage inside its 16-block clearance radius: %d cells" % near_camera_foliage_cells, 99)
+        return
     if flank_tree_trunks < 5 or flank_canopy_cells < 140:
         _fail("starter valley forest is visually empty: grounded_flank_trunks=%d canopy_cells=%d" % [flank_tree_trunks, flank_canopy_cells], 98)
         return
