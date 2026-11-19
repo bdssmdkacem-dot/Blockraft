@@ -133,7 +133,7 @@ func _run_checks() -> void:
 	if hero == null:
 		_fail("menu protagonist is missing", 31)
 		return
-	if world.find_child("RockyOutcropBase", true, false) != null or hero.position.y >= 0.0:
+	if world.find_child("RockyOutcropBase", true, false) != null or hero.position.y < 0.0 or hero.position.y > 0.2:
 		_fail("menu protagonist is still displayed on a raised floating plinth instead of grounded terrain", 61)
 		return
 	if hero.get_child_count() < 24 or hero.find_child("DiamondPickaxe", true, false) == null:
