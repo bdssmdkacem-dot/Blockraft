@@ -606,19 +606,19 @@ func _build_village() -> void:
 	var village := Node3D.new()
 	village.name = "Village"
 	village.position = Vector3(-1.5, 0.0, 0.5)
-	village.scale = Vector3.ONE * 1.18
+	village.scale = Vector3.ONE * 1.28
 	add_child(village)
 	for i in range(9):
-		var hx := 8.0 + i * 2.5
-		var hz := -2.0 - (i % 3) * 2.8
-		_box(village, Vector3(hx, 0.8, hz), Vector3(2.2, 1.6, 2.0), MAT_WALL)
-		_box(village, Vector3(hx, 1.9, hz), Vector3(2.6, 0.8, 2.4), MAT_ROOF)
+		var hx := 7.0 + i * 3.0
+		var hz := -1.0 - (i % 3) * 4.0
+		_box(village, Vector3(hx, 0.92, hz), Vector3(2.5, 1.84, 2.25), MAT_WALL)
+		_box(village, Vector3(hx, 2.05, hz), Vector3(2.9, 0.82, 2.65), Color("#8f4d3b") if i % 3 == 0 else (Color("#ad6547") if i % 3 == 1 else Color("#795044")))
 		# Two sloped roof planes and a ridge cap replace the flat slab silhouette.
-		var roof_left := _box(village, Vector3(hx - 0.62, 2.28, hz), Vector3(1.55, 0.16, 2.65), Color("#9a5039"))
+		var roof_left := _box(village, Vector3(hx - 0.68, 2.43, hz), Vector3(1.72, 0.17, 2.82), Color("#914a38") if i % 3 == 0 else (Color("#a75c42") if i % 3 == 1 else Color("#794b40")))
 		roof_left.rotation.z = deg_to_rad(-27.0)
-		var roof_right := _box(village, Vector3(hx + 0.62, 2.28, hz), Vector3(1.55, 0.16, 2.65), Color("#b96a48"))
+		var roof_right := _box(village, Vector3(hx + 0.68, 2.43, hz), Vector3(1.72, 0.17, 2.82), Color("#b66a49") if i % 3 == 0 else (Color("#c17a52") if i % 3 == 1 else Color("#98604b")))
 		roof_right.rotation.z = deg_to_rad(27.0)
-		_box(village, Vector3(hx, 2.63, hz), Vector3(0.18, 0.14, 2.7), Color("#d18a5b"))
+		_box(village, Vector3(hx, 2.78, hz), Vector3(0.20, 0.14, 2.88), Color("#d18a5b"))
 		_box(village, Vector3(hx, 1.85, hz + 1.12), Vector3(0.72, 0.88, 0.08), Color("#594333"))
 		_box(village, Vector3(hx - 0.48, 1.45, hz + 1.12), Vector3(0.42, 0.42, 0.07), Color("#8bc5d0"), 0.3)
 		_box(village, Vector3(hx + 0.48, 1.45, hz + 1.12), Vector3(0.42, 0.42, 0.07), Color("#8bc5d0"), 0.3)
@@ -655,8 +655,8 @@ func _build_village_architecture_pass() -> void:
 	var trim := Color("#e0c99d")
 	var dark_wood := Color("#543a2a")
 	for i in range(9):
-		var hx := 8.0 + float(i) * 2.5
-		var hz := -2.0 - float(i % 3) * 2.8
+		var hx := 7.0 + float(i) * 3.0
+		var hz := -1.0 - float(i % 3) * 4.0
 		# Raised stone plinth, timber framing and window surrounds give each
 		# cottage a readable base-to-roof architectural rhythm.
 		_box(village, Vector3(hx, 0.12, hz), Vector3(2.42, 0.24, 2.22), stone)
@@ -768,7 +768,7 @@ func _build_gatehouse_castle() -> void:
 	for i in range(6):
 		_box(root, Vector3(-1.0 + float(i) * 0.4, 4.3, 4.35), Vector3(0.1, 2.2, 0.08), Color("#2a2a2a"))
 	for side_x in [-6.5, 6.5]:
-		for side_z in [3.0, -5.0]:
+		for side_z in [3.0]:
 			_box(root, Vector3(side_x, 6.5, side_z), Vector3(2.8, 7.0, 2.8), stone)
 			_box(root, Vector3(side_x, 10.2, side_z), Vector3(3.2, 0.4, 3.2), roof)
 			_box(root, Vector3(side_x, 10.7, side_z), Vector3(2.0, 0.8, 2.0), roof.darkened(0.1))
@@ -783,8 +783,8 @@ func _build_gatehouse_castle() -> void:
 	_box(root, Vector3(0, 15.0, -2.5), Vector3(3.6, 0.4, 3.6), roof)
 	_box(root, Vector3(0, 15.5, -2.5), Vector3(1.8, 0.9, 1.8), roof.darkened(0.12))
 	_box(root, Vector3(0, 16.2, -2.5), Vector3(0.25, 0.8, 0.25), Color("#f6d78c"), 0.25)
-	_pyramid(root, Vector3(0, 18.2, -2.5), 2.1, 4.2, Color("#6f3e35"))
-	_box(root, Vector3(0, 20.45, -2.5), Vector3(0.16, 0.9, 0.16), Color("#f4d68e"), 0.25)
+	_pyramid(root, Vector3(0, 17.1, -2.5), 2.0, 2.6, Color("#6f3e35"))
+	_box(root, Vector3(0, 18.65, -2.5), Vector3(0.16, 0.9, 0.16), Color("#f4d68e"), 0.25)
 	for side_x in [-6.5, 6.5]:
 		for crenel in range(5):
 			_box(root, Vector3(side_x, 9.0, -4.5 + float(crenel) * 1.75), Vector3(0.62, 0.72, 0.62), light)
@@ -861,11 +861,11 @@ func _build_landmark_details() -> void:
 		for window_z in [-4.4, -1.8, 0.8, 3.4]:
 			_box(wing_root, Vector3(wing_x - side * 3.56, 4.4, window_z), Vector3(0.12, 1.25, 0.72), Color("#253b49"))
 			_box(wing_root, Vector3(wing_x - side * 3.64, 4.4, window_z), Vector3(0.08, 0.18, 0.86), Color("#e9b96b"), 0.32)
-		for tower_z in [-5.5, 3.0]:
+		for tower_z in [3.0]:
 			_box(wing_root, Vector3(wing_x, 8.3, tower_z), Vector3(2.3, 3.2, 2.3), Color("#66756f"))
 			_box(wing_root, Vector3(wing_x, 10.0, tower_z), Vector3(2.8, 0.28, 2.8), Color("#b2b8ad"))
-			_pyramid(wing_root, Vector3(wing_x, 10.05, tower_z), 1.45, 2.25, Color("#75463b"))
-			_box(wing_root, Vector3(wing_x, 12.0, tower_z), Vector3(0.12, 0.7, 0.12), Color("#f0ce83"))
+			_pyramid(wing_root, Vector3(wing_x, 10.05, tower_z), 1.35, 1.75, Color("#75463b"))
+			_box(wing_root, Vector3(wing_x, 11.65, tower_z), Vector3(0.12, 0.7, 0.12), Color("#f0ce83"))
 	# Raised stone causeway and retaining walls visually anchor the expanded wings.
 	_box(castle, Vector3(0.0, 0.35, 8.4), Vector3(24.0, 0.55, 2.0), Color("#777f76"))
 	for side in [-1.0, 1.0]:
