@@ -982,26 +982,11 @@ func _build_protagonist() -> void:
 	var ledge := Node3D.new()
 	ledge.name = "HeroForegroundLedge"
 	add_child(ledge)
-	# Replace the conspicuous two-tier square plinth with a low, irregular
-	# natural outcrop. Overlapping ellipsoids keep a stable hero perch while
-	# removing the giant cube silhouette that dominated the menu foreground.
-	var rock_base := MeshInstance3D.new()
-	rock_base.name = "RockyOutcropBase"
-	var base_mesh := SphereMesh.new()
-	base_mesh.radius = 1.0
-	base_mesh.height = 2.0
-	base_mesh.radial_segments = 12
-	base_mesh.rings = 7
-	rock_base.mesh = base_mesh
-	rock_base.position = Vector3(-9.0, 0.92, 13.0)
-	rock_base.scale = Vector3(2.62, 0.60, 2.48)
-	rock_base.material_override = _material(Color("#68756d"), 0.98)
-	rock_base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	ledge.add_child(rock_base)
-	# Small, separated grass patches break up the rock silhouette without
-	# creating another oversized circular green platform.
-	for patch_index in range(5):
-		var patch_angle := TAU * float(patch_index) / 5.0
+	# Remove the broad oval rock plinth: it reads as a floating display base.
+	# Seat the character on the actual meadow elevation and use small, irregular
+	# grass/stone accents around the boots to blend the silhouette into terrain.
+	for patch_index in range(6):
+		var patch_angle := TAU * float(patch_index) / 6.0
 		var grass_patch := MeshInstance3D.new()
 		var patch_mesh := SphereMesh.new()
 		patch_mesh.radius = 1.0
@@ -1009,8 +994,8 @@ func _build_protagonist() -> void:
 		patch_mesh.radial_segments = 9
 		patch_mesh.rings = 5
 		grass_patch.mesh = patch_mesh
-		grass_patch.position = Vector3(-9.0 + cos(patch_angle) * 1.55, 1.43, 13.0 + sin(patch_angle) * 1.45)
-		grass_patch.scale = Vector3(0.62, 0.10, 0.48)
+		grass_patch.position = Vector3(-9.0 + cos(patch_angle) * 1.55, -0.31 + float(patch_index % 2) * 0.035, 13.0 + sin(patch_angle) * 1.35)
+		grass_patch.scale = Vector3(0.72 + float(patch_index % 3) * 0.12, 0.07, 0.52 + float(patch_index % 2) * 0.10)
 		grass_patch.material_override = _material(Color("#477f3f") if patch_index % 2 == 0 else Color("#5b9149"), 0.96)
 		grass_patch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		ledge.add_child(grass_patch)
@@ -1023,14 +1008,14 @@ func _build_protagonist() -> void:
 		pebble_mesh.radial_segments = 8
 		pebble_mesh.rings = 5
 		pebble.mesh = pebble_mesh
-		pebble.position = Vector3(-9.0 + cos(angle) * 2.25, 1.45, 13.0 + sin(angle) * 2.05)
-		pebble.scale = Vector3(0.75, 0.52, 0.68)
+		pebble.position = Vector3(-9.0 + cos(angle) * 2.05, -0.19, 13.0 + sin(angle) * 1.85)
+		pebble.scale = Vector3(0.42 + float(rock_index % 3) * 0.10, 0.28, 0.40 + float(rock_index % 2) * 0.12)
 		pebble.material_override = _material(Color("#788078") if rock_index % 2 == 0 else Color("#8c8978"), 0.98)
 		pebble.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		ledge.add_child(pebble)
 	var hero := Node3D.new()
 	hero.name = "Protagonist"
-	hero.position = Vector3(-9.0, 1.36, 13.0)
+	hero.position = Vector3(-9.0, -0.64, 13.0)
 	hero.rotation_degrees = Vector3(0, 135, 0)
 	hero.scale = Vector3(1.28, 1.28, 1.28)
 	add_child(hero)
