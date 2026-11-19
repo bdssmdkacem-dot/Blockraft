@@ -640,7 +640,7 @@ func _generate_world() -> void:
 			var camera_clearance := Vector2(float(x), float(z)).length()
 			var tree_edge_clearance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
 			var opening_camera_corridor: bool = z < -3 and z > -40 and abs(x) < 4
-			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5 and camera_clearance >= 18.0 and camera_clearance <= 30.0 and tree_edge_clearance > 16.0 and not opening_camera_corridor:
+			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 10 and abs(z) > 5 and camera_clearance >= 18.0 and camera_clearance <= 30.0 and tree_edge_clearance > 16.0 and not opening_camera_corridor:
 				# Keep tree crowns grounded within the visible playable basin.
 				# Trees on the far perimeter or central horizon were technically
 				# supported, but their trunks fell below the camera horizon and
@@ -842,7 +842,7 @@ func _clear_spawn_camera_corridor() -> void:
 	# toward the footbridge. This restores visible tree framing without placing
 	# foliage directly in front of the player or obscuring the crossing.
 	var forward_removed := 0
-	for x in range(-4, 5):
+	for x in range(-8, 9):
 		for z in range(-42, -3):
 			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
