@@ -722,9 +722,22 @@ func _run_checks() -> void:
     if not scenic_water_found:
         _fail("forward scenic tributary did not generate water beyond the spawn plateau", 50)
         return
-    if str(scene.blocks.get(Vector3i(0, 3, -16), "")) != "wood":
-        _fail("forward river footbridge deck is missing", 51)
-        return
+    # The bridge must provide a three-block-wide continuous deck and
+    # flush approaches on both banks, without the old head-height rail posts.
+    for bridge_z in range(-20, -12):
+        for bridge_x in range(-1, 2):
+            if str(scene.blocks.get(Vector3i(bridge_x, 3, bridge_z), "")) != "wood":
+                _fail("forward river footbridge deck has a gap at %s" % str(Vector3i(bridge_x, 3, bridge_z)), 51)
+                return
+    for approach_z in [-21, -12]:
+        for bridge_x in range(-1, 2):
+            if str(scene.blocks.get(Vector3i(bridge_x, 2, approach_z), "")) != "wood":
+                _fail("forward river footbridge does not meet its bank at %s" % str(Vector3i(bridge_x, 2, approach_z)), 52)
+                return
+    for rail_z in range(-20, -12, 2):
+        if scene.blocks.has(Vector3i(-1, 4, rail_z)) or scene.blocks.has(Vector3i(1, 4, rail_z)):
+            _fail("forward river footbridge still has obstructive raised rail posts", 53)
+            return
     if highest_surface - lowest_surface < 6:
         _fail("generated terrain relief is too flat: range=%d" % (highest_surface - lowest_surface), 41)
         return
