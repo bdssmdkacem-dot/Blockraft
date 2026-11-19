@@ -738,6 +738,20 @@ func _run_checks() -> void:
         if scene.blocks.has(Vector3i(-1, 4, rail_z)) or scene.blocks.has(Vector3i(1, 4, rail_z)):
             _fail("forward river footbridge still has obstructive raised rail posts", 53)
             return
+    # Confirm the widened bridge is backed by the real batched chunk collider
+    # across every deck lane, not merely present in the voxel dictionary.
+    await physics_frame
+    for bridge_x in range(-1, 2):
+        var bridge_ray := PhysicsRayQueryParameters3D.create(
+            Vector3(float(bridge_x) + 0.5, 8.0, -15.5),
+            Vector3(float(bridge_x) + 0.5, 1.0, -15.5)
+        )
+        bridge_ray.collision_mask = 1
+        var bridge_hit: Dictionary = scene.get_world_3d().direct_space_state.intersect_ray(bridge_ray)
+        if bridge_hit.is_empty() or not is_equal_approx(float(bridge_hit.get("position", Vector3.ZERO).y), 4.0):
+            _fail("bridge deck lane has no matching collision surface at x=%d" % bridge_x, 54)
+            return
+    print("RIVER_BRIDGE_COLLISION_PASS: all three deck lanes have matching chunk collision")
     if highest_surface - lowest_surface < 6:
         _fail("generated terrain relief is too flat: range=%d" % (highest_surface - lowest_surface), 41)
         return
