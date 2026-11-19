@@ -697,8 +697,8 @@ func _build_forests() -> void:
 	forest.name = "Forests"
 	add_child(forest)
 	for i in range(14):
-		# Keep the dense canopy on the left flank; the river, village and castle
-		# remain visible through the centre of the panorama.
+		# Preserve the established left-flank grove while the new right grove
+		# balances the panorama and frames the village without hiding the river.
 		var tx := -19.0 + float(i % 5) * 2.35 + sin(float(i) * 1.7) * 0.45
 		var tz := -5.5 + float(i / 5) * 3.2 + cos(float(i) * 1.3) * 0.4
 		var h := 1.8 + float(i % 4) * 0.35
@@ -708,6 +708,75 @@ func _build_forests() -> void:
 		_box(forest, Vector3(tx, h + 2.0, tz), Vector3(1.0, 0.9, 1.0), MAT_LEAF_LIGHT)
 		if i % 3 == 0:
 			_box(forest, Vector3(tx + 0.6, h + 0.9, tz - 0.4), Vector3(0.9, 0.8, 0.9), MAT_LEAF)
+
+	# The previous menu composition left the entire right foreground as an
+	# uninterrupted green plane. Add a second, deliberately broken grove on
+	# the outer meadow edge; the centre path, river crossing and house fronts
+	# remain open. Low-poly layered crowns retain the voxel game's visual style
+	# without repeating identical cube stacks.
+	var right_grove := Node3D.new()
+	right_grove.name = "RightGrove"
+	forest.add_child(right_grove)
+	var trunk_material := _material(MAT_WOOD, 0.98)
+	var canopy_materials := [
+		_material(MAT_LEAF_DARK, 0.98),
+		_material(MAT_LEAF, 0.98),
+		_material(MAT_LEAF_LIGHT, 0.98)
+	]
+	var tree_positions := [
+		Vector3(8.0, 0.0, 9.0), Vector3(13.0, 0.0, 12.0),
+		Vector3(18.0, 0.0, 9.0), Vector3(22.0, 0.0, 14.0),
+		Vector3(27.0, 0.0, 10.0), Vector3(11.0, 0.0, 18.0),
+		Vector3(16.0, 0.0, 22.0), Vector3(21.0, 0.0, 19.0),
+		Vector3(26.0, 0.0, 23.0), Vector3(7.5, 0.0, 23.0),
+		Vector3(30.0, 0.0, 18.0), Vector3(32.0, 0.0, 11.0)
+	]
+	for tree_index in range(tree_positions.size()):
+		_add_menu_grove_tree(right_grove, tree_index, tree_positions[tree_index],
+			0.82 + float((tree_index * 3) % 5) * 0.09, trunk_material, canopy_materials)
+
+
+func _add_menu_grove_tree(parent: Node3D, tree_index: int, tree_position: Vector3,
+		tree_scale: float, trunk_material: Material, canopy_materials: Array) -> void:
+	var tree := Node3D.new()
+	tree.name = "RightGroveTree_%02d" % tree_index
+	tree.position = tree_position
+	tree.scale = Vector3.ONE * tree_scale
+	parent.add_child(tree)
+
+	var trunk := MeshInstance3D.new()
+	trunk.name = "Trunk"
+	var trunk_mesh := CylinderMesh.new()
+	trunk_mesh.top_radius = 0.12
+	trunk_mesh.bottom_radius = 0.20
+	trunk_mesh.height = 2.8
+	trunk_mesh.radial_segments = 7
+	trunk.mesh = trunk_mesh
+	trunk.position.y = 1.4
+	trunk.material_override = trunk_material
+	trunk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	tree.add_child(trunk)
+
+	var canopy_specs := [
+		{"name": "Canopy_Core", "position": Vector3(0.0, 2.95, 0.0), "scale": Vector3(1.15, 1.0, 1.05), "material": 0},
+		{"name": "Canopy_Left", "position": Vector3(-0.62, 2.78, 0.12), "scale": Vector3(0.82, 0.78, 0.82), "material": 1},
+		{"name": "Canopy_Right", "position": Vector3(0.60, 2.84, -0.10), "scale": Vector3(0.84, 0.82, 0.78), "material": 1},
+		{"name": "Canopy_Crown", "position": Vector3(0.0, 3.72, -0.04), "scale": Vector3(0.72, 0.70, 0.70), "material": 2}
+	]
+	for canopy_spec in canopy_specs:
+		var canopy := MeshInstance3D.new()
+		canopy.name = str(canopy_spec["name"])
+		var canopy_mesh := SphereMesh.new()
+		canopy_mesh.radius = 1.0
+		canopy_mesh.height = 2.0
+		canopy_mesh.radial_segments = 8
+		canopy_mesh.rings = 5
+		canopy.mesh = canopy_mesh
+		canopy.position = canopy_spec["position"]
+		canopy.scale = canopy_spec["scale"]
+		canopy.material_override = canopy_materials[int(canopy_spec["material"])]
+		canopy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		tree.add_child(canopy)
 
 func _build_floating_islands() -> void:
 	var island := Node3D.new()
