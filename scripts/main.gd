@@ -393,9 +393,9 @@ func _generate_world() -> void:
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
 			# A gently varying channel width avoids the ruler-straight, uniformly
 			# narrow trench. Width modulation is low-frequency and deterministic.
-			var main_river_width := 1.75 + sin(fx * 0.17 + fz * 0.08) * 0.28 + cos(fz * 0.21) * 0.12
+			var main_river_width := 2.15 + sin(fx * 0.105 + fz * 0.045) * 0.24 + cos(fz * 0.09) * 0.10
 			var in_main := river_d < main_river_width and dist > 7.0
-			var in_trib := trib_d < 1.25 and dist > 11.0 and fz > 0.0
+			var in_trib := trib_d < 1.65 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
 				# Deepen the channel centre and leave a shallow shelf near the bank.
@@ -404,7 +404,7 @@ func _generate_world() -> void:
 				var channel_width := main_river_width
 				if in_trib and (not in_main or trib_d < river_d):
 					channel_distance = trib_d
-					channel_width = 1.25
+					channel_width = 1.65
 				var edge_t := clampf(channel_distance / maxf(channel_width, 0.1), 0.0, 1.0)
 				var channel_floor_height := lerpf(0.35, 1.2, edge_t)
 				h = mini(h, channel_floor_height)
@@ -415,9 +415,9 @@ func _generate_world() -> void:
 				var bank_inner_width := main_river_width
 				if dist > 11.0 and fz > 0.0 and trib_d < bank_distance:
 					bank_distance = trib_d
-					bank_inner_width = 1.25
-				if bank_distance < 8.5 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 8.5, bank_distance))
+					bank_inner_width = 1.65
+				if bank_distance < 9.5 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 9.5, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
@@ -719,13 +719,13 @@ func _generate_world() -> void:
 	# placed after terrain generation so the deck remains stable and collision-
 	# backed even when the river's procedural banks change.
 	# One-block wooden approaches connect the elevated deck to both river banks.
-	blocks[Vector3i(0, 2, -21)] = "wood"
-	blocks[Vector3i(0, 2, -12)] = "wood"
-	for z in range(-20, -12):
-		blocks[Vector3i(0, 3, z)] = "wood"
-		if z % 2 == 0:
-			blocks[Vector3i(-1, 4, z)] = "wood"
-			blocks[Vector3i(1, 4, z)] = "wood"
+	# A low, broad timber crossing: three walkable deck lanes, flush bank
+	# approaches, and no tall rail posts that obstruct the valley view.
+	for x in range(-1, 2):
+		blocks[Vector3i(x, 2, -21)] = "wood"
+		blocks[Vector3i(x, 2, -12)] = "wood"
+		for z in range(-20, -12):
+			blocks[Vector3i(x, 3, z)] = "wood"
 	world_generation_heightfield_ms = float(voxel_fill_started_usec - generation_started_usec) / 1000.0
 	world_generation_voxel_fill_ms = float(Time.get_ticks_usec() - voxel_fill_started_usec) / 1000.0
 	world_generation_ms = float(Time.get_ticks_usec() - generation_started_usec) / 1000.0
@@ -1017,7 +1017,7 @@ func _refresh_terrain_corner_height(corner: Vector2i) -> void:
 		# y=3 water plane and overhang the river. Keep every river-edge corner
 		# just below the water so the water surface owns the visible boundary.
 		if touches_water:
-			blended_height = minf(blended_height, 2.92)
+			blended_height = minf(blended_height, 2.84)
 		terrain_corner_heights[corner] = blended_height
 	else:
 		terrain_corner_heights.erase(corner)
@@ -1072,8 +1072,8 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	# Keep the sediment bevel just below the water plane. The previous +1.8cm
 	# offset placed opaque sand triangles over the water surface, creating the
 	# blue gaps and triangular bank intrusions visible in the gameplay capture.
-	near_a.y = water_top - 0.035
-	near_b.y = water_top - 0.035
+	near_a.y = water_top - 0.02
+	near_b.y = water_top - 0.02
 	var shore_a := start
 	var shore_b := end
 	shore_a.y = float(terrain_corner_heights.get(corner_a, water_top - 0.4))
@@ -1142,16 +1142,16 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var water_top := y + 1.0
 		var left_land := Vector2i(pos.x - 1, pos.z)
 		if str(blocks.get(pos + Vector3i(-1, 0, 0), "")) != "water" and terrain_surface_heights.has(left_land):
-			_append_shoreline_transition(groups, Vector3(x, 0.0, z), Vector3(x, 0.0, z + 1.0), Vector3(0.22, 0.0, 0.0), Vector2i(pos.x, pos.z), Vector2i(pos.x, pos.z + 1), water_top)
+			_append_shoreline_transition(groups, Vector3(x, 0.0, z), Vector3(x, 0.0, z + 1.0), Vector3(0.42, 0.0, 0.0), Vector2i(pos.x, pos.z), Vector2i(pos.x, pos.z + 1), water_top)
 		var right_land := Vector2i(pos.x + 1, pos.z)
 		if str(blocks.get(pos + Vector3i(1, 0, 0), "")) != "water" and terrain_surface_heights.has(right_land):
-			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z), Vector3(-0.22, 0.0, 0.0), Vector2i(pos.x + 1, pos.z + 1), Vector2i(pos.x + 1, pos.z), water_top)
+			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z), Vector3(-0.42, 0.0, 0.0), Vector2i(pos.x + 1, pos.z + 1), Vector2i(pos.x + 1, pos.z), water_top)
 		var north_land := Vector2i(pos.x, pos.z - 1)
 		if str(blocks.get(pos + Vector3i(0, 0, -1), "")) != "water" and terrain_surface_heights.has(north_land):
-			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z), Vector3(x, 0.0, z), Vector3(0.0, 0.0, 0.22), Vector2i(pos.x + 1, pos.z), Vector2i(pos.x, pos.z), water_top)
+			_append_shoreline_transition(groups, Vector3(x + 1.0, 0.0, z), Vector3(x, 0.0, z), Vector3(0.0, 0.0, 0.42), Vector2i(pos.x + 1, pos.z), Vector2i(pos.x, pos.z), water_top)
 		var south_land := Vector2i(pos.x, pos.z + 1)
 		if str(blocks.get(pos + Vector3i(0, 0, 1), "")) != "water" and terrain_surface_heights.has(south_land):
-			_append_shoreline_transition(groups, Vector3(x, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z + 1.0), Vector3(0.0, 0.0, -0.22), Vector2i(pos.x, pos.z + 1), Vector2i(pos.x + 1, pos.z + 1), water_top)
+			_append_shoreline_transition(groups, Vector3(x, 0.0, z + 1.0), Vector3(x + 1.0, 0.0, z + 1.0), Vector3(0.0, 0.0, -0.42), Vector2i(pos.x, pos.z + 1), Vector2i(pos.x + 1, pos.z + 1), water_top)
 		return
 	var terrain_column := Vector2i(pos.x, pos.z)
 	var smooth_surface := kind in TERRAIN_SURFACE_KINDS and terrain_surface_heights.has(terrain_column) and is_equal_approx(float(terrain_surface_heights[terrain_column]), y + 1.0)
