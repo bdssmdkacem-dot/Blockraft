@@ -190,11 +190,14 @@ func _build_terrain_art_pass() -> void:
 			var pz := -EXTENT + float(z) * (EXTENT * 2.0 / float(GRID))
 			var rolling := sin(px * 0.19 + pz * 0.08) * 0.52 + cos(pz * 0.16 - px * 0.05) * 0.34 + sin(px * 0.075 + pz * 0.12) * 0.22
 			var bank := exp(-pow((px - 4.5) / 7.5, 2.0) - pow((pz + 8.0) / 25.0, 2.0)) * 0.28
+			# A broad, subtle natural rise under the hero keeps the silhouette
+			# above the lower feature-card edge without a visible floating plinth.
+			var hero_perch := exp(-pow((px + 9.0) / 3.2, 2.0) - pow((pz - 13.0) / 3.0, 2.0)) * 0.75
 			var building_mask := 1.0
 			for landmark in [Vector2(18.0, -5.0), Vector2(30.0, -18.0)]:
 				var landmark_distance := Vector2(px - landmark.x, pz - landmark.y).length()
 				building_mask = minf(building_mask, smoothstep(3.0, 10.0, landmark_distance))
-			vertices.append(Vector3(px, 0.025 + (rolling + bank) * lerpf(0.28, 1.0, building_mask), pz))
+			vertices.append(Vector3(px, 0.025 + (rolling + bank + hero_perch) * lerpf(0.28, 1.0, building_mask), pz))
 			var variation := sin(px * 0.31) * cos(pz * 0.27) + sin(px * 0.13 + pz * 0.21) * 0.35
 			var base := Color("#356d3b").lerp(Color("#8bb653"), clampf(0.5 + variation * 0.30, 0.0, 1.0))
 			if absf(pz - (sin(px * 0.11) * 8.0 + cos(px * 0.04) * 3.0)) < 5.0:
@@ -994,7 +997,7 @@ func _build_protagonist() -> void:
 		patch_mesh.radial_segments = 9
 		patch_mesh.rings = 5
 		grass_patch.mesh = patch_mesh
-		grass_patch.position = Vector3(-9.0 + cos(patch_angle) * 1.55, -0.31 + float(patch_index % 2) * 0.035, 13.0 + sin(patch_angle) * 1.35)
+		grass_patch.position = Vector3(-9.0 + cos(patch_angle) * 1.55, 0.39 + float(patch_index % 2) * 0.035, 13.0 + sin(patch_angle) * 1.35)
 		grass_patch.scale = Vector3(0.72 + float(patch_index % 3) * 0.12, 0.07, 0.52 + float(patch_index % 2) * 0.10)
 		grass_patch.material_override = _material(Color("#477f3f") if patch_index % 2 == 0 else Color("#5b9149"), 0.96)
 		grass_patch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -1008,14 +1011,14 @@ func _build_protagonist() -> void:
 		pebble_mesh.radial_segments = 8
 		pebble_mesh.rings = 5
 		pebble.mesh = pebble_mesh
-		pebble.position = Vector3(-9.0 + cos(angle) * 2.05, -0.19, 13.0 + sin(angle) * 1.85)
+		pebble.position = Vector3(-9.0 + cos(angle) * 2.05, 0.49, 13.0 + sin(angle) * 1.85)
 		pebble.scale = Vector3(0.42 + float(rock_index % 3) * 0.10, 0.28, 0.40 + float(rock_index % 2) * 0.12)
 		pebble.material_override = _material(Color("#788078") if rock_index % 2 == 0 else Color("#8c8978"), 0.98)
 		pebble.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		ledge.add_child(pebble)
 	var hero := Node3D.new()
 	hero.name = "Protagonist"
-	hero.position = Vector3(-9.0, -0.64, 13.0)
+	hero.position = Vector3(-9.0, 0.06, 13.0)
 	hero.rotation_degrees = Vector3(0, 135, 0)
 	hero.scale = Vector3(1.28, 1.28, 1.28)
 	add_child(hero)
