@@ -1125,19 +1125,15 @@ func _water_surface_polygon(pos: Vector3i) -> PackedVector3Array:
 		_water_surface_corner(Vector2i(pos.x + 1, pos.z + 1), pos.y),
 		_water_surface_corner(Vector2i(pos.x + 1, pos.z), pos.y)
 	]
-	var edge_neighbors := [Vector3i(0, 0, 1), Vector3i(1, 0, 0), Vector3i(0, 0, -1), Vector3i(-1, 0, 0)]
-	var center := Vector3(float(pos.x) + 0.5, float(pos.y + 1), float(pos.z) + 0.5)
 	var polygon := PackedVector3Array()
 	for edge_index in range(4):
 		var a: Vector3 = corners[edge_index]
 		var b: Vector3 = corners[(edge_index + 1) % 4]
 		polygon.append(a)
-		var midpoint := (a + b) * 0.5
-		if str(blocks.get(pos + edge_neighbors[edge_index], "")) != "water":
-			var inward := center - midpoint
-			if inward.length_squared() > 0.0001:
-				midpoint += inward.normalized() * 0.18
-		polygon.append(midpoint)
+		# Keep the shared edge midpoint exactly between its globally shared
+		# corners. Only convex/concave corners are rounded; no inset edge can
+		# expose triangular gaps between neighbouring water and shoreline.
+		polygon.append((a + b) * 0.5)
 	return polygon
 
 func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String, chunk_min_x: int = -2147483648, chunk_max_x: int = 2147483647) -> void:
