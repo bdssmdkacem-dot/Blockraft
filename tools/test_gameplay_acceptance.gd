@@ -407,15 +407,24 @@ func _run_checks() -> void:
             if west_vertices.size() < 4 or east_vertices.size() < 4:
                 _fail("actual river water cell at x seam did not emit a complete surface quad: %s" % str(water_cell), 93)
                 return
-            var west_edge := -INF
-            var east_edge := INF
+            var west_shared_edge: Array = []
+            var east_shared_edge: Array = []
+            var x_seam := float(water_cell.x + 1)
             for vertex in west_vertices:
-                west_edge = maxf(west_edge, vertex.x)
+                if absf(vertex.x - x_seam) <= 0.25:
+                    west_shared_edge.append(Vector2(vertex.x, vertex.z))
             for vertex in east_vertices:
-                east_edge = minf(east_edge, vertex.x)
-            if absf(west_edge - east_edge) > 0.001 or absf(west_edge - float(water_cell.x + 1)) > 0.25:
-                _fail("actual rounded river edges disagree at x chunk boundary near %s" % str(water_cell), 94)
+                if absf(vertex.x - x_seam) <= 0.25:
+                    east_shared_edge.append(Vector2(vertex.x, vertex.z))
+            west_shared_edge.sort_custom(func(a: Vector2, b: Vector2): return a.y < b.y)
+            east_shared_edge.sort_custom(func(a: Vector2, b: Vector2): return a.y < b.y)
+            if west_shared_edge.size() != east_shared_edge.size() or west_shared_edge.size() < 2:
+                _fail("actual rounded river x seam has mismatched shared edge vertices near %s" % str(water_cell), 94)
                 return
+            for edge_index in range(west_shared_edge.size()):
+                if west_shared_edge[edge_index].distance_to(east_shared_edge[edge_index]) > 0.001:
+                    _fail("actual rounded river x seam vertices diverge near %s" % str(water_cell), 94)
+                    return
             actual_x_seam_pairs += 1
         var south_cell := water_cell + Vector3i(0, 0, 1)
         if (water_cell.z + 1) % 16 == 0 and str(scene.blocks.get(south_cell, "")) == "water" and not scene.blocks.has(south_cell + Vector3i.UP):
@@ -428,15 +437,24 @@ func _run_checks() -> void:
             if north_vertices.size() < 4 or south_vertices.size() < 4:
                 _fail("actual river water cell at z seam did not emit a complete surface quad: %s" % str(water_cell), 95)
                 return
-            var north_edge := -INF
-            var south_edge := INF
+            var north_shared_edge: Array = []
+            var south_shared_edge: Array = []
+            var z_seam := float(water_cell.z + 1)
             for vertex in north_vertices:
-                north_edge = maxf(north_edge, vertex.z)
+                if absf(vertex.z - z_seam) <= 0.25:
+                    north_shared_edge.append(Vector2(vertex.x, vertex.z))
             for vertex in south_vertices:
-                south_edge = minf(south_edge, vertex.z)
-            if absf(north_edge - south_edge) > 0.001 or absf(north_edge - float(water_cell.z + 1)) > 0.25:
-                _fail("actual rounded river edges disagree at z chunk boundary near %s" % str(water_cell), 96)
+                if absf(vertex.z - z_seam) <= 0.25:
+                    south_shared_edge.append(Vector2(vertex.x, vertex.z))
+            north_shared_edge.sort_custom(func(a: Vector2, b: Vector2): return a.x < b.x)
+            south_shared_edge.sort_custom(func(a: Vector2, b: Vector2): return a.x < b.x)
+            if north_shared_edge.size() != south_shared_edge.size() or north_shared_edge.size() < 2:
+                _fail("actual rounded river z seam has mismatched shared edge vertices near %s" % str(water_cell), 96)
                 return
+            for edge_index in range(north_shared_edge.size()):
+                if north_shared_edge[edge_index].distance_to(south_shared_edge[edge_index]) > 0.001:
+                    _fail("actual rounded river z seam vertices diverge near %s" % str(water_cell), 96)
+                    return
             actual_z_seam_pairs += 1
     if actual_x_seam_pairs == 0 or actual_z_seam_pairs == 0:
         _fail("generated river does not exercise both chunk axes: x_pairs=%d z_pairs=%d" % [actual_x_seam_pairs, actual_z_seam_pairs], 97)
