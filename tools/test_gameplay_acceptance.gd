@@ -481,6 +481,20 @@ func _run_checks() -> void:
         var visible_kind := str(scene.blocks[block_position])
         if visible_kind == "water":
             continue
+        if visible_kind == "leaves":
+            # Canopy leaves are supported horizontally/upward by the connected
+            # tree volume; unlike terrain/solid blocks they need not sit above
+            # a voxel directly beneath them. Reject isolated floating leaf cells.
+            var attached_to_tree := false
+            for offset in [Vector3i.UP, Vector3i.DOWN, Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+                var neighbor_kind := str(scene.blocks.get(visible_cell + offset, ""))
+                if neighbor_kind in ["wood", "leaves"]:
+                    attached_to_tree = true
+                    break
+            if not attached_to_tree:
+                _fail("unsupported foliage remains disconnected from its tree at %s" % str(visible_cell), 77)
+                return
+            continue
         if not scene.blocks.has(visible_cell + Vector3i.DOWN):
             _fail("unsupported solid voxel remains in the opening view at %s (%s)" % [str(visible_cell), visible_kind], 77)
             return
