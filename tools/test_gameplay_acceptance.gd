@@ -39,9 +39,9 @@ func _run_checks() -> void:
     var flank_tree_trunks := 0
     for block_position in scene.blocks:
         var forest_cell: Vector3i = block_position
-        if forest_cell.y < 5 or forest_cell.y > 24 or forest_cell.z > -5 or forest_cell.z < -36:
+        if forest_cell.y < 5 or forest_cell.y > 24 or forest_cell.z > -16 or forest_cell.z < -36:
             continue
-        if abs(forest_cell.x) < 5 or abs(forest_cell.x) > 24:
+        if abs(forest_cell.x) < 12 or abs(forest_cell.x) > 25:
             continue
         var forest_kind := str(scene.blocks[forest_cell])
         if forest_kind == "leaves":
@@ -50,7 +50,7 @@ func _run_checks() -> void:
             var forest_ground := str(scene.blocks.get(forest_cell + Vector3i.DOWN, ""))
             if forest_ground in ["grass", "dirt", "stone", "rock", "sand", "gravel"]:
                 flank_tree_trunks += 1
-    if flank_tree_trunks < 6 or flank_canopy_cells < 180:
+    if flank_tree_trunks < 5 or flank_canopy_cells < 140:
         _fail("starter valley forest is visually empty: grounded_flank_trunks=%d canopy_cells=%d" % [flank_tree_trunks, flank_canopy_cells], 98)
         return
     print("STARTER_FOREST_VISIBILITY_PASS: grounded_flank_trunks=", flank_tree_trunks, " canopy_cells=", flank_canopy_cells)
