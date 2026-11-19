@@ -639,7 +639,7 @@ func _generate_world() -> void:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			var camera_clearance := Vector2(float(x), float(z)).length()
 			var tree_edge_clearance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
-			var opening_camera_corridor: bool = z < -3 and z > -40 and abs(x) < 8
+			var opening_camera_corridor: bool = z < -3 and z > -40 and abs(x) < 4
 			if not is_river and not steep and height >= 4 and height <= 14 and abs(x) > 5 and abs(z) > 5 and camera_clearance <= 30.0 and tree_edge_clearance > 16.0 and not opening_camera_corridor:
 				# Keep tree crowns grounded within the visible playable basin.
 				# Trees on the far perimeter or central horizon were technically
@@ -657,10 +657,19 @@ func _generate_world() -> void:
 			if not is_river and not steep and height >= 3 and abs(x) > 10 and abs(z) > 10 and rng.randf() < 0.0024:
 				blocks[Vector3i(x, height + 1, z)] = "chest"
 
-	# Frame the starter valley with a few guaranteed tree groups. The
-	# central movement corridor stays open, while these flank canopies break up
-	# the broad grass terraces and give the river approach a stronger sense of place.
-	for flank_tree in [Vector2i(-9, -12), Vector2i(9, -14), Vector2i(-13, -27), Vector2i(13, -29)]:
+	# Frame the starter valley with deterministic tree groups on both sides.
+	# Candidates are checked against the generated river and local surface so
+	# trunks stay grounded and never spawn in water or inside the clear corridor.
+	var flank_tree_count := 0
+	var flank_candidates := [
+		Vector2i(-9, -12), Vector2i(9, -14), Vector2i(-13, -27), Vector2i(13, -29),
+		Vector2i(-18, -8), Vector2i(18, -8), Vector2i(-16, -25), Vector2i(16, -25),
+		Vector2i(-22, -8), Vector2i(22, -8), Vector2i(-10, -31), Vector2i(10, -31),
+		Vector2i(-20, -26), Vector2i(20, -26)
+	]
+	for flank_tree in flank_candidates:
+		if flank_tree_count >= 10:
+			break
 		if not heights.has(flank_tree):
 			continue
 		var flank_info: Dictionary = heights[flank_tree]
@@ -670,6 +679,8 @@ func _generate_world() -> void:
 		if blocks.has(Vector3i(flank_tree.x, flank_height + 1, flank_tree.y)):
 			continue
 		_make_tree(flank_tree.x, flank_height + 1, flank_tree.y, rng)
+		flank_tree_count += 1
+	print("STARTER_FOREST_FLANKS trees_placed=", flank_tree_count)
 
 	# Guarantee one discoverable chest in the generated overworld. The
 	# procedural rarity roll remains for additional loot, but a fixed seed must
@@ -811,9 +822,9 @@ func _ensure_spawn_pad() -> void:
 			blocks[Vector3i(x, surface_y, z)] = "grass"
 
 func _clear_spawn_camera_corridor() -> void:
-	# Preserve the nearby forest and clear only the reserved player landing
-	# pocket plus a narrow sightline to the bridge. The old 28-block radius
-	# and wide forward wedge removed almost every tree from the playable view.
+	# Clear only the protected landing pocket and a narrow player-width sightline.
+	# The previous 57-column forward wedge erased the entire starter forest and
+	# left the gameplay camera looking across an empty green basin.
 	var near_foliage_removed := 0
 	for x in range(-8, 9):
 		for z in range(-8, 9):
@@ -825,12 +836,11 @@ func _clear_spawn_camera_corridor() -> void:
 				if kind in ["wood", "leaves"]:
 					blocks.erase(pos)
 					near_foliage_removed += 1
-	# Keep a broad, readable opening toward the river. Remove only tree wood
-	# and leaves above the terrain; the low footbridge deck at y=3..4 remains.
-	# Clearing the complete canopy envelope also prevents trunk tips or
-	# overhanging leaves from appearing as isolated blocks on the horizon.
+	# Preserve both forest flanks while keeping a four-column clear corridor
+	# toward the footbridge. This restores visible tree framing without placing
+	# foliage directly in front of the player or obscuring the crossing.
 	var forward_removed := 0
-	for x in range(-28, 29):
+	for x in range(-4, 5):
 		for z in range(-42, -3):
 			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
