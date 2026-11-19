@@ -646,7 +646,7 @@ func _generate_world() -> void:
 				# supported, but their trunks fell below the camera horizon and
 				# made detached leaf clusters appear to float in the sky.
 				var forest_signal := sin(float(x) * 0.17) * cos(float(z) * 0.19)
-				var tree_chance := 0.075 if forest_signal > 0.35 else 0.032
+				var tree_chance := 0.045 if forest_signal > 0.35 else 0.018
 				if camera_clearance < 22.0:
 					tree_chance *= 0.55
 				elif camera_clearance < 30.0:
@@ -746,7 +746,7 @@ func _make_tree(x: int, y: int, z: int, rng: RandomNumberGenerator = null) -> vo
 	# A tapered, broken canopy keeps sight lines open while retaining a full
 	# voxel-tree silhouette. Sparse outer leaves avoid solid green walls.
 	var canopy_y := y + trunk - 1
-	var radius := 2
+	var radius := 1
 	for dy in range(-1, 4):
 		var layer_radius := maxi(1, radius - (1 if dy == 3 else 0))
 		for dx in range(-radius, radius + 1):
