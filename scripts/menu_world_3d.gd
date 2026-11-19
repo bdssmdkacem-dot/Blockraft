@@ -768,15 +768,27 @@ func _build_gatehouse_castle() -> void:
 	for i in range(6):
 		_box(root, Vector3(-1.0 + float(i) * 0.4, 4.3, 4.35), Vector3(0.1, 2.2, 0.08), Color("#2a2a2a"))
 	for side_x in [-6.5, 6.5]:
-		for side_z in [3.0]:
-			_box(root, Vector3(side_x, 6.5, side_z), Vector3(2.8, 7.0, 2.8), stone)
-			_box(root, Vector3(side_x, 10.2, side_z), Vector3(3.2, 0.4, 3.2), roof)
-			_box(root, Vector3(side_x, 10.7, side_z), Vector3(2.0, 0.8, 2.0), roof.darkened(0.1))
-			_pyramid(root, Vector3(side_x, 12.0, side_z), 1.75, 2.8, Color("#75443a"))
-			_box(root, Vector3(side_x, 13.55, side_z), Vector3(0.18, 0.85, 0.18), Color("#f2cf83"), 0.28)
-			_box(root, Vector3(side_x, 11.3, side_z), Vector3(0.3, 0.7, 0.3), Color("#f6d78c"), 0.25)
-			_box(root, Vector3(side_x + (0.1 if side_x > 0 else -0.1), 5.5, side_z + (1.45 if side_z > 0 else -1.45)), Vector3(0.5, 0.7, 0.12), glow, 0.3)
-			_box(root, Vector3(side_x + (0.1 if side_x > 0 else -0.1), 7.5, side_z + (1.45 if side_z > 0 else -1.45)), Vector3(0.5, 0.7, 0.12), glow, 0.3)
+		var tower_z := 3.0
+		_box(root, Vector3(side_x, 6.5, tower_z), Vector3(2.8, 7.0, 2.8), stone)
+		_box(root, Vector3(side_x, 10.2, tower_z), Vector3(3.2, 0.4, 3.2), roof)
+		_box(root, Vector3(side_x, 10.7, tower_z), Vector3(2.0, 0.8, 2.0), roof.darkened(0.1))
+		if side_x < 0.0:
+			# West tower becomes a low crenellated watch platform rather than
+			# repeating the same tall cone silhouette as the central spire.
+			_box(root, Vector3(side_x, 11.25, tower_z), Vector3(2.45, 0.24, 2.45), light)
+			for merlon_x in [-0.82, 0.0, 0.82]:
+				_box(root, Vector3(side_x + merlon_x, 11.72, tower_z), Vector3(0.34, 0.72, 0.34), light)
+			for merlon_z in [-0.82, 0.82]:
+				_box(root, Vector3(side_x, 11.72, tower_z + merlon_z), Vector3(0.34, 0.72, 0.34), light)
+		else:
+			# East tower uses a stepped pavilion cap with a small lantern crown.
+			for roof_tier in range(3):
+				var half := 1.32 - float(roof_tier) * 0.30
+				_box(root, Vector3(side_x, 11.20 + float(roof_tier) * 0.52, tower_z), Vector3(half * 2.0, 0.34, half * 2.0), roof.lightened(float(roof_tier) * 0.08))
+			_box(root, Vector3(side_x, 12.95, tower_z), Vector3(0.58, 0.72, 0.58), light)
+			_box(root, Vector3(side_x, 13.48, tower_z), Vector3(0.14, 0.44, 0.14), Color("#f2cf83"))
+		_box(root, Vector3(side_x + (0.1 if side_x > 0 else -0.1), 5.5, tower_z + 1.45), Vector3(0.5, 0.7, 0.12), glow, 0.3)
+		_box(root, Vector3(side_x + (0.1 if side_x > 0 else -0.1), 7.5, tower_z + 1.45), Vector3(0.5, 0.7, 0.12), glow, 0.3)
 	_box(root, Vector3(0, 7.0, -2.5), Vector3(6.5, 8.0, 5.5), stone)
 	_box(root, Vector3(0, 11.5, -2.5), Vector3(7.2, 0.45, 6.2), roof)
 	_box(root, Vector3(0, 13.0, -2.5), Vector3(3.0, 3.5, 3.0), light)
