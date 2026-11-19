@@ -861,6 +861,11 @@ func _build_landmark_details() -> void:
 		for window_z in [-4.4, -1.8, 0.8, 3.4]:
 			_box(wing_root, Vector3(wing_x - side * 3.56, 4.4, window_z), Vector3(0.12, 1.25, 0.72), Color("#253b49"))
 			_box(wing_root, Vector3(wing_x - side * 3.64, 4.4, window_z), Vector3(0.08, 0.18, 0.86), Color("#e9b96b"), 0.32)
+		# Four shallow stone buttresses articulate the long wing walls and
+		# restore the detailed facade rhythm without adding another roof tower.
+		for buttress_z in [-5.2, 2.8]:
+			_box(wing_root, Vector3(wing_x - side * 3.48, 3.35, buttress_z), Vector3(0.42, 6.9, 0.72), Color("#89958d"))
+			_box(wing_root, Vector3(wing_x - side * 3.58, 6.72, buttress_z), Vector3(0.58, 0.22, 0.86), Color("#b9c2b5"))
 		for tower_z in [3.0]:
 			_box(wing_root, Vector3(wing_x, 8.3, tower_z), Vector3(2.3, 3.2, 2.3), Color("#66756f"))
 			_box(wing_root, Vector3(wing_x, 10.0, tower_z), Vector3(2.8, 0.28, 2.8), Color("#b2b8ad"))
