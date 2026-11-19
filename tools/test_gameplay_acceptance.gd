@@ -213,8 +213,8 @@ func _run_checks() -> void:
     scene.call("_append_exposed_render_faces", exposed_water_groups, stepped_water_probe, "water")
     var exposed_water_group: Dictionary = exposed_water_groups.get("water", {})
     var exposed_water_vertices: PackedVector3Array = exposed_water_group.get("vertices", PackedVector3Array())
-    if exposed_water_vertices.size() != 4:
-        _fail("lower water surface was culled beside a taller water column: vertices=%d" % exposed_water_vertices.size(), 85)
+    if exposed_water_vertices.size() != 8:
+        _fail("lower water surface did not retain its rounded perimeter beside a taller water column: vertices=%d" % exposed_water_vertices.size(), 85)
         return
     if old_stepped_water_probe == null: scene.blocks.erase(stepped_water_probe)
     else: scene.blocks[stepped_water_probe] = old_stepped_water_probe
@@ -326,7 +326,7 @@ func _run_checks() -> void:
 
     # Exercise both vertical and horizontal chunk boundaries at negative and
     # positive coordinates. Each neighbouring chunk must own its water cell
-    # while the resulting quads meet exactly on the shared world-space edge.
+    # while rounded polygons share identical world-space seam edges.
     var seam_x_values := [-32, -16, 0, 16, 32]
     for seam_x in seam_x_values:
         var left_cell := Vector3i(seam_x - 1, 2, 1000 + seam_x)
@@ -374,7 +374,7 @@ func _run_checks() -> void:
             return
         scene.blocks.erase(north_cell)
         scene.blocks.erase(south_cell)
-    print("WATER_CHUNK_SEAMS_PASS: water quads meet at five x seams and five z seams")
+    print("WATER_CHUNK_SEAMS_PASS: rounded water polygons meet at five x seams and five z seams")
 
     # Validate chunk seams against the actual generated river footprint, not
     # synthetic cells. Every real pair crossing a 16-cell chunk boundary must
