@@ -129,6 +129,29 @@ func _run_checks() -> void:
 		_fail("menu panorama still contains distracting floating-island debris", 28)
 		return
 
+	var forests := world.find_child("Forests", true, false) as Node3D
+	var right_grove := forests.get_node_or_null("RightGrove") as Node3D if forests else null
+	if right_grove == null or right_grove.get_child_count() != 12:
+		_fail("menu panorama lacks the balanced 12-tree right meadow grove", 62)
+		return
+	var grove_min_x := INF
+	var grove_max_x := -INF
+	for grove_tree in right_grove.get_children():
+		if not grove_tree is Node3D or (grove_tree as Node3D).get_node_or_null("Trunk") == null:
+			_fail("right meadow tree is missing its grounded trunk", 63)
+			return
+		var tree_node := grove_tree as Node3D
+		grove_min_x = minf(grove_min_x, tree_node.position.x)
+		grove_max_x = maxf(grove_max_x, tree_node.position.x)
+		for canopy_name in ["Canopy_Core", "Canopy_Left", "Canopy_Right", "Canopy_Crown"]:
+			var canopy := tree_node.get_node_or_null(canopy_name) as MeshInstance3D
+			if canopy == null or not (canopy.mesh is SphereMesh):
+				_fail("right meadow tree lacks its layered low-poly canopy: %s" % canopy_name, 64)
+				return
+	if grove_min_x < 7.0 or grove_max_x < 30.0:
+		_fail("right meadow grove does not occupy the open right panorama flank", 65)
+		return
+
 	var hero := world.find_child("Protagonist", true, false) as Node3D
 	if hero == null:
 		_fail("menu protagonist is missing", 31)
