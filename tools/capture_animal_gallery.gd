@@ -15,12 +15,12 @@ func _capture() -> void:
 	env.background_color = Color("#9db9d1")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color("#ffffff")
-	env.ambient_light_energy = 0.65
+	env.ambient_light_energy = 0.46
 	env_node.environment = env
 	world.add_child(env_node)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-42, -28, 0)
-	sun.light_energy = 1.1
+	sun.light_energy = 0.92
 	sun.shadow_enabled = true
 	world.add_child(sun)
 	var floor_body := StaticBody3D.new()
@@ -55,10 +55,10 @@ func _capture() -> void:
 		label.modulate = Color("#17232d")
 		animal.add_child(label)
 	var camera := Camera3D.new()
-	camera.position = Vector3(2.6, 3.3, 10.0)
+	camera.position = Vector3(2.2, 3.0, 8.6)
 	camera.fov = 39.0
 	world.add_child(camera)
-	camera.look_at(Vector3(0, 0.9, 0), Vector3.UP)
+	camera.look_at(Vector3(0, 0.88, 0), Vector3.UP)
 	camera.make_current()
 	for _i in range(4):
 		await process_frame

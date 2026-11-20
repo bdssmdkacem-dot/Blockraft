@@ -611,26 +611,140 @@ func _build_village() -> void:
 	village.position = Vector3(-1.5, 0.0, 0.5)
 	village.scale = Vector3.ONE * 1.28
 	add_child(village)
-	for i in range(9):
-		var hx := 7.0 + i * 3.0
-		var hz := -1.0 - (i % 3) * 4.0
-		_box(village, Vector3(hx, 0.92, hz), Vector3(2.5, 1.84, 2.25), MAT_WALL)
-		_box(village, Vector3(hx, 2.05, hz), Vector3(2.9, 0.82, 2.65), Color("#8f4d3b") if i % 3 == 0 else (Color("#ad6547") if i % 3 == 1 else Color("#795044")))
-		# Two sloped roof planes and a ridge cap replace the flat slab silhouette.
-		var roof_left := _box(village, Vector3(hx - 0.68, 2.43, hz), Vector3(1.72, 0.17, 2.82), Color("#914a38") if i % 3 == 0 else (Color("#a75c42") if i % 3 == 1 else Color("#794b40")))
-		roof_left.rotation.z = deg_to_rad(-27.0)
-		var roof_right := _box(village, Vector3(hx + 0.68, 2.43, hz), Vector3(1.72, 0.17, 2.82), Color("#b66a49") if i % 3 == 0 else (Color("#c17a52") if i % 3 == 1 else Color("#98604b")))
-		roof_right.rotation.z = deg_to_rad(27.0)
-		_box(village, Vector3(hx, 2.78, hz), Vector3(0.20, 0.14, 2.88), Color("#d18a5b"))
-		_box(village, Vector3(hx, 1.85, hz + 1.12), Vector3(0.72, 0.88, 0.08), Color("#594333"))
-		_box(village, Vector3(hx - 0.48, 1.45, hz + 1.12), Vector3(0.42, 0.42, 0.07), Color("#8bc5d0"), 0.3)
-		_box(village, Vector3(hx + 0.48, 1.45, hz + 1.12), Vector3(0.42, 0.42, 0.07), Color("#8bc5d0"), 0.3)
-		_box(village, Vector3(hx, 1.1, hz + 1.05), Vector3(0.5, 0.7, 0.1), MAT_WOOD)
-		_box(village, Vector3(hx - 0.58, 1.05, hz + 0.15), Vector3(0.12, 0.62, 0.12), MAT_WOOD)
-		_box(village, Vector3(hx + 0.58, 1.05, hz + 0.15), Vector3(0.12, 0.62, 0.12), MAT_WOOD)
-		# Chimney cap and warm side lantern make each house readable at panorama scale.
-		_box(village, Vector3(hx - 0.72, 2.55, hz - 0.55), Vector3(0.42, 0.95, 0.42), Color("#765344"))
-		_box(village, Vector3(hx + 1.14, 1.35, hz + 0.98), Vector3(0.24, 0.34, 0.12), Color("#ffd28a"), 0.25)
+
+	# Three small neighbourhoods replace the former nine-copy cottage row.
+	# Each group has a distinct footprint, roof language and facade material.
+	var group_specs := [
+		{
+			"name": "CottageQuarter",
+			"style": 0,
+			"positions": [Vector3(7.0, 0.0, -1.5), Vector3(10.5, 0.0, -6.0), Vector3(7.5, 0.0, -10.5)],
+			"rotations": [0.0, -0.12, 0.10]
+		},
+		{
+			"name": "LonghouseQuarter",
+			"style": 1,
+			"positions": [Vector3(15.5, 0.0, -2.0), Vector3(19.5, 0.0, -7.0), Vector3(15.5, 0.0, -11.5)],
+			"rotations": [0.08, -0.08, 0.16]
+		},
+		{
+			"name": "StoneTowerQuarter",
+			"style": 2,
+			"positions": [Vector3(24.0, 0.0, -1.5), Vector3(28.0, 0.0, -6.5), Vector3(24.5, 0.0, -11.5)],
+			"rotations": [-0.08, 0.12, -0.14]
+		}
+	]
+	for group_spec_variant in group_specs:
+		var group_spec: Dictionary = group_spec_variant
+		var group := Node3D.new()
+		group.name = str(group_spec["name"])
+		group.set_meta("architecture_style", int(group_spec["style"]))
+		village.add_child(group)
+		var positions: Array = group_spec["positions"]
+		var rotations: Array = group_spec["rotations"]
+		for house_index in range(positions.size()):
+			var house_position: Vector3 = positions[house_index]
+			var house_rotation := float(rotations[house_index])
+			_build_village_house(group, "%s_%02d" % [group.name, house_index + 1],
+				int(group_spec["style"]), house_position, house_rotation)
+
+func _build_village_house(parent: Node3D, house_name: String, style: int, position: Vector3, rotation_y: float) -> void:
+	var house := Node3D.new()
+	house.name = house_name
+	house.position = position
+	house.rotation.y = rotation_y
+	house.set_meta("architecture_style", style)
+	parent.add_child(house)
+
+	var wood := Color("#563d2b")
+	var trim := Color("#e2c99c")
+	var stone := Color("#858b80")
+	var roof_a := Color("#96523d")
+	var roof_b := Color("#bd7650")
+	var wall := MAT_WALL
+	var footprint_size := Vector3(2.9, 0.22, 2.55)
+	var footprint := _box(house, Vector3(0.0, 0.11, 0.0), footprint_size, stone)
+	footprint.name = "Footprint"
+
+	match style:
+		0:
+			# Compact plaster cottage: a steep gable, exposed timber frame and
+			# offset chimney create the small rural-house silhouette.
+			_box(house, Vector3(0.0, 1.05, 0.0), Vector3(2.55, 1.82, 2.25), wall)
+			for side_x in [-0.94, 0.94]:
+				_box(house, Vector3(side_x, 1.05, 1.14), Vector3(0.12, 1.78, 0.12), wood)
+			_box(house, Vector3(0.0, 1.88, 1.16), Vector3(2.48, 0.12, 0.12), wood)
+			var roof := Node3D.new()
+			roof.name = "Roof_Gable"
+			house.add_child(roof)
+			var left_roof := _box(roof, Vector3(-0.68, 2.20, 0.0), Vector3(1.82, 0.18, 2.78), roof_a)
+			left_roof.rotation.z = deg_to_rad(-27.0)
+			var right_roof := _box(roof, Vector3(0.68, 2.20, 0.0), Vector3(1.82, 0.18, 2.78), roof_b)
+			right_roof.rotation.z = deg_to_rad(27.0)
+			_box(roof, Vector3(0.0, 2.57, 0.0), Vector3(0.18, 0.16, 2.86), Color("#d08a5c"))
+			_box(house, Vector3(-0.88, 2.45, -0.66), Vector3(0.40, 0.92, 0.40), Color("#755344"))
+			_box(house, Vector3(0.0, 0.72, 1.18), Vector3(0.58, 1.42, 0.10), wood)
+			for side_x in [-0.76, 0.76]:
+				_box(house, Vector3(side_x, 1.42, 1.19), Vector3(0.44, 0.48, 0.07), Color("#8bc5d0"), 0.3)
+				_box(house, Vector3(side_x, 1.42, 1.24), Vector3(0.06, 0.52, 0.06), trim)
+		1:
+			# Broad timber longhouse: a stone lower storey, framed upper level,
+			# four-sided roof and covered porch distinguish the market street.
+			footprint_size = Vector3(3.72, 0.24, 2.82)
+			footprint.mesh.size = footprint_size
+			footprint.position.y = 0.12
+			_box(house, Vector3(0.0, 0.88, 0.0), Vector3(3.42, 1.52, 2.48), Color("#a99a7a"))
+			_box(house, Vector3(0.0, 1.88, 0.0), Vector3(3.18, 0.70, 2.30), Color("#d0b88b"))
+			for side_x in [-1.42, -0.48, 0.48, 1.42]:
+				_box(house, Vector3(side_x, 1.88, 1.17), Vector3(0.12, 0.78, 0.12), wood)
+			_box(house, Vector3(0.0, 1.52, 1.22), Vector3(3.18, 0.12, 0.12), wood)
+			var roof := Node3D.new()
+			roof.name = "Roof_Hipped"
+			house.add_child(roof)
+			var left_roof := _box(roof, Vector3(-0.78, 2.48, 0.0), Vector3(2.12, 0.18, 2.92), roof_a)
+			left_roof.rotation.z = deg_to_rad(-23.0)
+			var right_roof := _box(roof, Vector3(0.78, 2.48, 0.0), Vector3(2.12, 0.18, 2.92), roof_b)
+			right_roof.rotation.z = deg_to_rad(23.0)
+			var front_hip := _box(roof, Vector3(0.0, 2.48, 0.94), Vector3(3.54, 0.16, 1.28), Color("#a55e43"))
+			front_hip.rotation.x = deg_to_rad(22.0)
+			var rear_hip := _box(roof, Vector3(0.0, 2.48, -0.94), Vector3(3.54, 0.16, 1.28), Color("#89503d"))
+			rear_hip.rotation.x = deg_to_rad(-22.0)
+			_box(roof, Vector3(0.0, 2.83, 0.0), Vector3(0.20, 0.14, 2.70), Color("#d29a68"))
+			_box(house, Vector3(0.0, 0.70, 1.30), Vector3(0.66, 1.38, 0.10), wood)
+			for side_x in [-1.02, 1.02]:
+				_box(house, Vector3(side_x, 1.88, 1.20), Vector3(0.48, 0.48, 0.07), Color("#82b9c4"), 0.3)
+				_box(house, Vector3(side_x, 1.88, 1.25), Vector3(0.06, 0.54, 0.06), trim)
+			for side_x in [-1.24, 1.24]:
+				_box(house, Vector3(side_x, 0.98, 1.55), Vector3(0.14, 1.82, 0.14), wood)
+			_box(house, Vector3(0.0, 1.90, 1.57), Vector3(2.72, 0.14, 0.86), roof_a)
+			_box(house, Vector3(-1.36, 2.44, -0.62), Vector3(0.40, 0.90, 0.40), Color("#765342"))
+		2:
+			# Narrow stone tower-house: tall masonry, arrow windows and a
+			# crenellated parapet replace the cottage roof profile entirely.
+			footprint_size = Vector3(2.52, 0.24, 2.42)
+			footprint.mesh.size = footprint_size
+			footprint.position.y = 0.12
+			_box(house, Vector3(0.0, 1.43, 0.0), Vector3(2.16, 2.66, 2.08), Color("#a9afa5"))
+			for side_x in [-1.02, 1.02]:
+				for side_z in [-0.92, 0.92]:
+					_box(house, Vector3(side_x, 1.42, side_z), Vector3(0.18, 2.72, 0.18), Color("#777f78"))
+			_box(house, Vector3(0.0, 2.82, 0.0), Vector3(2.52, 0.22, 2.42), trim)
+			var roof := Node3D.new()
+			roof.name = "Roof_Parapet"
+			house.add_child(roof)
+			for crenel_x in [-0.88, 0.0, 0.88]:
+				_box(roof, Vector3(crenel_x, 3.22, 1.02), Vector3(0.34, 0.58, 0.34), stone)
+				_box(roof, Vector3(crenel_x, 3.22, -1.02), Vector3(0.34, 0.58, 0.34), stone)
+			for crenel_z in [-0.52, 0.52]:
+				_box(roof, Vector3(-1.08, 3.22, crenel_z), Vector3(0.34, 0.58, 0.34), stone)
+				_box(roof, Vector3(1.08, 3.22, crenel_z), Vector3(0.34, 0.58, 0.34), stone)
+			_box(roof, Vector3(0.0, 3.40, 0.0), Vector3(1.08, 0.56, 1.08), Color("#68756f"))
+			_pyramid(roof, Vector3(0.0, 3.82, 0.0), 0.72, 0.92, roof_a)
+			_box(house, Vector3(0.0, 0.72, 1.08), Vector3(0.56, 1.42, 0.10), wood)
+			for side_x in [-0.62, 0.62]:
+				_box(house, Vector3(side_x, 2.05, 1.08), Vector3(0.30, 0.88, 0.08), Color("#253b49"))
+				_box(house, Vector3(side_x, 2.08, 1.14), Vector3(0.12, 0.68, 0.04), Color("#f0c47b"), 0.3)
+			_box(house, Vector3(1.22, 1.72, 0.0), Vector3(0.28, 0.50, 0.28), Color("#ffd28a"), 0.25)
 
 func _build_village_details() -> void:
 	var details := Node3D.new()
@@ -654,43 +768,61 @@ func _build_village_architecture_pass() -> void:
 	var village := get_node_or_null("Village") as Node3D
 	if village == null:
 		return
-	var stone := Color("#8c8875")
-	var trim := Color("#e0c99d")
-	var dark_wood := Color("#543a2a")
-	for i in range(9):
-		var hx := 7.0 + float(i) * 3.0
-		var hz := -1.0 - float(i % 3) * 4.0
-		# Raised stone plinth, timber framing and window surrounds give each
-		# cottage a readable base-to-roof architectural rhythm.
-		_box(village, Vector3(hx, 0.12, hz), Vector3(2.42, 0.24, 2.22), stone)
-		for side_x in [-0.92, 0.92]:
-			_box(village, Vector3(hx + side_x, 1.02, hz + 1.04), Vector3(0.10, 1.72, 0.12), dark_wood)
-			_box(village, Vector3(hx + side_x, 1.42, hz + 1.13), Vector3(0.52, 0.08, 0.08), trim)
-		_box(village, Vector3(hx, 0.36, hz + 1.16), Vector3(0.92, 0.12, 0.08), trim)
-		_box(village, Vector3(hx - 0.48, 1.45, hz + 1.19), Vector3(0.055, 0.48, 0.06), dark_wood)
-		_box(village, Vector3(hx - 0.48, 1.45, hz + 1.20), Vector3(0.38, 0.055, 0.06), dark_wood)
-		# Roof eaves and alternating dormers break the repeated roof silhouette.
-		_box(village, Vector3(hx, 2.08, hz - 1.20), Vector3(2.72, 0.12, 0.12), Color("#6e4536"))
-		if i % 3 == 0:
-			_box(village, Vector3(hx, 2.58, hz - 0.35), Vector3(0.62, 0.46, 0.46), Color("#d4bd91"))
-			_box(village, Vector3(hx, 2.84, hz - 0.35), Vector3(0.82, 0.12, 0.62), Color("#8e4c39"))
-		if i % 3 == 1:
-			# Small timber balcony and flower box distinguish the middle cottages.
-			_box(village, Vector3(hx, 1.98, hz + 1.28), Vector3(1.25, 0.12, 0.36), dark_wood)
-			for rail_x in [-0.55, -0.18, 0.18, 0.55]:
-				_box(village, Vector3(hx + rail_x, 2.20, hz + 1.38), Vector3(0.055, 0.42, 0.055), trim)
-			_box(village, Vector3(hx, 2.39, hz + 1.38), Vector3(1.28, 0.06, 0.06), trim)
-		# Warm inset lanterns are mounted below the eaves, not floating beside walls.
-		var lantern := MeshInstance3D.new()
-		var lantern_mesh := SphereMesh.new()
-		lantern_mesh.radius = 0.13
-		lantern_mesh.height = 0.26
-		lantern_mesh.radial_segments = 8
-		lantern_mesh.rings = 5
-		lantern.mesh = lantern_mesh
-		lantern.position = Vector3(hx + 0.82, 1.55, hz + 1.20)
-		lantern.material_override = _emissive(Color("#ffd28a"), 0.35)
-		village.add_child(lantern)
+	var cottage_group := village.get_node_or_null("CottageQuarter") as Node3D
+	var longhouse_group := village.get_node_or_null("LonghouseQuarter") as Node3D
+	var tower_group := village.get_node_or_null("StoneTowerQuarter") as Node3D
+	if cottage_group == null or longhouse_group == null or tower_group == null:
+		return
+
+	# Give each neighbourhood one or two authored landmarks rather than
+	# repeating the same dormer/balcony on every roof.
+	var first_cottage := cottage_group.get_child(0) as Node3D
+	if first_cottage:
+		var dormer := Node3D.new()
+		dormer.name = "CottageDormer"
+		first_cottage.add_child(dormer)
+		_box(dormer, Vector3(0.0, 2.40, -0.38), Vector3(0.68, 0.54, 0.52), Color("#d6c19a"))
+		_box(dormer, Vector3(0.0, 2.70, -0.38), Vector3(0.88, 0.12, 0.70), Color("#8d4c39"))
+	var second_cottage := cottage_group.get_child(1) as Node3D
+	if second_cottage:
+		_box(second_cottage, Vector3(0.0, 0.48, 1.34), Vector3(1.10, 0.28, 0.16), Color("#6d4a31"))
+		for flower_x in [-0.36, 0.0, 0.36]:
+			_box(second_cottage, Vector3(flower_x, 0.70, 1.34), Vector3(0.14, 0.18, 0.14), Color("#d97962") if flower_x < 0.0 else Color("#e5bd65"))
+	var third_cottage := cottage_group.get_child(2) as Node3D
+	if third_cottage:
+		for fence_x in [-1.85, -1.25, -0.65]:
+			_box(third_cottage, Vector3(fence_x, 0.42, 1.75), Vector3(0.08, 0.74, 0.08), Color("#785137"))
+		_box(third_cottage, Vector3(-1.25, 0.66, 1.75), Vector3(1.28, 0.08, 0.08), Color("#b48a5a"))
+
+	var first_longhouse := longhouse_group.get_child(0) as Node3D
+	if first_longhouse:
+		# A market awning and two timber braces make the first longhouse the
+		# village's public-facing workshop rather than another cottage copy.
+		_box(first_longhouse, Vector3(-1.05, 1.38, 1.70), Vector3(0.10, 0.72, 0.10), Color("#563d2b"))
+		_box(first_longhouse, Vector3(1.05, 1.38, 1.70), Vector3(0.10, 0.72, 0.10), Color("#563d2b"))
+		_box(first_longhouse, Vector3(0.0, 1.78, 1.70), Vector3(2.35, 0.12, 0.76), Color("#d2a16b"))
+	var second_longhouse := longhouse_group.get_child(1) as Node3D
+	if second_longhouse:
+		_box(second_longhouse, Vector3(-1.90, 0.34, 1.35), Vector3(0.56, 0.50, 0.48), Color("#9a7048"))
+		_box(second_longhouse, Vector3(-1.90, 0.62, 1.35), Vector3(0.62, 0.08, 0.54), Color("#c49a63"))
+	var third_longhouse := longhouse_group.get_child(2) as Node3D
+	if third_longhouse:
+		for rail_x in [-1.20, -0.40, 0.40, 1.20]:
+			_box(third_longhouse, Vector3(rail_x, 0.76, 1.74), Vector3(0.06, 0.66, 0.06), Color("#65442e"))
+		_box(third_longhouse, Vector3(0.0, 1.08, 1.74), Vector3(2.56, 0.08, 0.08), Color("#b88a58"))
+
+	var first_tower := tower_group.get_child(0) as Node3D
+	if first_tower:
+		_box(first_tower, Vector3(-1.34, 2.30, 0.0), Vector3(0.10, 1.10, 0.10), Color("#6a4a34"))
+		_box(first_tower, Vector3(-1.62, 2.18, 0.0), Vector3(0.62, 0.78, 0.08), Color("#a64236"))
+	var second_tower := tower_group.get_child(1) as Node3D
+	if second_tower:
+		_box(second_tower, Vector3(0.0, 3.62, -0.55), Vector3(0.12, 0.72, 0.12), Color("#d8bd7e"))
+	var third_tower := tower_group.get_child(2) as Node3D
+	if third_tower:
+		# A stone well marks the small courtyard between the tower houses.
+		_box(third_tower, Vector3(1.65, 0.28, 1.50), Vector3(0.92, 0.56, 0.92), Color("#7e8980"))
+		_box(third_tower, Vector3(1.65, 0.62, 1.50), Vector3(1.10, 0.12, 1.10), Color("#c1b89f"))
 
 func _build_forests() -> void:
 	var forest := Node3D.new()

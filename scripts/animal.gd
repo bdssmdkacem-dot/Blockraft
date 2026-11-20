@@ -185,24 +185,16 @@ func _update_hp_bar() -> void:
 			mat.albedo_color = Color(0.95, 0.2, 0.15)
 
 func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.85) -> void:
-	# Keep small anatomy (eyes, beaks, hooves, combs and markings) crisp and
-	# readable. Larger forms use ellipsoids so the body silhouette is rounded
-	# without turning every facial feature and joint into a soft sphere.
+	# Voxel anatomy stays genuinely block-shaped: legs, wings, ears, horns,
+	# beaks and facial markings must not silently become spheres based on volume.
+	# Rounded body cores are authored explicitly through _ellipsoid().
 	var mi := MeshInstance3D.new()
-	if size.x * size.y * size.z >= 0.035:
-		var mesh := SphereMesh.new()
-		mesh.radius = 0.5
-		mesh.height = 1.0
-		mesh.radial_segments = 16
-		mesh.rings = 10
-		mi.mesh = mesh
-		mi.set_meta("animal_rounded_part", true)
-	else:
-		var mesh := BoxMesh.new()
-		mesh.size = Vector3.ONE
-		mi.mesh = mesh
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3.ONE
+	mi.mesh = mesh
 	mi.scale = size
 	mi.position = pos
+	mi.set_meta("animal_part_shape", "box")
 	mi.set_meta("animal_part_size", size)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
@@ -222,6 +214,7 @@ func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, rough
 	mi.position = pos
 	mi.scale = size
 	mi.set_meta("animal_rounded_part", true)
+	mi.set_meta("animal_part_shape", "ellipsoid")
 	mi.set_meta("animal_part_size", size)
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color

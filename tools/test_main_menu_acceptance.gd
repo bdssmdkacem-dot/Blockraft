@@ -93,8 +93,38 @@ func _run_checks() -> void:
 		_fail("menu meadow still reads as a flat slab: relief=%.3f" % (terrain_max_y - terrain_min_y), 60)
 		return
 	var village := world.find_child("Village", true, false) as Node3D
-	if village == null or village.get_child_count() < 120:
-		_fail("village has no layered gabled house silhouettes", 37)
+	if village == null:
+		_fail("village root is missing", 37)
+		return
+	var village_group_names := ["CottageQuarter", "LonghouseQuarter", "StoneTowerQuarter"]
+	var village_roof_names := ["Roof_Gable", "Roof_Hipped", "Roof_Parapet"]
+	var village_footprints: Array[Vector3] = []
+	var village_house_count := 0
+	for group_index in range(village_group_names.size()):
+		var house_group := village.get_node_or_null(village_group_names[group_index]) as Node3D
+		if house_group == null or house_group.get_child_count() != 3:
+			_fail("village neighbourhood is missing its three distinct houses: %s" % village_group_names[group_index], 37)
+			return
+		var first_house := house_group.get_child(0) as Node3D
+		var footprint := first_house.get_node_or_null("Footprint") as MeshInstance3D if first_house else null
+		if footprint == null or not (footprint.mesh is BoxMesh):
+			_fail("village house is missing its measurable footprint", 66)
+			return
+		village_footprints.append((footprint.mesh as BoxMesh).size)
+		for house_variant in house_group.get_children():
+			var house := house_variant as Node3D
+			if house == null or int(house.get_meta("architecture_style", -1)) != group_index:
+				_fail("village house was placed in the wrong architectural neighbourhood", 67)
+				return
+			if house.get_node_or_null(village_roof_names[group_index]) == null:
+				_fail("village neighbourhood is missing its unique roof language: %s" % village_roof_names[group_index], 68)
+				return
+			village_house_count += 1
+	if village_house_count != 9:
+		_fail("village should contain nine houses across three architectural groups", 69)
+		return
+	if village_footprints[0].distance_to(village_footprints[1]) < 0.5 or village_footprints[1].distance_to(village_footprints[2]) < 0.5 or village_footprints[0].distance_to(village_footprints[2]) < 0.5:
+		_fail("village architectural groups still share repeated house footprints", 70)
 		return
 	var river_root := world.find_child("River", true, false) as Node3D
 	if river_root == null:
