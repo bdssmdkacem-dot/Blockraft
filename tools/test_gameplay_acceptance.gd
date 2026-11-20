@@ -791,9 +791,23 @@ func _run_checks() -> void:
         if scene.blocks.has(Vector3i(-1, 4, rail_z)) or scene.blocks.has(Vector3i(1, 4, rail_z)):
             _fail("forward river footbridge still has obstructive raised rail posts", 53)
             return
+    # The bridge lane at x=-1,z=-15 belongs to diagonal chunk (-1,-1).
+    # Startup acceptance previously waited for only five cross-shaped chunks,
+    # then raycast before this diagonal chunk had streamed into the world.
+    var bridge_chunk_key := Vector2i(-1, -1)
+    var bridge_chunk_waited := 0
+    while bridge_chunk_waited < 120 and not scene.loaded_chunks.has(bridge_chunk_key):
+        await process_frame
+        bridge_chunk_waited += 1
+    if not scene.loaded_chunks.has(bridge_chunk_key):
+        _fail("bridge collision chunk did not stream within 120 frames", 55)
+        return
+    print("BRIDGE_COLLISION_CHUNK_READY key=", bridge_chunk_key, " waited_frames=", bridge_chunk_waited)
+    # Let the physics server register the newly streamed concave collider.
+    for _physics_sync_frame in range(2):
+        await physics_frame
     # Confirm the widened bridge is backed by the real batched chunk collider
     # across every deck lane, not merely present in the voxel dictionary.
-    await physics_frame
     for bridge_x in range(-1, 2):
         var bridge_ray := PhysicsRayQueryParameters3D.create(
             Vector3(float(bridge_x) + 0.5, 8.0, -15.5),
