@@ -1166,10 +1166,10 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		for _vertex_index in range(water_vertices.size()):
 			water_normals.append(Vector3.UP)
 			water_colors.append(water_tint)
-		# The edge midpoints are collinear with their adjacent corners. Skip
-		# the first zero-area fan wedge, then triangulate the remaining polygon
-		# with the same outward winding used by every other top surface.
-		for triangle_index in range(2, water_vertices.size() - 1):
+		# Each edge midpoint is collinear with its adjacent corners. Skip both
+		# zero-area end wedges, then triangulate the polygon interior with the
+		# same outward winding used by every other top surface.
+		for triangle_index in range(2, water_vertices.size() - 2):
 			water_indices.append_array(PackedInt32Array([base_index, base_index + triangle_index + 1, base_index + triangle_index]))
 		group["normals"] = normals + water_normals
 		group["colors"] = colors + water_colors
