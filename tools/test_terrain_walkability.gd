@@ -49,7 +49,7 @@ func _run() -> void:
 			var water_key := Vector2i(p.x, p.z)
 			water_columns[water_key] = int(water_columns.get(water_key, 0)) + 1
 		var key := Vector2i(p.x, p.z)
-		var is_bridge_approach := kind == "wood" and absi(p.x) <= 1 and p.y == 2 and (p.z == -21 or p.z == -12)
+		var is_bridge_approach := kind == "wood" and absi(p.x) <= 1 and p.z in [-22, -21, -12] and p.y >= 2 and p.y <= 4
 		if kind not in GROUND_KINDS and not is_bridge_approach:
 			continue
 		if not surface_heights.has(key) or p.y > int(surface_heights[key]):
@@ -95,8 +95,17 @@ func _run() -> void:
 	for bridge_z in range(-20, -12):
 		if str(blocks.get(Vector3i(0, 3, bridge_z), "")) == "wood":
 			bridge_deck_cells += 1
-	if bridge_deck_cells != 8 or str(blocks.get(Vector3i(0, 2, -21), "")) != "wood" or str(blocks.get(Vector3i(0, 2, -12), "")) != "wood":
-		_fail("Timber bridge deck or its one-block bank approaches are incomplete: deck=%d" % bridge_deck_cells)
+	var approaches_complete := true
+	for bridge_x in range(-1, 2):
+		var north_y := 4 if bridge_x != 1 else 3
+		if str(blocks.get(Vector3i(bridge_x, north_y, -22), "")) != "wood":
+			approaches_complete = false
+		if str(blocks.get(Vector3i(bridge_x, 3, -21), "")) != "wood":
+			approaches_complete = false
+		if str(blocks.get(Vector3i(bridge_x, 3, -12), "")) != "wood":
+			approaches_complete = false
+	if bridge_deck_cells != 8 or not approaches_complete:
+		_fail("Timber bridge deck or stepped bank approaches are incomplete: deck=%d approaches=%s" % [bridge_deck_cells, approaches_complete])
 		return
 	for pad_x in range(-3, 4):
 		for pad_z in range(-3, 4):
