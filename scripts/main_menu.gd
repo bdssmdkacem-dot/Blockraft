@@ -198,6 +198,7 @@ func _build_title_block() -> void:
 	_subtitle.add_theme_color_override("font_color", Color("#c8e0d0"))
 	_title_root.add_child(_subtitle)
 	_tagline = Label.new()
+	_tagline.name = "MenuTagline"
 	_tagline.text = "Your World\nYour Adventure"
 	_tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_tagline.add_theme_font_size_override("font_size", 22)
@@ -406,8 +407,16 @@ func _apply_responsive_layout() -> void:
 		_footer.position = Vector2(0, vs.y - 64.0)
 		_footer.size = Vector2(vs.x, 64.0)
 	if _tagline:
-		_tagline.position = Vector2(vs.x - 280.0, vs.y * 0.38)
-		_tagline.custom_minimum_size = Vector2(250, 80)
+		# Keep the full two-line tagline inside the safe right margin. On narrow
+		# screens it would collide with the primary action column, so hide it.
+		if vs.x < 720.0:
+			_tagline.visible = false
+		else:
+			var tagline_width := minf(300.0, vs.x * 0.32)
+			_tagline.visible = true
+			_tagline.position = Vector2(vs.x - tagline_width - 32.0, vs.y * 0.38)
+			_tagline.size = Vector2(tagline_width, 80.0)
+			_tagline.custom_minimum_size = Vector2(tagline_width, 80.0)
 
 func _show_session_user() -> void:
 	var username := "Guest"
