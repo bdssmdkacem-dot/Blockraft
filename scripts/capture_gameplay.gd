@@ -103,8 +103,10 @@ func _capture_gameplay() -> void:
 	gameplay.add_child(river_camera)
 	# Near-overhead inspection removes terrain occlusion and makes the entire
 	# generated channel footprint and both banks visible in one frame.
-	river_camera.global_position = Vector3(0.75, 18.0, -15.0)
-	river_camera.look_at(Vector3(0.0, 0.0, -15.0), Vector3.FORWARD)
+	# Side-on elevated framing exposes the full bridge length, both approaches,
+	# the opposite banks, and the river edges without the avatar blocking them.
+	river_camera.global_position = Vector3(20.0, 12.0, -16.0)
+	river_camera.look_at(Vector3(0.0, 3.0, -16.0), Vector3.UP)
 	river_camera.make_current()
 	var river_control_visibility: Dictionary = {}
 	for control_node in gameplay.find_children("*", "Control", true, false):
