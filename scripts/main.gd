@@ -722,9 +722,24 @@ func _generate_world() -> void:
 	# A low, broad timber crossing: three walkable deck lanes, flush bank
 	# approaches, and no tall rail posts that obstruct the valley view.
 	for x in range(-1, 2):
-		blocks[Vector3i(x, 2, -21)] = "wood"
-		blocks[Vector3i(x, 2, -12)] = "wood"
+		# The northern bank is one voxel higher in the two western lanes.
+		# Match its existing top elevation, then step down once onto the level
+		# deck. The southern approach meets the lower eastern bank at deck height.
+		var north_approach_top := 4 if x == 1 else 5
+		var approach_cells: Array[Vector2i] = [
+			Vector2i(-22, north_approach_top - 1),
+			Vector2i(-21, 3),
+			Vector2i(-12, 3)
+		]
+		for approach in approach_cells:
+			var approach_z := approach.x
+			var wood_y := approach.y
+			for clear_y in range(wood_y + 1, 25):
+				blocks.erase(Vector3i(x, clear_y, approach_z))
+			blocks[Vector3i(x, wood_y, approach_z)] = "wood"
 		for z in range(-20, -12):
+			for clear_y in range(4, 25):
+				blocks.erase(Vector3i(x, clear_y, z))
 			blocks[Vector3i(x, 3, z)] = "wood"
 	world_generation_heightfield_ms = float(voxel_fill_started_usec - generation_started_usec) / 1000.0
 	world_generation_voxel_fill_ms = float(Time.get_ticks_usec() - voxel_fill_started_usec) / 1000.0
