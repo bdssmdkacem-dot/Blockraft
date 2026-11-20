@@ -24,6 +24,25 @@ func _run_checks() -> void:
 	await process_frame
 	await process_frame
 
+	var tagline := scene.find_child("MenuTagline", true, false) as Label
+	if tagline == null:
+		_fail("main menu tagline is missing", 54)
+		return
+	var desktop_viewport := scene.get_viewport().get_visible_rect().size
+	if not tagline.visible or tagline.position.x < 0.0 or tagline.position.x + tagline.size.x > desktop_viewport.x - 12.0:
+		_fail("desktop tagline is hidden or clipped by the right viewport edge", 55)
+		return
+	root.size = Vector2i(360, 640)
+	await process_frame
+	if tagline.visible:
+		_fail("tagline should hide on narrow screens to avoid the action column", 56)
+		return
+	root.size = Vector2i(1280, 720)
+	await process_frame
+	if not tagline.visible or tagline.position.x + tagline.size.x > 1268.0:
+		_fail("tagline did not restore within the desktop safe area", 57)
+		return
+
 	var backdrop := scene.find_child("ThreeDMenuBackdrop", true, false) as SubViewportContainer
 	if backdrop == null:
 		_fail("real-time 3D menu backdrop is missing", 23)
