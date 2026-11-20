@@ -49,8 +49,11 @@ func _run() -> void:
 			var water_key := Vector2i(p.x, p.z)
 			water_columns[water_key] = int(water_columns.get(water_key, 0)) + 1
 		var key := Vector2i(p.x, p.z)
-		var is_bridge_approach := kind == "wood" and absi(p.x) <= 1 and p.z in [-22, -21, -12] and p.y >= 2 and p.y <= 4
-		if kind not in GROUND_KINDS and not is_bridge_approach:
+		# Bridge timber is a separate elevated structure with its own collision
+		# and traversal acceptance test. Do not mix its deck/approach tops into
+		# the procedural dry-ground slope field: lateral wood-to-bank adjacency
+		# is not a terrain slope. The dedicated bridge test raycasts every lane.
+		if kind not in GROUND_KINDS:
 			continue
 		if not surface_heights.has(key) or p.y > int(surface_heights[key]):
 			surface_heights[key] = p.y
