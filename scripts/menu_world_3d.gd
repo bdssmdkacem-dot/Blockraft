@@ -721,7 +721,7 @@ func _build_village_house(parent: Node3D, house_name: String, style: int, positi
 		2:
 			# Narrow stone tower-house: tall masonry, arrow windows and a
 			# crenellated parapet replace the cottage roof profile entirely.
-			footprint_size = Vector3(2.52, 0.24, 2.42)
+			footprint_size = Vector3(2.30, 0.24, 2.12)
 			footprint.mesh.size = footprint_size
 			footprint.position.y = 0.12
 			_box(house, Vector3(0.0, 1.43, 0.0), Vector3(2.16, 2.66, 2.08), Color("#a9afa5"))
