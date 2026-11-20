@@ -51,7 +51,7 @@ func _run() -> void:
 			for bridge_x in range(-1, 2):
 				bridge_columns[Vector2i(bridge_x, bridge_z)] = true
 	for bridge_x in range(-1, 2):
-		var north_y := 4 if bridge_x != 1 else 3
+		var north_y := 4
 		for bridge_position in [
 			Vector3i(bridge_x, north_y, -22),
 			Vector3i(bridge_x, 3, -21),
