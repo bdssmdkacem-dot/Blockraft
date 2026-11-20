@@ -82,7 +82,7 @@ func _run() -> void:
             return
         for approach_z in APPROACH_ZS:
             var approach := _ray_surface(scene, wx, approach_z)
-            var expected_approach_y := 4.0 if (approach_z < -20.0 and x == 1) else 5.0 if approach_z < -20.0 else 4.0
+            var expected_approach_y := 5.0 if approach_z < -20.0 else 4.0
             if approach.is_empty() or not is_equal_approx(float(approach.position.y), expected_approach_y):
                 _fail("approach collision missing or discontinuous in lane x=%d z=%f expected_y=%f: %s" % [x, approach_z, expected_approach_y, str(approach)], 7)
                 return
@@ -92,7 +92,7 @@ func _run() -> void:
                 _fail("bank collision missing beside approach in lane x=%d z=%f" % [x, bank_z], 8)
                 return
             var bank_y := float(bank.position.y)
-            var approach_y := 5.0 if (bank_z < -20.0 and x != 1) else 4.0
+            var approach_y := 5.0 if bank_z < -20.0 else 4.0
             if absf(bank_y - approach_y) > 1.25:
                 _fail("bank-to-approach height discontinuity in lane x=%d z=%f: bank=%f approach=%f" % [x, bank_z, bank_y, approach_y], 9)
                 return
