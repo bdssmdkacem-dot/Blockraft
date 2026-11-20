@@ -3,8 +3,8 @@ extends SceneTree
 const BRIDGE_X := 0.5
 const DECK_Z_MIN := -20.0
 const DECK_Z_MAX := -13.0
-const APPROACH_ZS := [-21.5, -12.5]
-const BANK_ZS := [-22.5, -11.5]
+const APPROACH_ZS := [-21.5, -11.5]
+const BANK_ZS := [-23.5, -10.5]
 
 func _initialize() -> void:
     call_deferred("_run")
@@ -82,8 +82,9 @@ func _run() -> void:
             return
         for approach_z in APPROACH_ZS:
             var approach := _ray_surface(scene, wx, approach_z)
-            if approach.is_empty() or not is_equal_approx(float(approach.position.y), 3.0):
-                _fail("approach collision missing or discontinuous in lane x=%d z=%f: %s" % [x, approach_z, str(approach)], 7)
+            var expected_approach_y := 4.0 if (approach_z < -20.0 and x == 1) else 5.0 if approach_z < -20.0 else 4.0
+            if approach.is_empty() or not is_equal_approx(float(approach.position.y), expected_approach_y):
+                _fail("approach collision missing or discontinuous in lane x=%d z=%f expected_y=%f: %s" % [x, approach_z, expected_approach_y, str(approach)], 7)
                 return
         for bank_z in BANK_ZS:
             var bank := _ray_surface(scene, wx, bank_z)
@@ -91,13 +92,14 @@ func _run() -> void:
                 _fail("bank collision missing beside approach in lane x=%d z=%f" % [x, bank_z], 8)
                 return
             var bank_y := float(bank.position.y)
-            if absf(bank_y - 3.0) > 1.25:
-                _fail("bank-to-approach height discontinuity in lane x=%d z=%f: bank=%f approach=3.0" % [x, bank_z, bank_y], 9)
+            var approach_y := 5.0 if (bank_z < -20.0 and x != 1) else 4.0
+            if absf(bank_y - approach_y) > 1.25:
+                _fail("bank-to-approach height discontinuity in lane x=%d z=%f: bank=%f approach=%f" % [x, bank_z, bank_y, approach_y], 9)
                 return
     print("BRIDGE_LANE_COLLISION_PASS: 3 deck lanes, 6 approach surfaces, and 6 bank contacts hit real chunk colliders")
 
-    # Exercise a real CharacterBody3D across bank -> approach -> deck -> approach -> bank.
-    # The single one-block rise onto the deck is traversed with a jump, as in gameplay.
+    # Exercise a real CharacterBody3D across bank -> stepped approach -> deck
+    # -> approach -> opposite bank without relying on a scripted teleport.
     var walker := CharacterBody3D.new()
     walker.name = "BridgeAcceptanceWalker"
     walker.collision_layer = 0
@@ -123,7 +125,6 @@ func _run() -> void:
         walker.velocity = Vector3.ZERO
         walker.move_and_slide()
 
-    var jumped := false
     var reached_deck := false
     var reached_far_bank := false
     var min_y := walker.global_position.y
@@ -133,22 +134,16 @@ func _run() -> void:
         walker.velocity.z = 2.0
         walker.velocity.x = 0.0
         walker.velocity.y -= 9.8 / 60.0
-        if not jumped and walker.is_on_floor() and z >= -21.2 and z <= -20.65:
-            walker.velocity.y = 5.7
-            jumped = true
         walker.move_and_slide()
         min_y = minf(min_y, walker.global_position.y)
         if walker.global_position.z >= -19.9 and walker.global_position.z <= -13.0 and walker.global_position.y >= 4.7:
             reached_deck = true
-        if walker.global_position.z >= -11.3 and walker.is_on_floor():
+        if walker.global_position.z >= -10.3 and walker.is_on_floor():
             reached_far_bank = true
             break
         if walker.global_position.y < -1.0:
             break
 
-    if not jumped:
-        _fail("walker never reached the deck step while grounded; approach may not connect", 11)
-        return
     if not reached_deck:
         _fail("CharacterBody3D could not traverse onto the bridge deck", 12)
         return
