@@ -725,7 +725,7 @@ func _generate_world() -> void:
 		# The northern bank is one voxel higher in the two western lanes.
 		# Match its existing top elevation, then step down once onto the level
 		# deck. The southern approach meets the lower eastern bank at deck height.
-		var north_approach_top := 4 if x == 1 else 5
+		var north_approach_top := 5
 		var approach_cells: Array[Vector2i] = [
 			Vector2i(-22, north_approach_top - 1),
 			Vector2i(-21, 3),
