@@ -555,7 +555,7 @@ func _generate_world() -> void:
 	# Quantization can turn two compliant floating-point slopes into a two-voxel
 	# cliff. Relax the final integer surface as well, while keeping river floors
 	# fixed so the water channels remain recessed and readable.
-	for _integer_pass in range(12):
+	for _integer_pass in range(48):
 		var integer_updates: Dictionary = {}
 		for x in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
 			for z in range(-WORLD_RADIUS, WORLD_RADIUS + 1):
