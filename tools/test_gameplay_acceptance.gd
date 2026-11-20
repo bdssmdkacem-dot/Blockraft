@@ -606,7 +606,7 @@ func _run_checks() -> void:
         scene.blocks.erase(water_test_origin)
     else:
         scene.blocks[water_test_origin] = old_water_test
-    print("WATER_POLYGON_TRIANGULATION_PASS: clipped water polygon has five non-degenerate outward-facing triangles")
+    print("WATER_POLYGON_TRIANGULATION_PASS: clipped water polygon has four non-degenerate outward-facing triangles")
 
     # Chunk rendering should use a handful of draw batches and one static collision
     # shape, not hundreds of physics bodies for individual voxel blocks.
