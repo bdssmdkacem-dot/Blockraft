@@ -385,8 +385,8 @@ func _build_footer_bar() -> void:
 		cell.add_child(col)
 		row.add_child(cell)
 
-func _apply_responsive_layout() -> void:
-	var vs := get_viewport().get_visible_rect().size
+func _apply_responsive_layout(viewport_size: Vector2 = Vector2.ZERO) -> void:
+	var vs := viewport_size if viewport_size.x >= 10.0 and viewport_size.y >= 10.0 else get_viewport().get_visible_rect().size
 	if vs.x < 10.0 or vs.y < 10.0:
 		return
 	var sx := vs.x / DESIGN_SIZE.x
