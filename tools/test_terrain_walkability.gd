@@ -42,6 +42,23 @@ func _run() -> void:
 	var blocks: Dictionary = game.get("blocks")
 	var surface_heights: Dictionary = {}
 	var water_columns: Dictionary = {}
+	# Columns occupied by the actual bridge deck/approaches are not exposed
+	# natural-ground walking surfaces. Their timber tops and collision are
+	# validated independently by test_bridge_acceptance.gd.
+	var bridge_columns: Dictionary = {}
+	for bridge_z in range(-20, -12):
+		if str(blocks.get(Vector3i(0, 3, bridge_z), "")) == "wood":
+			for bridge_x in range(-1, 2):
+				bridge_columns[Vector2i(bridge_x, bridge_z)] = true
+	for bridge_x in range(-1, 2):
+		var north_y := 4 if bridge_x != 1 else 3
+		for bridge_position in [
+			Vector3i(bridge_x, north_y, -22),
+			Vector3i(bridge_x, 3, -21),
+			Vector3i(bridge_x, 3, -12)
+		]:
+		if str(blocks.get(bridge_position, "")) == "wood":
+			bridge_columns[Vector2i(bridge_position.x, bridge_position.z)] = true
 	for position in blocks:
 		var kind := str(blocks[position])
 		var p: Vector3i = position
@@ -49,6 +66,8 @@ func _run() -> void:
 			var water_key := Vector2i(p.x, p.z)
 			water_columns[water_key] = int(water_columns.get(water_key, 0)) + 1
 		var key := Vector2i(p.x, p.z)
+		if bridge_columns.has(key):
+			continue
 		# Bridge timber is a separate elevated structure with its own collision
 		# and traversal acceptance test. Do not mix its deck/approach tops into
 		# the procedural dry-ground slope field: lateral wood-to-bank adjacency
