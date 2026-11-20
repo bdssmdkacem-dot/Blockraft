@@ -57,8 +57,8 @@ func _run() -> void:
 			Vector3i(bridge_x, 3, -21),
 			Vector3i(bridge_x, 3, -12)
 		]:
-		if str(blocks.get(bridge_position, "")) == "wood":
-			bridge_columns[Vector2i(bridge_position.x, bridge_position.z)] = true
+			if str(blocks.get(bridge_position, "")) == "wood":
+				bridge_columns[Vector2i(bridge_position.x, bridge_position.z)] = true
 	for position in blocks:
 		var kind := str(blocks[position])
 		var p: Vector3i = position
