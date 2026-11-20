@@ -1032,7 +1032,7 @@ func _refresh_terrain_corner_height(corner: Vector2i) -> void:
 		# y=3 water plane and overhang the river. Keep every river-edge corner
 		# just below the water so the water surface owns the visible boundary.
 		if touches_water:
-			blended_height = minf(blended_height, 2.55)
+			blended_height = minf(blended_height, 2.72)
 		terrain_corner_heights[corner] = blended_height
 	else:
 		terrain_corner_heights.erase(corner)
@@ -1083,10 +1083,14 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var normals: PackedVector3Array = group["normals"]
 	var colors: PackedColorArray = group["colors"]
 	var indices: PackedInt32Array = group["indices"]
-	var edge_a := start
-	var edge_b := end
-	edge_a.y = water_top - 0.04
-	edge_b.y = water_top - 0.04
+	# Use the same globally shared rounded shoreline corners as the water
+	# surface. Starting the sediment bevel at the raw voxel edge left small
+	# triangular soil slivers wherever the water contour was inset.
+	var water_y := roundi(water_top - 1.0)
+	var shared_edge_a := _water_surface_corner(corner_a, water_y)
+	var shared_edge_b := _water_surface_corner(corner_b, water_y)
+	var edge_a := Vector3(shared_edge_a.x, water_top - 0.04, shared_edge_a.z)
+	var edge_b := Vector3(shared_edge_b.x, water_top - 0.04, shared_edge_b.z)
 	var landward_offset := Vector2i(-signi(roundi(inward.x)), -signi(roundi(inward.z)))
 	var land_a := start - inward
 	var land_b := end - inward
