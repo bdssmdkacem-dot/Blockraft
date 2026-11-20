@@ -119,7 +119,7 @@ func _run() -> void:
 			bridge_deck_cells += 1
 	var approaches_complete := true
 	for bridge_x in range(-1, 2):
-		var north_y := 4 if bridge_x != 1 else 3
+		var north_y := 4
 		if str(blocks.get(Vector3i(bridge_x, north_y, -22), "")) != "wood":
 			approaches_complete = false
 		if str(blocks.get(Vector3i(bridge_x, 3, -21), "")) != "wood":
