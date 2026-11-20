@@ -44,7 +44,7 @@ func _run() -> void:
         Vector2i(-1, -1), Vector2i(0, -1)
     ]
     while waited < 180:
-        var all_ready := scene.world_initialized
+        var all_ready: bool = bool(scene.world_initialized)
         for key in required_chunks:
             if not scene.loaded_chunks.has(key):
                 all_ready = false
