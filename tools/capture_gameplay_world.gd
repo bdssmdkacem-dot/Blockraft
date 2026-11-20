@@ -48,13 +48,19 @@ func _capture() -> void:
         toast_label.modulate.a = 0.0
 
     var player := scene.get_node_or_null("Player") as CharacterBody3D
-    var camera := player.get_node_or_null("PlayerCamera") as Camera3D if player else null
-    if camera:
-        # Keep the production third-person camera and player framing intact.
-        # This screenshot must represent the view a player actually sees.
-        camera.current = true
-        print("GAMEPLAY_CAPTURE_MODE=third_person camera_position=", camera.global_position,
-            " player_position=", player.global_position if player else Vector3.ZERO)
+    if player:
+        # Keep the avatar out of this geometry-review frame so it cannot hide
+        # the bridge deck, approaches, or shoreline.
+        player.hide()
+    var review_camera := Camera3D.new()
+    review_camera.name = "RiverBridgeReviewCamera"
+    scene.add_child(review_camera)
+    review_camera.global_position = Vector3(18.0, 12.0, -16.0)
+    review_camera.look_at(Vector3(0.0, 3.0, -16.0), Vector3.UP)
+    review_camera.fov = 52.0
+    review_camera.current = true
+    print("GAMEPLAY_CAPTURE_MODE=dedicated_river_bridge_review camera_position=",
+        review_camera.global_position, " target=", Vector3(0.0, 3.0, -16.0))
 
     await process_frame
     await RenderingServer.frame_post_draw
