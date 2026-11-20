@@ -32,13 +32,11 @@ func _run_checks() -> void:
 	if not tagline.visible or tagline.position.x < 0.0 or tagline.position.x + tagline.size.x > desktop_viewport.x - 12.0:
 		_fail("desktop tagline is hidden or clipped by the right viewport edge", 55)
 		return
-	root.size = Vector2i(360, 640)
-	await process_frame
+	scene.call("_apply_responsive_layout", Vector2(360.0, 640.0))
 	if tagline.visible:
 		_fail("tagline should hide on narrow screens to avoid the action column", 56)
 		return
-	root.size = Vector2i(1280, 720)
-	await process_frame
+	scene.call("_apply_responsive_layout", Vector2(1280.0, 720.0))
 	if not tagline.visible or tagline.position.x + tagline.size.x > 1268.0:
 		_fail("tagline did not restore within the desktop safe area", 57)
 		return
