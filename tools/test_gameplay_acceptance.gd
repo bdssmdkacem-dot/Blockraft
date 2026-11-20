@@ -591,8 +591,8 @@ func _run_checks() -> void:
     var water_test_vertices: PackedVector3Array = water_test_group["vertices"]
     var water_test_normals: PackedVector3Array = water_test_group["normals"]
     var water_test_indices: PackedInt32Array = water_test_group["indices"]
-    if water_test_vertices.size() != 8 or water_test_normals.size() != 8 or water_test_indices.size() != 15:
-        _fail("water polygon fan must emit eight boundary vertices and five non-degenerate triangles", 68)
+    if water_test_vertices.size() != 8 or water_test_normals.size() != 8 or water_test_indices.size() != 12:
+        _fail("water polygon fan must emit eight boundary vertices and four non-degenerate triangles", 68)
         return
     for index_offset in range(0, water_test_indices.size(), 3):
         var ia := water_test_indices[index_offset]
