@@ -64,6 +64,15 @@ func _run() -> void:
     for _sync in range(3):
         await physics_frame
 
+    # Emit the generated terrain profile around both approaches to diagnose
+    # real bank elevations before accepting the bridge connection.
+    for x in range(-1, 2):
+        var profile: Array[String] = []
+        for z in range(-24, -9):
+            var column := Vector2i(x, z)
+            profile.append("%d:%s" % [z, str(scene.terrain_surface_heights.get(column, -999.0))])
+        print("BRIDGE_BANK_PROFILE x=", x, " surfaces=", ", ".join(profile))
+
     # Verify every lane on the actual static chunk collision, not the voxel map.
     for x in range(-1, 2):
         var wx := float(x) + 0.5
