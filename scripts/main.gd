@@ -1168,7 +1168,9 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			water_colors.append(water_tint)
 		# Clockwise triangle fan preserves the existing outward top-face winding.
 		for triangle_index in range(1, water_vertices.size() - 1):
-			water_indices.append_array(PackedInt32Array([base_index, base_index + triangle_index + 1, base_index + triangle_index]))
+			# The rounded perimeter follows the same top-face winding as terrain:
+			# (a, b, c) produces an UP-facing normal in Godot's XZ plane.
+			water_indices.append_array(PackedInt32Array([base_index, base_index + triangle_index, base_index + triangle_index + 1]))
 		group["normals"] = normals + water_normals
 		group["colors"] = colors + water_colors
 		group["indices"] = indices + water_indices
