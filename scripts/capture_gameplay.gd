@@ -85,6 +85,75 @@ func _capture_gameplay() -> void:
 		toast_label.text = ""
 		toast_label.modulate.a = 0.0
 
+	# Dedicated elevated river review: aim along the generated scenic channel
+	# from above, independently of the production third-person camera. The
+	# screenshot is saved as its own artifact for direct shoreline inspection.
+	var river_cells := 0
+	for water_x in range(-12, 13):
+		for water_z in range(-30, -8):
+			if str(world_blocks.get(Vector3i(water_x, 2, water_z), "")) == "water":
+				river_cells += 1
+	if river_cells < 20:
+		push_error("River observer region contains too few real water cells: %d" % river_cells)
+		quit(13)
+		return
+	var river_camera := Camera3D.new()
+	river_camera.name = "RiverReviewCamera"
+	river_camera.fov = 55.0
+	gameplay.add_child(river_camera)
+	# Near-overhead inspection removes terrain occlusion and makes the entire
+	# generated channel footprint and both banks visible in one frame.
+	# Side-on elevated framing exposes the full bridge length, both approaches,
+	# the opposite banks, and the river edges without the avatar blocking them.
+	river_camera.global_position = Vector3(20.0, 12.0, -16.0)
+	river_camera.look_at(Vector3(0.0, 3.0, -16.0), Vector3.UP)
+	river_camera.make_current()
+	var river_control_visibility: Dictionary = {}
+	for control_node in gameplay.find_children("*", "Control", true, false):
+		var control := control_node as Control
+		if control:
+			river_control_visibility[control.get_instance_id()] = control.visible
+			control.visible = false
+	var river_model_visibility: Dictionary = {}
+	var river_player := gameplay.get_node_or_null("Player") as Node3D
+	if river_player:
+		river_model_visibility[river_player.get_instance_id()] = river_player.visible
+		river_player.visible = false
+	for animal_node in gameplay.find_children("Animal_*", "CharacterBody3D", true, false):
+		var animal_model := animal_node as Node3D
+		if animal_model:
+			river_model_visibility[animal_model.get_instance_id()] = animal_model.visible
+			animal_model.visible = false
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var river_image := root.get_texture().get_image()
+	if river_image.is_empty() or river_image.get_width() != 1280 or river_image.get_height() != 720:
+		push_error("Dedicated river review camera returned an invalid frame.")
+		quit(14)
+		return
+	var river_output_dir := ProjectSettings.globalize_path("res://artifacts")
+	DirAccess.make_dir_recursive_absolute(river_output_dir)
+	var river_output_path := river_output_dir.path_join("river-corridor-review.png")
+	if river_image.save_png(river_output_path) != OK:
+		push_error("Could not save dedicated river corridor screenshot.")
+		quit(15)
+		return
+	print("RIVER_REVIEW_CAPTURE_PASS path=%s real_water_cells=%d camera=%s target=%s" % [
+		river_output_path, river_cells, river_camera.global_position, Vector3(0.0, 0.0, -15.0)
+	])
+	for control_node in gameplay.find_children("*", "Control", true, false):
+		var control := control_node as Control
+		if control and river_control_visibility.has(control.get_instance_id()):
+			control.visible = bool(river_control_visibility[control.get_instance_id()])
+	var visible_models := [river_player]
+	visible_models.append_array(gameplay.find_children("Animal_*", "CharacterBody3D", true, false))
+	for model_node in visible_models:
+		var model := model_node as Node3D
+		if model and river_model_visibility.has(model.get_instance_id()):
+			model.visible = bool(river_model_visibility[model.get_instance_id()])
+	river_camera.queue_free()
+	await process_frame
+
 	var player := gameplay.get_node_or_null("Player") as CharacterBody3D
 	var camera := player.get_node_or_null("PlayerCamera") as Camera3D if player else null
 	if camera == null:

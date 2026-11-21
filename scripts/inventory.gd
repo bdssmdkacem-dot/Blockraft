@@ -7,7 +7,7 @@ signal backpack_changed(tier: String)
 signal storage_changed
 
 const SLOT_COUNT := 9
-const ITEM_IDS := ["grass", "dirt", "stone", "wood", "sand", "gravel", "rock", "coal", "iron", "gold", "crystal", "chest", "meat", "leaves"]
+const ITEM_IDS := ["grass", "dirt", "stone", "wood", "sand", "gravel", "rock", "coal", "iron", "gold", "crystal", "chest", "meat", "leaves", "planks", "stone_brick"]
 
 const BACKPACKS := {
 	"leather": {"label": "Leather Bag", "max_stack": 64, "color": Color("#8b5a2b")},
@@ -51,6 +51,8 @@ func _color_for(kind: String) -> Color:
 		"chest": return Color(0.55, 0.32, 0.12)
 		"meat": return Color(0.75, 0.25, 0.28)
 		"leaves": return Color(0.22, 0.55, 0.25)
+		"planks": return Color(0.68, 0.43, 0.22)
+		"stone_brick": return Color(0.58, 0.61, 0.62)
 		_: return Color(0.5, 0.5, 0.5)
 
 func get_max_stack() -> int:
@@ -215,6 +217,20 @@ func consume_food() -> bool:
 		storage_changed.emit()
 		return true
 	return false
+
+## Atomically consume a recipe's ingredients from inventory and depot storage.
+## Validation happens before any mutation, so a failed recipe never loses items.
+func consume_items(cost: Dictionary) -> bool:
+	if cost.is_empty():
+		return false
+	for item in cost:
+		var item_id := str(item)
+		var amount := int(cost[item])
+		if not ITEM_IDS.has(item_id) or amount <= 0 or total_of(item_id) < amount:
+			return false
+	for item in cost:
+		_remove_amount(str(item), int(cost[item]))
+	return true
 
 func try_upgrade() -> bool:
 	var next := get_next_tier()

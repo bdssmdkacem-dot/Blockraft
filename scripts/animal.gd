@@ -6,22 +6,22 @@ enum State { WANDER, CHASE, ATTACK, FLEE, HURT }
 
 const KIND_DATA := {
 	Kind.FOX: {
-		"scale": 1.58, "speed": 4.0, "hp": 18.0, "dmg": 6.0,
+		"scale": 1.86, "speed": 4.0, "hp": 18.0, "dmg": 6.0,
 		"aggro": 10.0, "hit_range": 1.8, "attack_cd": 0.85,
 		"color_body": Color("#c46828"), "color_spot": Color("#f0e8e0")
 	},
 	Kind.CHICKEN: {
-		"scale": 2.08, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
+		"scale": 2.35, "speed": 4.6, "hp": 14.0, "dmg": 5.0,
 		"aggro": 11.0, "hit_range": 2.0, "attack_cd": 0.65,
 		"color_body": Color("#f5f2e8"), "color_spot": Color("#e84838")
 	},
 	Kind.COW: {
-		"scale": 1.68, "speed": 2.6, "hp": 32.0, "dmg": 8.0,
+		"scale": 1.98, "speed": 2.6, "hp": 32.0, "dmg": 8.0,
 		"aggro": 7.0, "hit_range": 2.1, "attack_cd": 1.1,
 		"color_body": Color("#f8f6f0"), "color_spot": Color("#2c2c2c")
 	},
 	Kind.SHEEP: {
-		"scale": 1.65, "speed": 3.0, "hp": 16.0, "dmg": 0.0,
+		"scale": 1.95, "speed": 3.0, "hp": 16.0, "dmg": 0.0,
 		"aggro": 0.0, "hit_range": 0.0, "attack_cd": 1.0,
 		"color_body": Color("#f5f5f5"), "color_spot": Color("#e8e4dc")
 	},
@@ -184,17 +184,47 @@ func _update_hp_bar() -> void:
 		else:
 			mat.albedo_color = Color(0.95, 0.2, 0.15)
 
-func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.85) -> void:
+func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.85, core_role: String = "") -> void:
+	# Main torso/head volumes are explicitly block-shaped. Rounded meshes are
+	# reserved for compact accents such as coat patches, fleece tufts and joints.
 	var mi := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
-	mesh.size = size
+	mesh.size = Vector3.ONE
 	mi.mesh = mesh
+	mi.scale = size
 	mi.position = pos
+	mi.set_meta("animal_part_shape", "box")
+	mi.set_meta("animal_part_size", size)
+	if not core_role.is_empty():
+		mi.set_meta("animal_core_role", core_role)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.roughness = roughness
 	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	parent.add_child(mi)
+
+func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.5
+	sphere.height = 1.0
+	sphere.radial_segments = 20
+	sphere.rings = 12
+	mi.mesh = sphere
+	mi.position = pos
+	mi.scale = size
+	mi.set_meta("animal_rounded_part", true)
+	mi.set_meta("animal_part_shape", "ellipsoid")
+	mi.set_meta("animal_part_size", size)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = roughness
+	mi.material_override = material
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	parent.add_child(mi)
+	return mi
+
 
 func _build_mesh(data: Dictionary) -> void:
 	_body_root = Node3D.new()
@@ -202,18 +232,38 @@ func _build_mesh(data: Dictionary) -> void:
 	var s: float = float(data["scale"])
 	var body_c: Color = data["color_body"]
 	var spot_c: Color = data["color_spot"]
+	# Block-shaped torso/head cores establish readable voxel silhouettes;
+	# smaller ellipsoid accents add coat, fleece and tail detail without
+	# turning the full animal into a rounded toy.
 	match kind:
 		Kind.CHICKEN:
-			_box(_body_root, Vector3(0, 0.32 * s, 0), Vector3(0.46 * s, 0.38 * s, 0.54 * s), body_c)
-			_box(_body_root, Vector3(0, 0.52 * s, 0.18 * s), Vector3(0.32 * s, 0.30 * s, 0.32 * s), body_c)
+			_box(_body_root, Vector3(0, 0.34 * s, -0.015 * s), Vector3(0.60 * s, 0.38 * s, 0.68 * s), body_c, 0.88, "torso")
+			_box(_body_root, Vector3(0, 0.53 * s, 0.22 * s), Vector3(0.32 * s, 0.26 * s, 0.30 * s), body_c, 0.88, "head")
+		Kind.FOX:
+			_box(_body_root, Vector3(0, 0.36 * s, -0.02 * s), Vector3(0.50 * s, 0.37 * s, 0.78 * s), body_c, 0.88, "torso")
+			_box(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.37 * s, 0.34 * s, 0.38 * s), body_c, 0.88, "head")
+			_box(_body_root, Vector3(0, 0.35 * s, -0.78 * s), Vector3(0.26 * s, 0.22 * s, 0.62 * s), body_c)
+			_box(_body_root, Vector3(0, 0.35 * s, -1.02 * s), Vector3(0.22 * s, 0.18 * s, 0.24 * s), spot_c)
+		Kind.COW:
+			_box(_body_root, Vector3(0, 0.54 * s, 0), Vector3(0.66 * s, 0.42 * s, 1.02 * s), body_c, 0.88, "torso")
+			_box(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.39 * s, 0.30 * s, 0.38 * s), body_c, 0.88, "head")
+			_ellipsoid(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.34 * s, 0.20 * s, 0.18 * s), Color("#e9a5a0"))
+		Kind.SHEEP:
+			_box(_body_root, Vector3(0, 0.43 * s, -0.01 * s), Vector3(0.64 * s, 0.43 * s, 0.86 * s), body_c, 0.88, "torso")
+			# Two compact fleece tufts sit on the back; the body remains one
+			# readable volume instead of becoming a pile of oversized white balls.
+			for fleece_pos in [Vector3(-0.18, 0.66, -0.10), Vector3(0.18, 0.66, -0.10)]:
+				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.15 * s, 0.13 * s, 0.17 * s), Color("#fffdf7"))
+	match kind:
+		Kind.CHICKEN:
 			_box(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.10 * s, 0.08 * s, 0.18 * s), spot_c)
 			# Oversized comb, bright beak and readable eyes give the chicken a clear mobile silhouette.
 			_box(_body_root, Vector3(0, 0.72 * s, 0.17 * s), Vector3(0.16 * s, 0.22 * s, 0.12 * s), Color("#c9342b"))
 			_box(_body_root, Vector3(0, 0.49 * s, 0.37 * s), Vector3(0.14 * s, 0.09 * s, 0.15 * s), Color("#f4a51c"))
 			# White eye sockets and tiny dark pupils keep the face legible at distance.
 			for eye_x in [-0.105, 0.105]:
-				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.325 * s), Vector3(0.075 * s, 0.085 * s, 0.045 * s), Color("#fffdf5"))
-				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.354 * s), Vector3(0.032 * s, 0.048 * s, 0.018 * s), Color("#20242a"))
+				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.39 * s), Vector3(0.075 * s, 0.085 * s, 0.045 * s), Color("#fffdf5"))
+				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.425 * s), Vector3(0.032 * s, 0.048 * s, 0.018 * s), Color("#20242a"))
 			_box(_body_root, Vector3(-0.12 * s, 0.12 * s, 0), Vector3(0.09 * s, 0.22 * s, 0.09 * s), Color("#e8c040"))
 			_box(_body_root, Vector3(0.12 * s, 0.12 * s, 0), Vector3(0.09 * s, 0.22 * s, 0.09 * s), Color("#e8c040"))
 			# Wing panels, tail feathers and cheek patches add a readable bird profile.
@@ -225,41 +275,37 @@ func _build_mesh(data: Dictionary) -> void:
 			for feather_x in [-0.10, 0.0, 0.10]:
 				_box(_body_root, Vector3(feather_x * s, 0.43 * s, -0.38 * s), Vector3(0.085 * s, 0.16 * s, 0.22 * s), Color("#e4ded2"))
 		Kind.FOX:
-			_box(_body_root, Vector3(0, 0.35 * s, 0), Vector3(0.42 * s, 0.32 * s, 0.70 * s), body_c)
-			_box(_body_root, Vector3(0, 0.48 * s, 0.32 * s), Vector3(0.30 * s, 0.28 * s, 0.30 * s), body_c)
-			_box(_body_root, Vector3(0, 0.38 * s, -0.42 * s), Vector3(0.14 * s, 0.16 * s, 0.36 * s), body_c)
-			_box(_body_root, Vector3(0, 0.38 * s, -0.58 * s), Vector3(0.12 * s, 0.12 * s, 0.12 * s), spot_c)
 			_box(_body_root, Vector3(-0.12 * s, 0.12 * s, 0.15 * s), Vector3(0.10 * s, 0.24 * s, 0.10 * s), body_c)
 			_box(_body_root, Vector3(0.12 * s, 0.12 * s, 0.15 * s), Vector3(0.10 * s, 0.24 * s, 0.10 * s), body_c)
 			# Fox ears, pale muzzle and dark eyes make it distinct from livestock.
 			_box(_body_root, Vector3(-0.12 * s, 0.70 * s, 0.29 * s), Vector3(0.11 * s, 0.22 * s, 0.10 * s), body_c)
 			_box(_body_root, Vector3(0.12 * s, 0.70 * s, 0.29 * s), Vector3(0.11 * s, 0.22 * s, 0.10 * s), body_c)
 			_box(_body_root, Vector3(0, 0.38 * s, 0.49 * s), Vector3(0.20 * s, 0.14 * s, 0.22 * s), spot_c)
-			_box(_body_root, Vector3(-0.09 * s, 0.52 * s, 0.46 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
-			_box(_body_root, Vector3(0.09 * s, 0.52 * s, 0.46 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
+			_box(_body_root, Vector3(-0.09 * s, 0.52 * s, 0.55 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
+			_box(_body_root, Vector3(0.09 * s, 0.52 * s, 0.55 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
 			# Four distinct legs and a white-tipped bushy tail complete the fox silhouette.
 			_box(_body_root, Vector3(-0.15 * s, 0.14 * s, -0.22 * s), Vector3(0.11 * s, 0.26 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.15 * s, 0.14 * s, -0.22 * s), Vector3(0.11 * s, 0.26 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(-0.15 * s, 0.14 * s, 0.25 * s), Vector3(0.11 * s, 0.26 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.15 * s, 0.14 * s, 0.25 * s), Vector3(0.11 * s, 0.26 * s, 0.12 * s), body_c)
-			_box(_body_root, Vector3(0.0, 0.34 * s, -0.72 * s), Vector3(0.22 * s, 0.22 * s, 0.42 * s), body_c)
-			_box(_body_root, Vector3(0.0, 0.34 * s, -0.98 * s), Vector3(0.20 * s, 0.18 * s, 0.18 * s), spot_c)
 			_box(_body_root, Vector3(-0.12 * s, 0.78 * s, 0.34 * s), Vector3(0.06 * s, 0.12 * s, 0.04 * s), Color("#f3b2a2"))
 			_box(_body_root, Vector3(0.12 * s, 0.78 * s, 0.34 * s), Vector3(0.06 * s, 0.12 * s, 0.04 * s), Color("#f3b2a2"))
 		Kind.COW:
-			_box(_body_root, Vector3(0, 0.55 * s, 0), Vector3(0.55 * s, 0.45 * s, 0.85 * s), body_c)
-			_box(_body_root, Vector3(0.12 * s, 0.55 * s, 0.1 * s), Vector3(0.22 * s, 0.35 * s, 0.30 * s), spot_c)
-			_box(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.36 * s, 0.32 * s, 0.32 * s), body_c)
+			# Distinct coat patches sit on the visible flank, not buried inside the body.
+			_ellipsoid(_body_root, Vector3(-0.22 * s, 0.57 * s, 0.43 * s), Vector3(0.18 * s, 0.20 * s, 0.055 * s), spot_c)
+			_ellipsoid(_body_root, Vector3(0.18 * s, 0.42 * s, 0.45 * s), Vector3(0.13 * s, 0.12 * s, 0.045 * s), spot_c)
+			_ellipsoid(_body_root, Vector3(-0.28 * s, 0.56 * s, -0.08 * s), Vector3(0.05 * s, 0.18 * s, 0.22 * s), spot_c)
+			_ellipsoid(_body_root, Vector3(0.30 * s, 0.57 * s, -0.12 * s), Vector3(0.045 * s, 0.16 * s, 0.20 * s), spot_c)
 			_box(_body_root, Vector3(-0.18 * s, 0.20 * s, 0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.18 * s, 0.20 * s, 0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(-0.18 * s, 0.20 * s, -0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.18 * s, 0.20 * s, -0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			# Cow face, pink muzzle, eyes, ears and short horns.
 			_box(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.28 * s, 0.18 * s, 0.12 * s), Color("#e9a5a0"))
-			_box(_body_root, Vector3(-0.14 * s, 0.76 * s, 0.635 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
-			_box(_body_root, Vector3(0.14 * s, 0.76 * s, 0.635 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
-			_box(_body_root, Vector3(-0.105 * s, 0.69 * s, 0.63 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
-			_box(_body_root, Vector3(0.105 * s, 0.69 * s, 0.63 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
+			_box(_body_root, Vector3(-0.14 * s, 0.76 * s, 0.69 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
+			_box(_body_root, Vector3(0.14 * s, 0.76 * s, 0.69 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
+			_box(_body_root, Vector3(-0.105 * s, 0.69 * s, 0.72 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
+			_box(_body_root, Vector3(0.105 * s, 0.69 * s, 0.72 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
 			_box(_body_root, Vector3(-0.23 * s, 0.73 * s, 0.43 * s), Vector3(0.18 * s, 0.09 * s, 0.16 * s), body_c)
 			_box(_body_root, Vector3(0.23 * s, 0.73 * s, 0.43 * s), Vector3(0.18 * s, 0.09 * s, 0.16 * s), body_c)
 			_box(_body_root, Vector3(-0.12 * s, 0.83 * s, 0.47 * s), Vector3(0.07 * s, 0.17 * s, 0.07 * s), Color("#d8c9a0"))
@@ -270,42 +316,38 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0.0, 0.42 * s, -0.55 * s), Vector3(0.07 * s, 0.40 * s, 0.08 * s), Color("#2c2520"))
 			_box(_body_root, Vector3(0.0, 0.22 * s, -0.73 * s), Vector3(0.16 * s, 0.18 * s, 0.16 * s), Color("#2c2520"))
 		Kind.SHEEP:
-			_box(_body_root, Vector3(0, 0.42 * s, 0), Vector3(0.50 * s, 0.42 * s, 0.65 * s), body_c)
-			_box(_body_root, Vector3(0, 0.55 * s, 0.38 * s), Vector3(0.28 * s, 0.26 * s, 0.28 * s), Color("#2a2a2a"))
-			_box(_body_root, Vector3(-0.14 * s, 0.16 * s, 0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
-			_box(_body_root, Vector3(0.14 * s, 0.16 * s, 0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
-			_box(_body_root, Vector3(-0.14 * s, 0.16 * s, -0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
-			_box(_body_root, Vector3(0.14 * s, 0.16 * s, -0.18 * s), Vector3(0.10 * s, 0.28 * s, 0.10 * s), Color("#2a2a2a"))
-			# Layered wool lobes soften the sheep silhouette; dark face contrasts with fleece.
-			for wool_pos in [
-				Vector3(-0.20, 0.55, 0.0), Vector3(0.20, 0.55, 0.0),
-				Vector3(-0.15, 0.65, -0.20), Vector3(0.15, 0.65, -0.20),
-				Vector3(0.0, 0.68, 0.12), Vector3(0.0, 0.35, -0.30)
-			]:
-				_box(_body_root, wool_pos * s, Vector3(0.24 * s, 0.22 * s, 0.24 * s), Color("#fffdf7"))
-			_box(_body_root, Vector3(-0.08 * s, 0.60 * s, 0.54 * s), Vector3(0.045 * s, 0.05 * s, 0.035 * s), Color("#f5f0e8"))
-			_box(_body_root, Vector3(0.08 * s, 0.60 * s, 0.54 * s), Vector3(0.045 * s, 0.05 * s, 0.035 * s), Color("#f5f0e8"))
-			_box(_body_root, Vector3(0.0, 0.33 * s, -0.42 * s), Vector3(0.16 * s, 0.14 * s, 0.18 * s), Color("#f1eee6"))
-			_box(_body_root, Vector3(-0.20 * s, 0.59 * s, 0.40 * s), Vector3(0.09 * s, 0.12 * s, 0.10 * s), Color("#fffdf7"))
-			_box(_body_root, Vector3(0.20 * s, 0.59 * s, 0.40 * s), Vector3(0.09 * s, 0.12 * s, 0.10 * s), Color("#fffdf7"))
+			# Compact charcoal face and four tapered legs; avoid a second full-body
+			# sphere so the fleece reads as one soft torso rather than stacked balls.
+			_box(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.22 * s, 0.22 * s, 0.24 * s), Color("#353535"), 0.88, "head")
+			for leg_x in [-0.15, 0.15]:
+				for leg_z in [-0.23, 0.22]:
+					_ellipsoid(_body_root, Vector3(leg_x * s, 0.16 * s, leg_z * s), Vector3(0.085 * s, 0.30 * s, 0.09 * s), Color("#343434"))
+			# Short ears and eyes sit on the face plane and remain visible at distance.
+			for ear_x in [-0.17, 0.17]:
+				_ellipsoid(_body_root, Vector3(ear_x * s, 0.61 * s, 0.34 * s), Vector3(0.10 * s, 0.07 * s, 0.16 * s), Color("#d9c7bd"))
+			for eye_x in [-0.075, 0.075]:
+				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.555 * s), Vector3(0.035 * s, 0.045 * s, 0.025 * s), Color("#f8eee4"))
+			# Four flattened fleece panels follow the back contour without spherical clumps.
+			for fleece_pos in [Vector3(-0.18, 0.57, -0.08), Vector3(0.18, 0.57, -0.08), Vector3(-0.10, 0.64, -0.26), Vector3(0.10, 0.64, -0.26)]:
+				_ellipsoid(_body_root, fleece_pos * s, Vector3(0.13 * s, 0.075 * s, 0.18 * s), Color("#e9e5dc"))
 	# Register leg meshes explicitly by species-specific geometry dimensions.
 	# This avoids accidentally animating beaks, wings or decorative tail blocks.
 	_animated_legs.clear()
 	_animated_wings.clear()
 	_tail_mesh = null
 	var leg_y := 0.12 * s if kind == Kind.CHICKEN else (0.14 * s if kind == Kind.FOX else (0.20 * s if kind == Kind.COW else 0.16 * s))
-	var leg_height := 0.22 * s if kind == Kind.CHICKEN else (0.26 * s if kind == Kind.FOX else (0.40 * s if kind == Kind.COW else 0.28 * s))
+	var leg_height := 0.22 * s if kind == Kind.CHICKEN else (0.26 * s if kind == Kind.FOX else (0.40 * s if kind == Kind.COW else 0.30 * s))
 	for part in _body_root.get_children():
-		if not (part is MeshInstance3D) or not (part.mesh is BoxMesh):
+		if not (part is MeshInstance3D) or not part.has_meta("animal_part_size"):
 			continue
-		var box := part.mesh as BoxMesh
-		if is_equal_approx(part.position.y, leg_y) and is_equal_approx(box.size.y, leg_height):
+		var part_size: Vector3 = part.get_meta("animal_part_size")
+		if is_equal_approx(part.position.y, leg_y) and is_equal_approx(part_size.y, leg_height):
 			_animated_legs.append(part)
-		if kind == Kind.CHICKEN and is_equal_approx(absf(part.position.x), 0.19 * s) and is_equal_approx(part.position.y, 0.34 * s) and is_equal_approx(box.size.y, 0.24 * s):
+		if kind == Kind.CHICKEN and is_equal_approx(absf(part.position.x), 0.19 * s) and is_equal_approx(part.position.y, 0.34 * s) and is_equal_approx(part_size.y, 0.24 * s):
 			_animated_wings.append(part)
-		if kind == Kind.FOX and part.position.z <= -0.70 * s and part.position.y >= 0.30 * s and box.size.z >= 0.38 * s:
+		if kind == Kind.FOX and part.position.z <= -0.70 * s and part.position.y >= 0.30 * s and part_size.z >= 0.38 * s:
 			_tail_mesh = part
-		elif kind == Kind.COW and part.position.z <= -0.54 * s and part.position.y >= 0.40 * s and box.size.z >= 0.08 * s:
+		elif kind == Kind.COW and part.position.z <= -0.54 * s and part.position.y >= 0.40 * s and part_size.z >= 0.08 * s:
 			_tail_mesh = part
 
 func _pick_new_direction() -> void:
