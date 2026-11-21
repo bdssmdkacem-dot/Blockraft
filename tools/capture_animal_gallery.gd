@@ -41,6 +41,7 @@ func _capture() -> void:
 	floor_body.add_child(floor_shape)
 	world.add_child(floor_body)
 	var names := ["FOX", "CHICKEN", "COW", "SHEEP"]
+	var gallery_labels: Array[Label3D] = []
 	for kind in range(4):
 		var animal := ANIMAL_SCRIPT.new() as CharacterBody3D
 		animal.name = "AnimalGallery_%s" % names[kind]
@@ -54,6 +55,7 @@ func _capture() -> void:
 		label.font_size = 48
 		label.modulate = Color("#17232d")
 		animal.add_child(label)
+		gallery_labels.append(label)
 	var camera := Camera3D.new()
 	camera.position = Vector3(0.0, 3.4, 12.0)
 	camera.fov = 42.0
@@ -63,11 +65,7 @@ func _capture() -> void:
 	for _i in range(4):
 		await process_frame
 	for kind in range(4):
-		var label := world.get_node_or_null("AnimalGallery_%s/Label3D" % names[kind]) as Label3D
-		if label == null:
-			push_error("Animal gallery is missing a species label: " + names[kind])
-			quit(4)
-			return
+		var label: Label3D = gallery_labels[kind]
 		var label_screen := camera.unproject_position(label.global_position)
 		if label_screen.x < 100.0 or label_screen.x > 1180.0 or label_screen.y < 60.0 or label_screen.y > 660.0:
 			push_error("Animal gallery species label is outside the safe frame: %s at %s" % [names[kind], str(label_screen)])
