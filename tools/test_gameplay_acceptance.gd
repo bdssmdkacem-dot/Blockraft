@@ -687,24 +687,47 @@ func _run_checks() -> void:
     if animals.is_empty():
         _fail("generated world has no animal assets", 18)
         return
-    var rounded_animal_parts := 0
+    var accepted_animal_anatomy := 0
+    var accepted_anatomy_by_kind := [0, 0, 0, 0]
+    var expected_anatomy_parts := [12, 14, 15, 15]
+    var expected_box_details := [6, 8, 8, 2]
     for animal_node in animals:
         var animal := animal_node as CharacterBody3D
+        var animal_kind := int(animal.get("kind"))
+        if animal_kind < 0 or animal_kind >= expected_anatomy_parts.size():
+            _fail("spawned animal has an unknown species kind: %d" % animal_kind, 78)
+            return
+        var body_root := animal.get_child(0) as Node3D
+        if body_root == null:
+            _fail("spawned animal has no anatomy root: %s" % animal.name, 78)
+            return
         var animal_mesh_parts := 0
-        var rounded_mesh_parts := 0
-        for part in animal.find_children("*", "MeshInstance3D", true, false):
+        var box_detail_parts := 0
+        var torso_core_count := 0
+        var head_core_count := 0
+        for part in body_root.find_children("*", "MeshInstance3D", true, false):
             if not part is MeshInstance3D:
                 continue
             animal_mesh_parts += 1
             var mesh_part := part as MeshInstance3D
-            if mesh_part.mesh is SphereMesh and mesh_part.has_meta("animal_rounded_part"):
-                rounded_mesh_parts += 1
-        # Rounded body volumes are required, while crisp BoxMesh details keep eyes, beaks, hooves and horns readable.
-        if animal_mesh_parts >= 12 and rounded_mesh_parts >= 2 and float(rounded_mesh_parts) / float(animal_mesh_parts) >= 0.15:
-            rounded_animal_parts += 1
-    if rounded_animal_parts < animals.size():
-        _fail("one or more animals lack rounded core volumes or readable anatomy: rounded=%d/%d" % [rounded_animal_parts, animals.size()], 78)
+            if mesh_part.mesh is BoxMesh:
+                box_detail_parts += 1
+            if mesh_part.mesh is SphereMesh and mesh_part.has_meta("animal_core_role"):
+                match str(mesh_part.get_meta("animal_core_role")):
+                    "torso":
+                        torso_core_count += 1
+                    "head":
+                        head_core_count += 1
+        # Check semantic core anatomy and species-specific block details. Do not
+        # use a rounded/total-mesh ratio: chickens intentionally carry many
+        # crisp voxel feathers, wing panels and facial parts around two cores.
+        if animal_mesh_parts >= int(expected_anatomy_parts[animal_kind]) and box_detail_parts >= int(expected_box_details[animal_kind]) and torso_core_count == 1 and head_core_count == 1:
+            accepted_animal_anatomy += 1
+            accepted_anatomy_by_kind[animal_kind] += 1
+    if accepted_animal_anatomy < animals.size():
+        _fail("one or more animals lack species-specific torso/head cores or voxel detail: accepted=%d/%d by_kind=%s" % [accepted_animal_anatomy, animals.size(), str(accepted_anatomy_by_kind)], 78)
         return
+    print("ANIMAL_CORE_ANATOMY_PASS: accepted=", accepted_animal_anatomy, "/", animals.size(), " by_kind=", accepted_anatomy_by_kind)
     # No spawned animal may begin inside a water voxel. Also exercise the
     # explicit water-avoidance steering path against a deterministic water cell.
     for animal_node in animals:

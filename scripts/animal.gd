@@ -203,7 +203,7 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: 
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	parent.add_child(mi)
 
-func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88) -> MeshInstance3D:
+func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88, core_role: String = "") -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.5
@@ -214,6 +214,8 @@ func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, rough
 	mi.position = pos
 	mi.scale = size
 	mi.set_meta("animal_rounded_part", true)
+	if not core_role.is_empty():
+		mi.set_meta("animal_core_role", core_role)
 	mi.set_meta("animal_part_shape", "ellipsoid")
 	mi.set_meta("animal_part_size", size)
 	var material := StandardMaterial3D.new()
@@ -236,19 +238,19 @@ func _build_mesh(data: Dictionary) -> void:
 	# stacks of disconnected cubes at medium camera distance.
 	match kind:
 		Kind.CHICKEN:
-			_ellipsoid(_body_root, Vector3(0, 0.34 * s, -0.015 * s), Vector3(0.54 * s, 0.35 * s, 0.66 * s), body_c)
-			_ellipsoid(_body_root, Vector3(0, 0.53 * s, 0.22 * s), Vector3(0.29 * s, 0.25 * s, 0.30 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.34 * s, -0.015 * s), Vector3(0.54 * s, 0.35 * s, 0.66 * s), body_c, 0.88, "torso")
+			_ellipsoid(_body_root, Vector3(0, 0.53 * s, 0.22 * s), Vector3(0.29 * s, 0.25 * s, 0.30 * s), body_c, 0.88, "head")
 		Kind.FOX:
-			_ellipsoid(_body_root, Vector3(0, 0.36 * s, -0.02 * s), Vector3(0.50 * s, 0.37 * s, 0.78 * s), body_c)
-			_ellipsoid(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.37 * s, 0.34 * s, 0.38 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.36 * s, -0.02 * s), Vector3(0.50 * s, 0.37 * s, 0.78 * s), body_c, 0.88, "torso")
+			_ellipsoid(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.37 * s, 0.34 * s, 0.38 * s), body_c, 0.88, "head")
 			_ellipsoid(_body_root, Vector3(0, 0.35 * s, -0.78 * s), Vector3(0.28 * s, 0.25 * s, 0.62 * s), body_c)
 			_ellipsoid(_body_root, Vector3(0, 0.35 * s, -1.02 * s), Vector3(0.24 * s, 0.20 * s, 0.24 * s), spot_c)
 		Kind.COW:
-			_ellipsoid(_body_root, Vector3(0, 0.54 * s, 0), Vector3(0.66 * s, 0.42 * s, 1.02 * s), body_c)
-			_ellipsoid(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.39 * s, 0.30 * s, 0.38 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.54 * s, 0), Vector3(0.66 * s, 0.42 * s, 1.02 * s), body_c, 0.88, "torso")
+			_ellipsoid(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.39 * s, 0.30 * s, 0.38 * s), body_c, 0.88, "head")
 			_ellipsoid(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.34 * s, 0.20 * s, 0.18 * s), Color("#e9a5a0"))
 		Kind.SHEEP:
-			_ellipsoid(_body_root, Vector3(0, 0.43 * s, -0.01 * s), Vector3(0.64 * s, 0.43 * s, 0.86 * s), body_c)
+			_ellipsoid(_body_root, Vector3(0, 0.43 * s, -0.01 * s), Vector3(0.64 * s, 0.43 * s, 0.86 * s), body_c, 0.88, "torso")
 			# Two compact fleece tufts sit on the back; the body remains one
 			# readable volume instead of becoming a pile of oversized white balls.
 			for fleece_pos in [Vector3(-0.18, 0.66, -0.10), Vector3(0.18, 0.66, -0.10)]:
@@ -317,7 +319,7 @@ func _build_mesh(data: Dictionary) -> void:
 		Kind.SHEEP:
 			# Compact charcoal face and four tapered legs; avoid a second full-body
 			# sphere so the fleece reads as one soft torso rather than stacked balls.
-			_ellipsoid(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.16 * s, 0.17 * s, 0.18 * s), Color("#353535"))
+			_ellipsoid(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.16 * s, 0.17 * s, 0.18 * s), Color("#353535"), 0.88, "head")
 			for leg_x in [-0.15, 0.15]:
 				for leg_z in [-0.23, 0.22]:
 					_ellipsoid(_body_root, Vector3(leg_x * s, 0.16 * s, leg_z * s), Vector3(0.085 * s, 0.30 * s, 0.09 * s), Color("#343434"))
