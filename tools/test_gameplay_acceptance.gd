@@ -805,10 +805,17 @@ func _run_checks() -> void:
             if str(scene.blocks.get(Vector3i(bridge_x, 3, bridge_z), "")) != "wood":
                 _fail("forward river footbridge deck has a gap at %s" % str(Vector3i(bridge_x, 3, bridge_z)), 51)
                 return
+    # The approach/deck blocks are placed at y=3, so their walkable top
+    # surface is y=4. The previous y=2 assertion described the older lower
+    # bridge and rejected the current collision-tested raised approach.
     for approach_z in [-21, -12]:
         for bridge_x in range(-1, 2):
-            if str(scene.blocks.get(Vector3i(bridge_x, 2, approach_z), "")) != "wood":
-                _fail("forward river footbridge does not meet its bank at %s" % str(Vector3i(bridge_x, 2, approach_z)), 52)
+            var approach_cell := Vector3i(bridge_x, 3, approach_z)
+            if str(scene.blocks.get(approach_cell, "")) != "wood":
+                _fail("forward river footbridge approach is missing at %s" % str(approach_cell), 52)
+                return
+            if scene.blocks.has(approach_cell + Vector3i.UP):
+                _fail("forward river footbridge approach lacks one-block headroom at %s" % str(approach_cell), 56)
                 return
     for rail_z in range(-20, -12, 2):
         if scene.blocks.has(Vector3i(-1, 4, rail_z)) or scene.blocks.has(Vector3i(1, 4, rail_z)):
