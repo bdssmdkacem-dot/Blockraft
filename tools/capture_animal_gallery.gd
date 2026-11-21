@@ -45,7 +45,7 @@ func _capture() -> void:
 		var animal := ANIMAL_SCRIPT.new() as CharacterBody3D
 		animal.name = "AnimalGallery_%s" % names[kind]
 		world.add_child(animal)
-		animal.setup(kind, Vector3(-5.1 + float(kind) * 3.4, 0.1, 0))
+		animal.setup(kind, Vector3(-4.2 + float(kind) * 2.8, 0.1, 0))
 		animal.set_physics_process(false)
 		var label := Label3D.new()
 		label.text = names[kind]
@@ -55,13 +55,25 @@ func _capture() -> void:
 		label.modulate = Color("#17232d")
 		animal.add_child(label)
 	var camera := Camera3D.new()
-	camera.position = Vector3(2.2, 3.0, 8.6)
-	camera.fov = 39.0
+	camera.position = Vector3(0.0, 3.4, 12.0)
+	camera.fov = 42.0
 	world.add_child(camera)
 	camera.look_at(Vector3(0, 0.88, 0), Vector3.UP)
 	camera.make_current()
 	for _i in range(4):
 		await process_frame
+	for kind in range(4):
+		var label := world.get_node_or_null("AnimalGallery_%s/Label3D" % names[kind]) as Label3D
+		if label == null:
+			push_error("Animal gallery is missing a species label: " + names[kind])
+			quit(4)
+			return
+		var label_screen := camera.unproject_position(label.global_position)
+		if label_screen.x < 100.0 or label_screen.x > 1180.0 or label_screen.y < 60.0 or label_screen.y > 660.0:
+			push_error("Animal gallery species label is outside the safe frame: %s at %s" % [names[kind], str(label_screen)])
+			quit(5)
+			return
+	print("ANIMAL_GALLERY_FRAMING_PASS: all four species labels fit within the safe 1280x720 frame")
 	await RenderingServer.frame_post_draw
 	var image := root.get_texture().get_image()
 	if image.is_empty() or image.get_width() != 1280 or image.get_height() != 720:

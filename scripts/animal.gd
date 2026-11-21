@@ -184,10 +184,9 @@ func _update_hp_bar() -> void:
 		else:
 			mat.albedo_color = Color(0.95, 0.2, 0.15)
 
-func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.85) -> void:
-	# Voxel anatomy stays genuinely block-shaped: legs, wings, ears, horns,
-	# beaks and facial markings must not silently become spheres based on volume.
-	# Rounded body cores are authored explicitly through _ellipsoid().
+func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.85, core_role: String = "") -> void:
+	# Main torso/head volumes are explicitly block-shaped. Rounded meshes are
+	# reserved for compact accents such as coat patches, fleece tufts and joints.
 	var mi := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3.ONE
@@ -196,6 +195,8 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: 
 	mi.position = pos
 	mi.set_meta("animal_part_shape", "box")
 	mi.set_meta("animal_part_size", size)
+	if not core_role.is_empty():
+		mi.set_meta("animal_core_role", core_role)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.roughness = roughness
@@ -203,7 +204,7 @@ func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: 
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	parent.add_child(mi)
 
-func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88, core_role: String = "") -> MeshInstance3D:
+func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, roughness: float = 0.88) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.5
@@ -214,8 +215,6 @@ func _ellipsoid(parent: Node3D, pos: Vector3, size: Vector3, color: Color, rough
 	mi.position = pos
 	mi.scale = size
 	mi.set_meta("animal_rounded_part", true)
-	if not core_role.is_empty():
-		mi.set_meta("animal_core_role", core_role)
 	mi.set_meta("animal_part_shape", "ellipsoid")
 	mi.set_meta("animal_part_size", size)
 	var material := StandardMaterial3D.new()
@@ -233,24 +232,24 @@ func _build_mesh(data: Dictionary) -> void:
 	var s: float = float(data["scale"])
 	var body_c: Color = data["color_body"]
 	var spot_c: Color = data["color_spot"]
-	# Rounded core volumes sit beneath the voxel detailing. This preserves the
-	# readable Blockraft silhouette while avoiding animals that look like loose
-	# stacks of disconnected cubes at medium camera distance.
+	# Block-shaped torso/head cores establish readable voxel silhouettes;
+	# smaller ellipsoid accents add coat, fleece and tail detail without
+	# turning the full animal into a rounded toy.
 	match kind:
 		Kind.CHICKEN:
-			_ellipsoid(_body_root, Vector3(0, 0.34 * s, -0.015 * s), Vector3(0.54 * s, 0.35 * s, 0.66 * s), body_c, 0.88, "torso")
-			_ellipsoid(_body_root, Vector3(0, 0.53 * s, 0.22 * s), Vector3(0.29 * s, 0.25 * s, 0.30 * s), body_c, 0.88, "head")
+			_box(_body_root, Vector3(0, 0.34 * s, -0.015 * s), Vector3(0.60 * s, 0.38 * s, 0.68 * s), body_c, 0.88, "torso")
+			_box(_body_root, Vector3(0, 0.53 * s, 0.22 * s), Vector3(0.32 * s, 0.26 * s, 0.30 * s), body_c, 0.88, "head")
 		Kind.FOX:
-			_ellipsoid(_body_root, Vector3(0, 0.36 * s, -0.02 * s), Vector3(0.50 * s, 0.37 * s, 0.78 * s), body_c, 0.88, "torso")
-			_ellipsoid(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.37 * s, 0.34 * s, 0.38 * s), body_c, 0.88, "head")
-			_ellipsoid(_body_root, Vector3(0, 0.35 * s, -0.78 * s), Vector3(0.28 * s, 0.25 * s, 0.62 * s), body_c)
-			_ellipsoid(_body_root, Vector3(0, 0.35 * s, -1.02 * s), Vector3(0.24 * s, 0.20 * s, 0.24 * s), spot_c)
+			_box(_body_root, Vector3(0, 0.36 * s, -0.02 * s), Vector3(0.50 * s, 0.37 * s, 0.78 * s), body_c, 0.88, "torso")
+			_box(_body_root, Vector3(0, 0.48 * s, 0.34 * s), Vector3(0.37 * s, 0.34 * s, 0.38 * s), body_c, 0.88, "head")
+			_box(_body_root, Vector3(0, 0.35 * s, -0.78 * s), Vector3(0.26 * s, 0.22 * s, 0.62 * s), body_c)
+			_box(_body_root, Vector3(0, 0.35 * s, -1.02 * s), Vector3(0.22 * s, 0.18 * s, 0.24 * s), spot_c)
 		Kind.COW:
-			_ellipsoid(_body_root, Vector3(0, 0.54 * s, 0), Vector3(0.66 * s, 0.42 * s, 1.02 * s), body_c, 0.88, "torso")
-			_ellipsoid(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.39 * s, 0.30 * s, 0.38 * s), body_c, 0.88, "head")
+			_box(_body_root, Vector3(0, 0.54 * s, 0), Vector3(0.66 * s, 0.42 * s, 1.02 * s), body_c, 0.88, "torso")
+			_box(_body_root, Vector3(0, 0.70 * s, 0.48 * s), Vector3(0.39 * s, 0.30 * s, 0.38 * s), body_c, 0.88, "head")
 			_ellipsoid(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.34 * s, 0.20 * s, 0.18 * s), Color("#e9a5a0"))
 		Kind.SHEEP:
-			_ellipsoid(_body_root, Vector3(0, 0.43 * s, -0.01 * s), Vector3(0.64 * s, 0.43 * s, 0.86 * s), body_c, 0.88, "torso")
+			_box(_body_root, Vector3(0, 0.43 * s, -0.01 * s), Vector3(0.64 * s, 0.43 * s, 0.86 * s), body_c, 0.88, "torso")
 			# Two compact fleece tufts sit on the back; the body remains one
 			# readable volume instead of becoming a pile of oversized white balls.
 			for fleece_pos in [Vector3(-0.18, 0.66, -0.10), Vector3(0.18, 0.66, -0.10)]:
@@ -263,8 +262,8 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0, 0.49 * s, 0.37 * s), Vector3(0.14 * s, 0.09 * s, 0.15 * s), Color("#f4a51c"))
 			# White eye sockets and tiny dark pupils keep the face legible at distance.
 			for eye_x in [-0.105, 0.105]:
-				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.325 * s), Vector3(0.075 * s, 0.085 * s, 0.045 * s), Color("#fffdf5"))
-				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.354 * s), Vector3(0.032 * s, 0.048 * s, 0.018 * s), Color("#20242a"))
+				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.39 * s), Vector3(0.075 * s, 0.085 * s, 0.045 * s), Color("#fffdf5"))
+				_box(_body_root, Vector3(eye_x * s, 0.59 * s, 0.425 * s), Vector3(0.032 * s, 0.048 * s, 0.018 * s), Color("#20242a"))
 			_box(_body_root, Vector3(-0.12 * s, 0.12 * s, 0), Vector3(0.09 * s, 0.22 * s, 0.09 * s), Color("#e8c040"))
 			_box(_body_root, Vector3(0.12 * s, 0.12 * s, 0), Vector3(0.09 * s, 0.22 * s, 0.09 * s), Color("#e8c040"))
 			# Wing panels, tail feathers and cheek patches add a readable bird profile.
@@ -282,8 +281,8 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(-0.12 * s, 0.70 * s, 0.29 * s), Vector3(0.11 * s, 0.22 * s, 0.10 * s), body_c)
 			_box(_body_root, Vector3(0.12 * s, 0.70 * s, 0.29 * s), Vector3(0.11 * s, 0.22 * s, 0.10 * s), body_c)
 			_box(_body_root, Vector3(0, 0.38 * s, 0.49 * s), Vector3(0.20 * s, 0.14 * s, 0.22 * s), spot_c)
-			_box(_body_root, Vector3(-0.09 * s, 0.52 * s, 0.46 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
-			_box(_body_root, Vector3(0.09 * s, 0.52 * s, 0.46 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
+			_box(_body_root, Vector3(-0.09 * s, 0.52 * s, 0.55 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
+			_box(_body_root, Vector3(0.09 * s, 0.52 * s, 0.55 * s), Vector3(0.045 * s, 0.05 * s, 0.04 * s), Color("#211b18"))
 			# Four distinct legs and a white-tipped bushy tail complete the fox silhouette.
 			_box(_body_root, Vector3(-0.15 * s, 0.14 * s, -0.22 * s), Vector3(0.11 * s, 0.26 * s, 0.12 * s), body_c)
 			_box(_body_root, Vector3(0.15 * s, 0.14 * s, -0.22 * s), Vector3(0.11 * s, 0.26 * s, 0.12 * s), body_c)
@@ -303,10 +302,10 @@ func _build_mesh(data: Dictionary) -> void:
 			_box(_body_root, Vector3(0.18 * s, 0.20 * s, -0.25 * s), Vector3(0.12 * s, 0.40 * s, 0.12 * s), body_c)
 			# Cow face, pink muzzle, eyes, ears and short horns.
 			_box(_body_root, Vector3(0, 0.52 * s, 0.68 * s), Vector3(0.28 * s, 0.18 * s, 0.12 * s), Color("#e9a5a0"))
-			_box(_body_root, Vector3(-0.14 * s, 0.76 * s, 0.635 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
-			_box(_body_root, Vector3(0.14 * s, 0.76 * s, 0.635 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
-			_box(_body_root, Vector3(-0.105 * s, 0.69 * s, 0.63 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
-			_box(_body_root, Vector3(0.105 * s, 0.69 * s, 0.63 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
+			_box(_body_root, Vector3(-0.14 * s, 0.76 * s, 0.69 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
+			_box(_body_root, Vector3(0.14 * s, 0.76 * s, 0.69 * s), Vector3(0.08 * s, 0.09 * s, 0.035 * s), spot_c)
+			_box(_body_root, Vector3(-0.105 * s, 0.69 * s, 0.72 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
+			_box(_body_root, Vector3(0.105 * s, 0.69 * s, 0.72 * s), Vector3(0.045 * s, 0.055 * s, 0.035 * s), Color("#20242a"))
 			_box(_body_root, Vector3(-0.23 * s, 0.73 * s, 0.43 * s), Vector3(0.18 * s, 0.09 * s, 0.16 * s), body_c)
 			_box(_body_root, Vector3(0.23 * s, 0.73 * s, 0.43 * s), Vector3(0.18 * s, 0.09 * s, 0.16 * s), body_c)
 			_box(_body_root, Vector3(-0.12 * s, 0.83 * s, 0.47 * s), Vector3(0.07 * s, 0.17 * s, 0.07 * s), Color("#d8c9a0"))
@@ -319,7 +318,7 @@ func _build_mesh(data: Dictionary) -> void:
 		Kind.SHEEP:
 			# Compact charcoal face and four tapered legs; avoid a second full-body
 			# sphere so the fleece reads as one soft torso rather than stacked balls.
-			_ellipsoid(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.16 * s, 0.17 * s, 0.18 * s), Color("#353535"), 0.88, "head")
+			_box(_body_root, Vector3(0, 0.55 * s, 0.43 * s), Vector3(0.22 * s, 0.22 * s, 0.24 * s), Color("#353535"), 0.88, "head")
 			for leg_x in [-0.15, 0.15]:
 				for leg_z in [-0.23, 0.22]:
 					_ellipsoid(_body_root, Vector3(leg_x * s, 0.16 * s, leg_z * s), Vector3(0.085 * s, 0.30 * s, 0.09 * s), Color("#343434"))

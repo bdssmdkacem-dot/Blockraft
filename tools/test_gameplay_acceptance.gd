@@ -710,17 +710,19 @@ func _run_checks() -> void:
                 continue
             animal_mesh_parts += 1
             var mesh_part := part as MeshInstance3D
-            if mesh_part.mesh is BoxMesh:
-                box_detail_parts += 1
-            if mesh_part.mesh is SphereMesh and mesh_part.has_meta("animal_core_role"):
+            if mesh_part.has_meta("animal_core_role"):
+                if not (mesh_part.mesh is BoxMesh):
+                    _fail("spawned animal core is not block-shaped: %s" % animal.name, 78)
+                    return
                 match str(mesh_part.get_meta("animal_core_role")):
                     "torso":
                         torso_core_count += 1
                     "head":
                         head_core_count += 1
-        # Check semantic core anatomy and species-specific block details. Do not
-        # use a rounded/total-mesh ratio: chickens intentionally carry many
-        # crisp voxel feathers, wing panels and facial parts around two cores.
+            elif mesh_part.mesh is BoxMesh:
+                box_detail_parts += 1
+        # Require block-shaped torso/head cores and species-specific crisp
+        # details. Rounded accents are allowed only on smaller features.
         if animal_mesh_parts >= int(expected_anatomy_parts[animal_kind]) and box_detail_parts >= int(expected_box_details[animal_kind]) and torso_core_count == 1 and head_core_count == 1:
             accepted_animal_anatomy += 1
             accepted_anatomy_by_kind[animal_kind] += 1

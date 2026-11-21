@@ -52,31 +52,38 @@ func _run_checks() -> void:
 		if meshes.size() < min_parts or body.get_child_count() < min_parts:
 			_fail("animal %d has too few visible anatomy parts: meshes=%d children=%d" % [kind, meshes.size(), body.get_child_count()], 5)
 			return
-		var box_parts := 0
+		var box_detail_parts := 0
 		var rounded_parts := 0
 		var torso_core_count := 0
 		var head_core_count := 0
 		for mesh_variant in meshes:
 			var mesh_instance := mesh_variant as MeshInstance3D
-			if mesh_instance.mesh is BoxMesh:
-				box_parts += 1
-			elif mesh_instance.mesh is SphereMesh:
-				rounded_parts += 1
-				if mesh_instance.has_meta("animal_core_role"):
-					var core_role := str(mesh_instance.get_meta("animal_core_role"))
-					var core_size: Vector3 = mesh_instance.get_meta("animal_part_size", Vector3.ZERO)
-					if core_role == "torso":
-						torso_core_count += 1
-						if core_size.x < 0.8 or core_size.y < 0.55 or core_size.z < 0.8:
-							_fail("animal %d torso core is undersized: %s" % [kind, str(core_size)], 16)
-							return
-					elif core_role == "head":
-						head_core_count += 1
-						if core_size.x < 0.25 or core_size.y < 0.25 or core_size.z < 0.25:
-							_fail("animal %d head core is undersized: %s" % [kind, str(core_size)], 17)
-							return
-		if box_parts < int([6, 8, 8, 2][kind]) or rounded_parts < 2 or torso_core_count != 1 or head_core_count != 1:
-			_fail("animal %d must combine one readable torso core, one head core and crisp voxel details (boxes=%d rounded=%d torso=%d head=%d)" % [kind, box_parts, rounded_parts, torso_core_count, head_core_count], 12)
+			if mesh_instance.has_meta("animal_core_role"):
+				if not (mesh_instance.mesh is BoxMesh):
+					_fail("animal %d torso/head core must use a crisp BoxMesh silhouette" % kind, 18)
+					return
+				var core_role := str(mesh_instance.get_meta("animal_core_role"))
+				var core_size: Vector3 = mesh_instance.get_meta("animal_part_size", Vector3.ZERO)
+				if core_role == "torso":
+					torso_core_count += 1
+					if core_size.x < 0.8 or core_size.y < 0.55 or core_size.z < 0.8:
+						_fail("animal %d torso core is undersized: %s" % [kind, str(core_size)], 16)
+						return
+				elif core_role == "head":
+					head_core_count += 1
+					if core_size.x < 0.25 or core_size.y < 0.25 or core_size.z < 0.25:
+						_fail("animal %d head core is undersized: %s" % [kind, str(core_size)], 17)
+						return
+				else:
+					_fail("animal %d has an unknown core role: %s" % [kind, core_role], 19)
+					return
+			else:
+				if mesh_instance.mesh is BoxMesh:
+					box_detail_parts += 1
+				elif mesh_instance.mesh is SphereMesh:
+					rounded_parts += 1
+		if box_detail_parts < int([6, 8, 8, 2][kind]) or torso_core_count != 1 or head_core_count != 1:
+			_fail("animal %d must combine one block-shaped torso, one block-shaped head and species-specific voxel details (boxes=%d rounded_accents=%d torso=%d head=%d)" % [kind, box_detail_parts, rounded_parts, torso_core_count, head_core_count], 12)
 			return
 		var animated_legs: Array = animal.get("_animated_legs")
 		var expected_leg_counts := [4, 2, 4, 4]
