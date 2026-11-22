@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install renderer dependencies
         run: |
@@ -57,7 +57,7 @@ jobs:
           file artifacts/gameplay-camera.png
 
       - name: Upload actual screenshot
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: blockraft-gameplay-camera-screenshot
           path: artifacts/*.png
