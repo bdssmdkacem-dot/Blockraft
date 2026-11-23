@@ -828,7 +828,7 @@ func _run_checks() -> void:
             if str(scene.blocks.get(Vector3i(side_x, 4, side_z), "")) != "wood":
                 _fail("footbridge side stringer is missing at x=%d z=%d" % [side_x, side_z], 57)
                 return
-        for post_z in [-19, -15]:
+        for post_z in [-20, -18, -16, -14]:
             if str(scene.blocks.get(Vector3i(side_x, 5, post_z), "")) != "wood":
                 _fail("footbridge outer rail post is missing at x=%d z=%d" % [side_x, post_z], 58)
                 return
