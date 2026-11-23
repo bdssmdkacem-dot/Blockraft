@@ -385,7 +385,8 @@ func _generate_world() -> void:
 			# Keep the channel centreline's lateral drift below half a voxel per step.
 			# The previous steep sine could move the river diagonally by a full cell
 			# between adjacent columns, leaving only corner-touching water tiles.
-			var river_d := absf(fz - sin(fx * 0.055) * 8.0 - cos(fx * 0.025) * 3.0)
+			var river_centerline := sin(fx * 0.052) * 10.2 + cos(fx * 0.026) * 4.4 + sin(fx * 0.105 + 0.8) * 1.1
+			var river_d := absf(fz - river_centerline)
 			# The forward scenic tributary gives the spawn view a visible crossing.
 			var scenic_river_d := absf(fz + 15.0 + sin(fx * 0.12) * 3.0)
 			if dist > 12.0 and dist < 48.0:
@@ -393,7 +394,7 @@ func _generate_world() -> void:
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
 			# A gently varying channel width avoids the ruler-straight, uniformly
 			# narrow trench. Width modulation is low-frequency and deterministic.
-			var main_river_width := 1.62 + sin(fx * 0.105 + fz * 0.045) * 0.14 + cos(fz * 0.09) * 0.06
+			var main_river_width := 1.68 + sin(fx * 0.078 + fz * 0.035) * 0.18 + cos(fz * 0.065) * 0.07
 			var in_main := river_d < main_river_width and dist > 7.0
 			var in_trib := trib_d < 1.25 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
@@ -746,6 +747,9 @@ func _generate_world() -> void:
 	for rail_x in [-2, 2]:
 		for rail_z in range(-20, -12):
 			blocks[Vector3i(rail_x, 4, rail_z)] = "wood"
+			# A continuous cap rail ties the uprights into one bridge assembly.
+			# It stays outside the three tested player lanes and never replaces bank terrain.
+			blocks[Vector3i(rail_x, 6, rail_z)] = "wood"
 		for post_z in [-20, -18, -16, -14]:
 			blocks[Vector3i(rail_x, 5, post_z)] = "wood"
 	world_generation_heightfield_ms = float(voxel_fill_started_usec - generation_started_usec) / 1000.0
@@ -1159,7 +1163,7 @@ func _water_surface_corner(corner: Vector2i, water_y: int) -> Vector3:
 		if inward.length_squared() > 0.0001:
 			# Stronger shared inset softens one-, two- and three-cell shoreline
 			# corners. Four-cell interior corners remain exactly on the grid.
-			var rounding := 0.30 if samples <= 3 else 0.0
+			var rounding := 0.48 if samples == 1 else (0.42 if samples == 2 else (0.34 if samples == 3 else 0.0))
 			position += inward.normalized() * rounding
 	return Vector3(position.x, float(water_y + 1), position.y)
 
@@ -1320,6 +1324,17 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			tint = tint.lightened(0.035)
 		elif absf(normal.y) < 0.5:
 			tint = tint.darkened(0.045)
+		# Tint the uppermost grass lip beside water as damp sand/silt too. Previously
+		# only vertical faces were recoloured, leaving a conspicuous brown top strip.
+		# This affects vertex colour only and does not alter the terrain or collision.
+		if kind == "grass" and normal.y > 0.5:
+			var wet_bank_top := false
+			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+				if str(blocks.get(pos + water_offset, "")) == "water":
+					wet_bank_top = true
+					break
+			if wet_bank_top:
+				tint = Color("#b39a68").lerp(Color("#d0b77f"), fine_biome * 0.28) * variation
 		# Give the exposed bank face touching water a damp sediment tone instead of
 		# the default dark soil stripe. This is vertex colour only: no extra geometry,
 		# material, collision surface, draw call, or change to water topology.
