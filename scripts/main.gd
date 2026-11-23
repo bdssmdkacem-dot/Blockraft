@@ -393,9 +393,9 @@ func _generate_world() -> void:
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
 			# A gently varying channel width avoids the ruler-straight, uniformly
 			# narrow trench. Width modulation is low-frequency and deterministic.
-			var main_river_width := 1.78 + sin(fx * 0.105 + fz * 0.045) * 0.18 + cos(fz * 0.09) * 0.08
+			var main_river_width := 1.62 + sin(fx * 0.105 + fz * 0.045) * 0.14 + cos(fz * 0.09) * 0.06
 			var in_main := river_d < main_river_width and dist > 7.0
-			var in_trib := trib_d < 1.35 and dist > 11.0 and fz > 0.0
+			var in_trib := trib_d < 1.25 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
 			if in_river:
 				# Deepen the channel centre and leave a shallow shelf near the bank.
@@ -404,7 +404,7 @@ func _generate_world() -> void:
 				var channel_width := main_river_width
 				if in_trib and (not in_main or trib_d < river_d):
 					channel_distance = trib_d
-					channel_width = 1.35
+					channel_width = 1.25
 				var edge_t := clampf(channel_distance / maxf(channel_width, 0.1), 0.0, 1.0)
 				var channel_floor_height := lerpf(0.35, 1.2, edge_t)
 				h = mini(h, channel_floor_height)
@@ -415,7 +415,7 @@ func _generate_world() -> void:
 				var bank_inner_width := main_river_width
 				if dist > 11.0 and fz > 0.0 and trib_d < bank_distance:
 					bank_distance = trib_d
-					bank_inner_width = 1.35
+					bank_inner_width = 1.25
 				if bank_distance < 8.5 and dist > 7.0:
 					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 8.5, bank_distance))
 					h = minf(h, bank_height)
@@ -1032,7 +1032,7 @@ func _refresh_terrain_corner_height(corner: Vector2i) -> void:
 		# y=3 water plane and overhang the river. Keep every river-edge corner
 		# just below the water so the water surface owns the visible boundary.
 		if touches_water:
-			blended_height = minf(blended_height, 2.72)
+			blended_height = minf(blended_height, 2.84)
 		terrain_corner_heights[corner] = blended_height
 	else:
 		terrain_corner_heights.erase(corner)
@@ -1092,8 +1092,8 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var edge_a := Vector3(shared_edge_a.x, water_top - 0.04, shared_edge_a.z)
 	var edge_b := Vector3(shared_edge_b.x, water_top - 0.04, shared_edge_b.z)
 	var landward_offset := Vector2i(-signi(roundi(inward.x)), -signi(roundi(inward.z)))
-	var land_a := start - inward
-	var land_b := end - inward
+	var land_a := start - inward * 1.35
+	var land_b := end - inward * 1.35
 	var land_corner_a := corner_a + landward_offset
 	var land_corner_b := corner_b + landward_offset
 	land_a.y = float(terrain_corner_heights.get(land_corner_a, terrain_corner_heights.get(corner_a, water_top - 0.4)))
@@ -1294,6 +1294,18 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			tint = tint.lightened(0.035)
 		elif absf(normal.y) < 0.5:
 			tint = tint.darkened(0.045)
+		# Give the exposed bank face touching water a damp sediment tone instead of
+		# the default dark soil stripe. This is vertex colour only: no extra geometry,
+		# material, collision surface, draw call, or change to water topology.
+		if kind != "water" and absf(normal.y) < 0.5:
+			var touches_water_face := false
+			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+				if str(blocks.get(pos + water_offset, "")) == "water":
+					touches_water_face = true
+					break
+			if touches_water_face:
+				var wet_silt := Color("#897451").lerp(Color("#b39a68"), fine_biome * 0.32)
+				tint = wet_silt * variation
 		# Fade the water colour toward a soft turquoise at exposed shoreline
 		# edges. The fade is vertex-coloured on the existing top quad: it adds no
 		# geometry, collision, water voxels, draw calls, or chunk rebuild work.
