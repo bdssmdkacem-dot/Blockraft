@@ -865,7 +865,10 @@ func _clear_spawn_camera_corridor() -> void:
 			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
 				var kind := str(blocks.get(pos, ""))
-				if kind in ["wood", "leaves"]:
+				# Keep the outer bridge posts even where the landing-radius pass
+				# overlaps the southern end of the bridge.
+				var is_bridge_rail_post := pos.y == 5 and absi(pos.x) == 2 and pos.z in [-20, -18, -16, -14]
+				if kind in ["wood", "leaves"] and not is_bridge_rail_post:
 					blocks.erase(pos)
 					near_foliage_removed += 1
 	# Preserve both forest flanks while keeping a four-column clear corridor
