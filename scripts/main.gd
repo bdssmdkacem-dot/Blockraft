@@ -877,7 +877,11 @@ func _clear_spawn_camera_corridor() -> void:
 			for y in range(5, 31):
 				var pos := Vector3i(x, y, z)
 				var kind := str(blocks.get(pos, ""))
-				if kind in ["wood", "leaves"]:
+				# The camera corridor clears foliage, not bridge architecture.
+				# These four raised outer posts sit inside the forward sightline;
+				# preserve them so the bridge rail remains complete after cleanup.
+				var is_bridge_rail_post := pos.y == 5 and absi(pos.x) == 2 and pos.z in [-20, -18, -16, -14]
+				if kind in ["wood", "leaves"] and not is_bridge_rail_post:
 					blocks.erase(pos)
 					forward_removed += 1
 	if near_foliage_removed > 0 or forward_removed > 0:
