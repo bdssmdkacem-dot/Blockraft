@@ -388,7 +388,8 @@ func _generate_world() -> void:
 			var river_centerline := sin(fx * 0.052) * 10.2 + cos(fx * 0.026) * 4.4 + sin(fx * 0.105 + 0.8) * 1.1
 			var river_d := absf(fz - river_centerline)
 			# The forward scenic tributary gives the spawn view a visible crossing.
-			var scenic_river_d := absf(fz + 15.0 + sin(fx * 0.12) * 3.0)
+			var scenic_river_centerline := -15.0 - sin(fx * 0.092) * 5.2 - cos(fx * 0.038) * 1.7
+			var scenic_river_d := absf(fz - scenic_river_centerline)
 			if dist > 12.0 and dist < 48.0:
 				river_d = minf(river_d, scenic_river_d)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
