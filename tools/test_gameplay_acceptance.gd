@@ -823,6 +823,9 @@ func _run_checks() -> void:
         if scene.blocks.has(Vector3i(-1, 4, rail_z)) or scene.blocks.has(Vector3i(1, 4, rail_z)):
             _fail("forward river footbridge still has obstructive raised rail posts", 53)
             return
+    # Regression guard: the forward camera-corridor cleanup must preserve
+    # structural bridge rail posts even though they lie inside the sightline.
+    # Check every post after world initialization, not only during generation.
     for side_x in [-2, 2]:
         for side_z in range(-20, -12):
             if str(scene.blocks.get(Vector3i(side_x, 4, side_z), "")) != "wood":
