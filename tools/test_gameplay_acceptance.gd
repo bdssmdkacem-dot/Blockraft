@@ -295,8 +295,8 @@ func _run_checks() -> void:
     var bevel_groups: Dictionary = {}
     scene.call("_append_shoreline_transition", bevel_groups, Vector3(100.0, 0.0, 100.0), Vector3(100.0, 0.0, 101.0), Vector3(0.65, 0.0, 0.0), Vector2i(100, 100), Vector2i(100, 101), 3.0)
     var bevel_vertices: PackedVector3Array = bevel_groups.get("sand", {}).get("vertices", PackedVector3Array())
-    if bevel_vertices.size() != 6:
-        _fail("shoreline bevel did not emit its expected two triangles: vertices=%d" % bevel_vertices.size(), 89)
+    if bevel_vertices.size() < 18 or bevel_vertices.size() % 6 != 0:
+        _fail("shoreline transition did not emit three sediment bands: vertices=%d" % bevel_vertices.size(), 89)
         return
     for bevel_vertex in bevel_vertices:
         if bevel_vertex.y > 2.97:
@@ -823,6 +823,15 @@ func _run_checks() -> void:
         if scene.blocks.has(Vector3i(-1, 4, rail_z)) or scene.blocks.has(Vector3i(1, 4, rail_z)):
             _fail("forward river footbridge still has obstructive raised rail posts", 53)
             return
+    for side_x in [-2, 2]:
+        for side_z in range(-20, -12):
+            if str(scene.blocks.get(Vector3i(side_x, 4, side_z), "")) != "wood":
+                _fail("footbridge side stringer is missing at x=%d z=%d" % [side_x, side_z], 57)
+                return
+        for support_z in [-19, -15]:
+            if str(scene.blocks.get(Vector3i(side_x, 2, support_z), "")) != "wood":
+                _fail("footbridge outer support is missing at x=%d z=%d" % [side_x, support_z], 58)
+                return
     # The bridge lane at x=-1,z=-15 belongs to diagonal chunk (-1,-1).
     # Startup acceptance previously waited for only five cross-shaped chunks,
     # then raycast before this diagonal chunk had streamed into the world.
