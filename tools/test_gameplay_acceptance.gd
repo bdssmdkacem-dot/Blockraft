@@ -828,9 +828,9 @@ func _run_checks() -> void:
             if str(scene.blocks.get(Vector3i(side_x, 4, side_z), "")) != "wood":
                 _fail("footbridge side stringer is missing at x=%d z=%d" % [side_x, side_z], 57)
                 return
-        for support_z in [-19, -15]:
-            if str(scene.blocks.get(Vector3i(side_x, 2, support_z), "")) != "wood":
-                _fail("footbridge outer support is missing at x=%d z=%d" % [side_x, support_z], 58)
+        for post_z in [-19, -15]:
+            if str(scene.blocks.get(Vector3i(side_x, 5, post_z), "")) != "wood":
+                _fail("footbridge outer rail post is missing at x=%d z=%d" % [side_x, post_z], 58)
                 return
     # The bridge lane at x=-1,z=-15 belongs to diagonal chunk (-1,-1).
     # Startup acceptance previously waited for only five cross-shaped chunks,
