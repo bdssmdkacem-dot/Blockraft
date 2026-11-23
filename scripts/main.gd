@@ -741,6 +741,16 @@ func _generate_world() -> void:
 			for clear_y in range(4, 25):
 				blocks.erase(Vector3i(x, clear_y, z))
 			blocks[Vector3i(x, 3, z)] = "wood"
+	# Side stringers, low handrails and outer piers add a readable timber
+	# silhouette without occupying any of the three tested walking lanes.
+	for rail_x in [-2, 2]:
+		for rail_z in range(-20, -12):
+			blocks[Vector3i(rail_x, 4, rail_z)] = "wood"
+		for rail_z in range(-20, -12, 2):
+			blocks[Vector3i(rail_x, 5, rail_z)] = "wood"
+		for pier_z in [-19, -15]:
+			for pier_y in range(1, 4):
+				blocks[Vector3i(rail_x, pier_y, pier_z)] = "wood"
 	world_generation_heightfield_ms = float(voxel_fill_started_usec - generation_started_usec) / 1000.0
 	world_generation_voxel_fill_ms = float(Time.get_ticks_usec() - voxel_fill_started_usec) / 1000.0
 	world_generation_ms = float(Time.get_ticks_usec() - generation_started_usec) / 1000.0
@@ -1072,10 +1082,8 @@ func _smooth_terrain_vertex(vertex: Vector3) -> Vector3:
 	return vertex
 
 func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vector3, inward: Vector3, corner_a: Vector2i, corner_b: Vector2i, water_top: float) -> void:
-	# A render-only sediment ramp sits OUTSIDE the water footprint. The water-edge
-	# vertices stay just below the water plane; the outer vertices follow the
-	# neighbouring dry-bank corner heights. This replaces the old submerged bevel,
-	# which could not soften the visible shoreline from the gameplay camera.
+	# Three render-only sediment bands bridge the rounded water edge to the
+	# dry bank. Geometry remains outside the water footprint and below its plane.
 	if not groups.has("sand"):
 		groups["sand"] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
 	var group: Dictionary = groups["sand"]
@@ -1083,36 +1091,47 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var normals: PackedVector3Array = group["normals"]
 	var colors: PackedColorArray = group["colors"]
 	var indices: PackedInt32Array = group["indices"]
-	# Use the same globally shared rounded shoreline corners as the water
-	# surface. Starting the sediment bevel at the raw voxel edge left small
-	# triangular soil slivers wherever the water contour was inset.
 	var water_y := roundi(water_top - 1.0)
-	var shared_edge_a := _water_surface_corner(corner_a, water_y)
-	var shared_edge_b := _water_surface_corner(corner_b, water_y)
-	var edge_a := Vector3(shared_edge_a.x, water_top - 0.04, shared_edge_a.z)
-	var edge_b := Vector3(shared_edge_b.x, water_top - 0.04, shared_edge_b.z)
+	var shared_a := _water_surface_corner(corner_a, water_y)
+	var shared_b := _water_surface_corner(corner_b, water_y)
+	var edge_a := Vector3(shared_a.x, water_top - 0.04, shared_a.z)
+	var edge_b := Vector3(shared_b.x, water_top - 0.04, shared_b.z)
 	var landward_offset := Vector2i(-signi(roundi(inward.x)), -signi(roundi(inward.z)))
-	var land_a := start - inward * 1.35
-	var land_b := end - inward * 1.35
 	var land_corner_a := corner_a + landward_offset
 	var land_corner_b := corner_b + landward_offset
-	land_a.y = float(terrain_corner_heights.get(land_corner_a, terrain_corner_heights.get(corner_a, water_top - 0.4)))
-	land_b.y = float(terrain_corner_heights.get(land_corner_b, terrain_corner_heights.get(corner_b, water_top - 0.4)))
-	# Keep the ramp bounded and below the waterline at its inner edge.
-	land_a.y = clampf(land_a.y, float(MIN_Y), water_top - 0.08)
-	land_b.y = clampf(land_b.y, float(MIN_Y), water_top - 0.08)
-	var first_normal := (land_b - edge_a).cross(edge_b - edge_a)
-	var second_normal := (land_a - edge_a).cross(land_b - edge_a)
-	if first_normal.length_squared() < 0.0001 or second_normal.length_squared() < 0.0001:
-		return
-	var base := vertices.size()
-	vertices.append_array(PackedVector3Array([edge_a, land_b, edge_b, edge_a, land_a, land_b]))
-	var first_outward := -first_normal.normalized()
-	var second_outward := -second_normal.normalized()
-	normals.append_array(PackedVector3Array([first_outward, first_outward, first_outward, second_outward, second_outward, second_outward]))
-	var sediment_tint := Color("#b7a276")
-	colors.append_array(PackedColorArray([sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint]))
-	indices.append_array(PackedInt32Array([base, base + 1, base + 2, base + 3, base + 4, base + 5]))
+	var land_a := start - inward * 1.35
+	var land_b := end - inward * 1.35
+	land_a.y = clampf(float(terrain_corner_heights.get(land_corner_a, terrain_corner_heights.get(corner_a, water_top - 0.4))), float(MIN_Y), water_top - 0.08)
+	land_b.y = clampf(float(terrain_corner_heights.get(land_corner_b, terrain_corner_heights.get(corner_b, water_top - 0.4))), float(MIN_Y), water_top - 0.08)
+	var edge_row_a := edge_a
+	var edge_row_b := edge_b
+	var shelf_row_a := edge_a.lerp(land_a, 0.38)
+	var shelf_row_b := edge_b.lerp(land_b, 0.38)
+	shelf_row_a.y = minf(shelf_row_a.y, water_top - 0.18)
+	shelf_row_b.y = minf(shelf_row_b.y, water_top - 0.18)
+	var upper_row_a := edge_a.lerp(land_a, 0.72)
+	var upper_row_b := edge_b.lerp(land_b, 0.72)
+	upper_row_a.y = minf(upper_row_a.y, water_top - 0.12)
+	upper_row_b.y = minf(upper_row_b.y, water_top - 0.12)
+	var rows_a := [edge_row_a, shelf_row_a, upper_row_a, land_a]
+	var rows_b := [edge_row_b, shelf_row_b, upper_row_b, land_b]
+	for band in range(3):
+		var a: Vector3 = rows_a[band]
+		var b: Vector3 = rows_b[band]
+		var c: Vector3 = rows_b[band + 1]
+		var d: Vector3 = rows_a[band + 1]
+		var n1 := (c - a).cross(b - a)
+		var n2 := (d - a).cross(c - a)
+		if n1.length_squared() < 0.0001 or n2.length_squared() < 0.0001:
+			continue
+		var base := vertices.size()
+		vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
+		var outward_1 := -n1.normalized()
+		var outward_2 := -n2.normalized()
+		normals.append_array(PackedVector3Array([outward_1, outward_1, outward_1, outward_2, outward_2, outward_2]))
+		var sediment_tint := Color("#b7a276").lerp(Color("#8f7956"), float(band) * 0.18)
+		colors.append_array(PackedColorArray([sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint]))
+		indices.append_array(PackedInt32Array([base, base + 1, base + 2, base + 3, base + 4, base + 5]))
 	group["vertices"] = vertices
 	group["normals"] = normals
 	group["colors"] = colors
@@ -1120,8 +1139,8 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	groups["sand"] = group
 
 func _water_surface_corner(corner: Vector2i, water_y: int) -> Vector3:
-	# Compute a shared rounded corner from the four global water cells around it.
-	# Every chunk uses the same neighbourhood, so seam vertices remain identical.
+	# Shared topology-aware rounding: every adjacent water cell and every chunk
+	# derives the exact same corner from the global four-cell neighbourhood.
 	var centroid := Vector2.ZERO
 	var samples := 0
 	for offset in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i(0, 0)]:
@@ -1134,7 +1153,10 @@ func _water_surface_corner(corner: Vector2i, water_y: int) -> Vector3:
 	if samples > 0:
 		var inward := centroid / float(samples)
 		if inward.length_squared() > 0.0001:
-			position += inward.normalized() * (0.20 if samples <= 2 else 0.12)
+			# Stronger shared inset softens one-, two- and three-cell shoreline
+			# corners. Four-cell interior corners remain exactly on the grid.
+			var rounding := 0.30 if samples <= 3 else 0.0
+			position += inward.normalized() * rounding
 	return Vector3(position.x, float(water_y + 1), position.y)
 
 func _water_surface_polygon(pos: Vector3i) -> PackedVector3Array:
