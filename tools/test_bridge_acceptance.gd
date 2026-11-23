@@ -135,6 +135,8 @@ func _run() -> void:
         walker.velocity.x = 0.0
         walker.velocity.y -= 9.8 / 60.0
         walker.move_and_slide()
+        if frame % 30 == 0:
+            print("BRIDGE_WALKER_TRACE frame=", frame, " position=", walker.global_position, " velocity=", walker.velocity, " floor=", walker.is_on_floor(), " collisions=", walker.get_slide_collision_count())
         min_y = minf(min_y, walker.global_position.y)
         if walker.global_position.z >= -19.9 and walker.global_position.z <= -13.0 and walker.global_position.y >= 4.7:
             reached_deck = true
