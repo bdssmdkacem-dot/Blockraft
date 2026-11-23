@@ -746,8 +746,8 @@ func _generate_world() -> void:
 	for rail_x in [-2, 2]:
 		for rail_z in range(-20, -12):
 			blocks[Vector3i(rail_x, 4, rail_z)] = "wood"
-		for rail_z in range(-20, -12, 2):
-			blocks[Vector3i(rail_x, 5, rail_z)] = "wood"
+		for post_z in [-20, -18, -16, -14]:
+			blocks[Vector3i(rail_x, 5, post_z)] = "wood"
 	world_generation_heightfield_ms = float(voxel_fill_started_usec - generation_started_usec) / 1000.0
 	world_generation_voxel_fill_ms = float(Time.get_ticks_usec() - voxel_fill_started_usec) / 1000.0
 	world_generation_ms = float(Time.get_ticks_usec() - generation_started_usec) / 1000.0
