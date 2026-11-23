@@ -48,7 +48,8 @@ func _run_checks() -> void:
     for block_position in scene.blocks:
         var forest_cell: Vector3i = block_position
         var forest_kind := str(scene.blocks[forest_cell])
-        if forest_cell.y >= 5 and forest_cell.y <= 24 and Vector2(float(forest_cell.x), float(forest_cell.z)).length() < 16.0 and forest_kind in ["wood", "leaves"]:
+        var is_bridge_rail_post := forest_cell.y == 5 and absi(forest_cell.x) == 2 and forest_cell.z in [-20, -18, -16, -14]
+        if forest_cell.y >= 5 and forest_cell.y <= 24 and Vector2(float(forest_cell.x), float(forest_cell.z)).length() < 16.0 and forest_kind in ["wood", "leaves"] and not is_bridge_rail_post:
             near_camera_foliage_cells += 1
         if forest_cell.y < 5 or forest_cell.y > 24 or forest_cell.z > -16 or forest_cell.z < -36:
             continue
