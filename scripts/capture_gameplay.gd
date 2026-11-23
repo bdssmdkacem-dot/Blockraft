@@ -37,8 +37,9 @@ func _capture_gameplay() -> void:
 		return
 
 	# Regression guard: keep the immediate landing pocket clear and the
-	# actual narrow bridge sightline unobstructed, while allowing the nearby
-	# forest to remain visible outside the player's close camera envelope.
+	# bridge approach clear of incidental foliage. The four outer rail posts
+	# are intentional bridge architecture at the edge of this broad sightline,
+	# so they must not be classified as an obstruction.
 	var world_blocks: Dictionary = gameplay.get("blocks")
 	for x in range(-8, 9):
 		for z in range(-8, 9):
@@ -56,9 +57,11 @@ func _capture_gameplay() -> void:
 			if absf(float(x) - 0.5) > view_half_width:
 				continue
 			for y in range(5, 31):
-				var kind := str(world_blocks.get(Vector3i(x, y, z), ""))
-				if kind in ["wood", "leaves"]:
-					push_error("Spawn bridge sightline remains obstructed by %s at %s" % [kind, Vector3i(x, y, z)])
+				var pos := Vector3i(x, y, z)
+				var kind := str(world_blocks.get(pos, ""))
+				var is_bridge_rail_post := pos.y == 5 and absi(pos.x) == 2 and pos.z in [-20, -18, -16, -14]
+				if kind in ["wood", "leaves"] and not is_bridge_rail_post:
+					push_error("Spawn bridge sightline remains obstructed by %s at %s" % [kind, pos])
 					quit(7)
 					return
 
