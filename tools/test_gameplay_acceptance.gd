@@ -7,6 +7,12 @@ func _fail(message: String, code: int) -> void:
     push_error("Gameplay acceptance: " + message)
     quit(code)
 
+func _contains_vertex(vertices: PackedVector3Array, expected: Vector3) -> bool:
+    for vertex in vertices:
+        if vertex.distance_to(expected) <= 0.001:
+            return true
+    return false
+
 func _run_checks() -> void:
     root.size = Vector2i(1280, 720)
     print("GAMEPLAY_ACCEPTANCE: loading gameplay scene")
@@ -408,23 +414,12 @@ func _run_checks() -> void:
             if west_vertices.size() < 4 or east_vertices.size() < 4:
                 _fail("actual river water cell at x seam did not emit a complete surface quad: %s" % str(water_cell), 93)
                 return
-            var west_shared_edge: Array = []
-            var east_shared_edge: Array = []
-            var x_seam := float(water_cell.x + 1)
-            for vertex in west_vertices:
-                if absf(vertex.x - x_seam) <= 0.25:
-                    west_shared_edge.append(Vector2(vertex.x, vertex.z))
-            for vertex in east_vertices:
-                if absf(vertex.x - x_seam) <= 0.25:
-                    east_shared_edge.append(Vector2(vertex.x, vertex.z))
-            west_shared_edge.sort_custom(func(a: Vector2, b: Vector2): return a.y < b.y)
-            east_shared_edge.sort_custom(func(a: Vector2, b: Vector2): return a.y < b.y)
-            if west_shared_edge.size() != east_shared_edge.size() or west_shared_edge.size() < 2:
-                _fail("actual rounded river x seam has mismatched shared edge vertices near %s" % str(water_cell), 94)
-                return
-            for edge_index in range(west_shared_edge.size()):
-                if west_shared_edge[edge_index].distance_to(east_shared_edge[edge_index]) > 0.001:
-                    _fail("actual rounded river x seam vertices diverge near %s" % str(water_cell), 94)
+            var shared_a: Vector3 = scene.call("_water_surface_corner", Vector2i(water_cell.x + 1, water_cell.z), water_cell.y)
+            var shared_b: Vector3 = scene.call("_water_surface_corner", Vector2i(water_cell.x + 1, water_cell.z + 1), water_cell.y)
+            var expected_edge_points: Array[Vector3] = [shared_a, (shared_a + shared_b) * 0.5, shared_b]
+            for expected_point in expected_edge_points:
+                if not _contains_vertex(west_vertices, expected_point) or not _contains_vertex(east_vertices, expected_point):
+                    _fail("actual rounded river x seam is missing a shared corner/midpoint near %s: %s" % [str(water_cell), str(expected_point)], 94)
                     return
             actual_x_seam_pairs += 1
         var south_cell := water_cell + Vector3i(0, 0, 1)
@@ -438,23 +433,12 @@ func _run_checks() -> void:
             if north_vertices.size() < 4 or south_vertices.size() < 4:
                 _fail("actual river water cell at z seam did not emit a complete surface quad: %s" % str(water_cell), 95)
                 return
-            var north_shared_edge: Array = []
-            var south_shared_edge: Array = []
-            var z_seam := float(water_cell.z + 1)
-            for vertex in north_vertices:
-                if absf(vertex.z - z_seam) <= 0.25:
-                    north_shared_edge.append(Vector2(vertex.x, vertex.z))
-            for vertex in south_vertices:
-                if absf(vertex.z - z_seam) <= 0.25:
-                    south_shared_edge.append(Vector2(vertex.x, vertex.z))
-            north_shared_edge.sort_custom(func(a: Vector2, b: Vector2): return a.x < b.x)
-            south_shared_edge.sort_custom(func(a: Vector2, b: Vector2): return a.x < b.x)
-            if north_shared_edge.size() != south_shared_edge.size() or north_shared_edge.size() < 2:
-                _fail("actual rounded river z seam has mismatched shared edge vertices near %s" % str(water_cell), 96)
-                return
-            for edge_index in range(north_shared_edge.size()):
-                if north_shared_edge[edge_index].distance_to(south_shared_edge[edge_index]) > 0.001:
-                    _fail("actual rounded river z seam vertices diverge near %s" % str(water_cell), 96)
+            var shared_a: Vector3 = scene.call("_water_surface_corner", Vector2i(water_cell.x, water_cell.z + 1), water_cell.y)
+            var shared_b: Vector3 = scene.call("_water_surface_corner", Vector2i(water_cell.x + 1, water_cell.z + 1), water_cell.y)
+            var expected_edge_points: Array[Vector3] = [shared_a, (shared_a + shared_b) * 0.5, shared_b]
+            for expected_point in expected_edge_points:
+                if not _contains_vertex(north_vertices, expected_point) or not _contains_vertex(south_vertices, expected_point):
+                    _fail("actual rounded river z seam is missing a shared corner/midpoint near %s: %s" % [str(water_cell), str(expected_point)], 96)
                     return
             actual_z_seam_pairs += 1
     if actual_x_seam_pairs == 0 or actual_z_seam_pairs == 0:
