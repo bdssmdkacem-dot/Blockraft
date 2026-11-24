@@ -19,6 +19,9 @@ const SPAWN_SURFACE_Y := 5.0
 const SPAWN_CLEAR_MAX_Y := 80
 const SPAWN_CONTACT_EPSILON := 0.04
 const TERRAIN_SURFACE_KINDS := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
+const WATER_EDGE_BULGE := 0.14
+const WATER_EDGE_CURVE_SEGMENTS := 3
+const WATER_INTERIOR_EDGE_SEGMENTS := 2
 
 var blocks: Dictionary = {}
 var block_mesh := BoxMesh.new()
@@ -345,9 +348,10 @@ func _primary_river_centerline(x: float) -> float:
 	return sin(x * 0.052) * 10.2 + cos(x * 0.026) * 4.4 + sin(x * 0.105 + 0.8) * 1.1
 
 func _scenic_river_centerline(x: float) -> float:
-	# Broad, overlapping meanders create a longer natural bend without a sharp
-	# one-cell lateral jump at the bridge or along a streamed chunk seam.
-	return -15.0 - sin(x * 0.084) * 5.4 - cos(x * 0.036) * 1.5 + sin(x * 0.024 + 0.2) * 0.55
+	# A broad, asymmetric multi-frequency meander creates a more natural
+	# river course while keeping each one-block sample continuous for terrain
+	# generation and bridge traversal.
+	return -15.0 - sin(x * 0.072) * 6.4 - cos(x * 0.031) * 2.3 + sin(x * 0.021 + 0.2) * 0.9 + sin(x * 0.15 - 0.4) * 0.35
 
 func _generate_world() -> void:
 	var generation_started_usec := Time.get_ticks_usec()
@@ -1116,9 +1120,11 @@ func _smooth_terrain_vertex(vertex: Vector3) -> Vector3:
 		vertex.y = float(terrain_corner_heights[corner])
 	return vertex
 
-func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vector3, inward: Vector3, corner_a: Vector2i, corner_b: Vector2i, water_top: float) -> void:
-	# A render-only, three-band beach bevel bridges the rounded water edge to
-	# the actual smoothed bank top. It never changes voxel or collision geometry.
+func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vector3, inward: Vector3, corner_a: Vector2i, corner_b: Vector2i, water_top: float) -> void:
+	# The shoreline ribbon follows the exact same rounded edge curve as the
+	# water surface. Its three vertical colour bands are vertex-blended instead
+	# of flat per-band strips, and the dry end meets the shared terrain corner
+	# heights used by collision and neighbouring chunks.
 	if not groups.has("wet_silt"):
 		groups["wet_silt"] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
 	var group: Dictionary = groups["wet_silt"]
@@ -1129,16 +1135,16 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var water_y := roundi(water_top - 1.0)
 	var shared_a := _water_surface_corner(corner_a, water_y)
 	var shared_b := _water_surface_corner(corner_b, water_y)
-	var edge_a := Vector3(shared_a.x, water_top - 0.04, shared_a.z)
-	var edge_b := Vector3(shared_b.x, water_top - 0.04, shared_b.z)
 	var inward_direction := inward.normalized()
 	var landward_offset := Vector2i(-signi(roundi(inward_direction.x)), -signi(roundi(inward_direction.z)))
+	if landward_offset == Vector2i.ZERO:
+		return
+	var landward_vector := Vector3(float(landward_offset.x), 0.0, float(landward_offset.y))
 	var land_corner_a := corner_a + landward_offset
 	var land_corner_b := corner_b + landward_offset
 	var land_step := 1
-	# The immediate dry cell is a submerged gravel shelf in the generated
-	# valley. Follow the same bank normal to the first shared corner that reaches
-	# dry ground; this avoids ending the beach ribbon under the water plane.
+	# The immediate dry cell can be a submerged gravel shelf. Extend only as
+	# far as needed to find the first real dry bank height.
 	for candidate_step in range(2, 7):
 		var candidate_a := corner_a + landward_offset * candidate_step
 		var candidate_b := corner_b + landward_offset * candidate_step
@@ -1149,46 +1155,57 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 			var candidate_min_height := minf(float(terrain_corner_heights[candidate_a]), float(terrain_corner_heights[candidate_b]))
 			if candidate_min_height >= water_top + 0.08:
 				break
-	var landward_vector := Vector3(float(landward_offset.x), 0.0, float(landward_offset.y))
-	var land_a := start + landward_vector * float(land_step)
-	var land_b := end + landward_vector * float(land_step)
-	land_a.y = clampf(float(terrain_corner_heights.get(land_corner_a, water_top - 0.16)) + 0.012, float(MIN_Y), water_top + 1.5)
-	land_b.y = clampf(float(terrain_corner_heights.get(land_corner_b, water_top - 0.16)) + 0.012, float(MIN_Y), water_top + 1.5)
-	var edge_row_a := edge_a
-	var edge_row_b := edge_b
+	var edge_points := _water_surface_edge_points(shared_a, shared_b, landward_offset, WATER_EDGE_BULGE, WATER_EDGE_CURVE_SEGMENTS)
+	if edge_points.size() < 2:
+		return
+	var dry_height_a := float(terrain_corner_heights.get(land_corner_a, water_top - 0.16))
+	var dry_height_b := float(terrain_corner_heights.get(land_corner_b, water_top - 0.16))
+	var edge_row := PackedVector3Array()
+	var shelf_row := PackedVector3Array()
+	var upper_row := PackedVector3Array()
+	var land_row := PackedVector3Array()
 	var shelf_t := 0.32
 	var upper_t := 0.70
-	var shelf_row_a := edge_a.lerp(land_a, shelf_t)
-	var shelf_row_b := edge_b.lerp(land_b, shelf_t)
-	var upper_row_a := edge_a.lerp(land_a, upper_t)
-	var upper_row_b := edge_b.lerp(land_b, upper_t)
-	# Ease the bank rise so the wet edge is shallow and the dry end meets the
-	# true terrain height rather than flattening the whole strip under water.
-	shelf_row_a.y = lerpf(edge_a.y, land_a.y, smoothstep(0.0, 1.0, shelf_t))
-	shelf_row_b.y = lerpf(edge_b.y, land_b.y, smoothstep(0.0, 1.0, shelf_t))
-	upper_row_a.y = lerpf(edge_a.y, land_a.y, smoothstep(0.0, 1.0, upper_t))
-	upper_row_b.y = lerpf(edge_b.y, land_b.y, smoothstep(0.0, 1.0, upper_t))
-	var rows_a := [edge_row_a, shelf_row_a, upper_row_a, land_a]
-	var rows_b := [edge_row_b, shelf_row_b, upper_row_b, land_b]
-	for band in range(3):
-		var a: Vector3 = rows_a[band]
-		var b: Vector3 = rows_b[band]
-		var c: Vector3 = rows_b[band + 1]
-		var d: Vector3 = rows_a[band + 1]
-		var n1 := (c - a).cross(b - a)
-		var n2 := (d - a).cross(c - a)
-		if n1.length_squared() < 0.0001 or n2.length_squared() < 0.0001:
-			continue
-		var base := vertices.size()
-		vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
-		var outward_1 := -n1.normalized()
-		var outward_2 := -n2.normalized()
-		normals.append_array(PackedVector3Array([outward_1, outward_1, outward_1, outward_2, outward_2, outward_2]))
-		# Pale wet-silt to dry-sand transition; avoid the previous red-brown
-		# inner band that read as a second hard terrain edge.
-		var sediment_tint := Color("#9b936f").lerp(Color("#b8a67a"), float(band) / 2.0)
-		colors.append_array(PackedColorArray([sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint]))
-		indices.append_array(PackedInt32Array([base, base + 1, base + 2, base + 3, base + 4, base + 5]))
+	for point_index in range(edge_points.size()):
+		var along := float(point_index) / float(edge_points.size() - 1)
+		var edge_point: Vector3 = edge_points[point_index]
+		edge_point.y = water_top - 0.04
+		var land_point := edge_point + landward_vector * float(land_step)
+		land_point.y = clampf(lerpf(dry_height_a, dry_height_b, along) + 0.012, float(MIN_Y), water_top + 1.5)
+		var shelf_point := edge_point.lerp(land_point, shelf_t)
+		shelf_point.y = lerpf(edge_point.y, land_point.y, smoothstep(0.0, 1.0, shelf_t))
+		var upper_point := edge_point.lerp(land_point, upper_t)
+		upper_point.y = lerpf(edge_point.y, land_point.y, smoothstep(0.0, 1.0, upper_t))
+		edge_row.append(edge_point)
+		shelf_row.append(shelf_point)
+		upper_row.append(upper_point)
+		land_row.append(land_point)
+	var rows := [edge_row, shelf_row, upper_row, land_row]
+	var row_colors := [
+		Color("#929f91"),
+		Color("#a19f7e"),
+		Color("#ada27c"),
+		Color("#a0a17e")
+	]
+	for segment in range(edge_points.size() - 1):
+		for band in range(3):
+			var a: Vector3 = rows[band][segment]
+			var b: Vector3 = rows[band][segment + 1]
+			var c: Vector3 = rows[band + 1][segment + 1]
+			var d: Vector3 = rows[band + 1][segment]
+			var n1 := (c - a).cross(b - a)
+			var n2 := (d - a).cross(c - a)
+			if n1.length_squared() < 0.0001 or n2.length_squared() < 0.0001:
+				continue
+			var base := vertices.size()
+			vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
+			var outward_1 := -n1.normalized()
+			var outward_2 := -n2.normalized()
+			normals.append_array(PackedVector3Array([outward_1, outward_1, outward_1, outward_2, outward_2, outward_2]))
+			var inner_color: Color = row_colors[band]
+			var outer_color: Color = row_colors[band + 1]
+			colors.append_array(PackedColorArray([inner_color, outer_color, inner_color, inner_color, outer_color, outer_color]))
+			indices.append_array(PackedInt32Array([base, base + 1, base + 2, base + 3, base + 4, base + 5]))
 	group["vertices"] = vertices
 	group["normals"] = normals
 	group["colors"] = colors
@@ -1210,11 +1227,29 @@ func _water_surface_corner(corner: Vector2i, water_y: int) -> Vector3:
 	if samples > 0:
 		var inward := centroid / float(samples)
 		if inward.length_squared() > 0.0001:
-			# Stronger shared inset softens one-, two- and three-cell shoreline
-			# corners. Four-cell interior corners remain exactly on the grid.
+			# Keep a generous shared corner cut, then curve each exposed edge
+			# between these points. The shared cut prevents sharp tile tips;
+			# the edge curve removes the remaining straight stair-step contour.
 			var rounding := 0.48 if samples == 1 else (0.42 if samples == 2 else (0.34 if samples == 3 else 0.0))
 			position += inward.normalized() * rounding
 	return Vector3(position.x, float(water_y + 1), position.y)
+
+func _water_surface_edge_points(a: Vector3, b: Vector3, landward_offset: Vector2i, bulge: float, segments: int) -> PackedVector3Array:
+	# Quadratic edge samples are shared by the water and its shoreline ribbon.
+	# Interior water-to-water edges use zero bulge and therefore remain exactly
+	# coincident across independently built chunks.
+	var offset := Vector3(float(landward_offset.x), 0.0, float(landward_offset.y))
+	if offset.length_squared() > 0.0001:
+		offset = offset.normalized()
+	var control := (a + b) * 0.5 + offset * bulge
+	var segment_count := maxi(segments, 1)
+	var points := PackedVector3Array()
+	for point_index in range(segment_count + 1):
+		var t := float(point_index) / float(segment_count)
+		var inverse_t := 1.0 - t
+		var point := a * (inverse_t * inverse_t) + control * (2.0 * inverse_t * t) + b * (t * t)
+		points.append(point)
+	return points
 
 func _water_surface_polygon(pos: Vector3i) -> PackedVector3Array:
 	var corners := [
@@ -1223,15 +1258,23 @@ func _water_surface_polygon(pos: Vector3i) -> PackedVector3Array:
 		_water_surface_corner(Vector2i(pos.x + 1, pos.z + 1), pos.y),
 		_water_surface_corner(Vector2i(pos.x + 1, pos.z), pos.y)
 	]
+	# Corner order: west, south, east, north. A wet neighbour keeps the shared
+	# edge straight and identical in both chunks; an exposed shoreline edge is
+	# a three-segment quadratic curve bulged gently toward the bank.
+	var edge_neighbours := [Vector2i(-1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1)]
 	var polygon := PackedVector3Array()
 	for edge_index in range(4):
-		var a: Vector3 = corners[edge_index]
-		var b: Vector3 = corners[(edge_index + 1) % 4]
-		polygon.append(a)
-		# Keep the shared edge midpoint exactly between its globally shared
-		# corners. Only convex/concave corners are rounded; no inset edge can
-		# expose triangular gaps between neighbouring water and shoreline.
-		polygon.append((a + b) * 0.5)
+		var next_index := (edge_index + 1) % 4
+		var neighbour_offset: Vector2i = edge_neighbours[edge_index]
+		var neighbour := pos + Vector3i(neighbour_offset.x, 0, neighbour_offset.y)
+		var exposed := str(blocks.get(neighbour, "")) != "water"
+		var edge_bulge := WATER_EDGE_BULGE if exposed else 0.0
+		var segments := WATER_EDGE_CURVE_SEGMENTS if exposed else WATER_INTERIOR_EDGE_SEGMENTS
+		var edge_points := _water_surface_edge_points(corners[edge_index], corners[next_index], neighbour_offset, edge_bulge, segments)
+		# The next edge contributes its own starting corner; omit this edge's
+		# final endpoint so every polygon vertex appears exactly once.
+		for point_index in range(edge_points.size() - 1):
+			polygon.append(edge_points[point_index])
 	return polygon
 
 func _column_has_water_at_or_above(x: int, z: int, from_y: int) -> bool:
@@ -1262,7 +1305,11 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 	if kind == "water":
 		if blocks.has(pos + Vector3i(0, 1, 0)):
 			return
-		var water_vertices := _water_surface_polygon(pos)
+		var water_boundary := _water_surface_polygon(pos)
+		if water_boundary.size() < 4:
+			return
+		var water_vertices := PackedVector3Array([Vector3(x + 0.5, y + 1.0, z + 0.5)])
+		water_vertices.append_array(water_boundary)
 		var water_tint := Color("#1d5366").lerp(Color("#367d83"), 0.16)
 		var base_index := vertices.size()
 		group["vertices"] = vertices + water_vertices
@@ -1272,11 +1319,12 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		for _vertex_index in range(water_vertices.size()):
 			water_normals.append(Vector3.UP)
 			water_colors.append(water_tint)
-		# Each edge midpoint is collinear with its adjacent corners. Skip both
-		# zero-area end wedges, then triangulate the polygon interior with the
-		# same outward winding used by every other top surface.
-		for triangle_index in range(2, water_vertices.size() - 2):
-			water_indices.append_array(PackedInt32Array([base_index, base_index + triangle_index + 1, base_index + triangle_index]))
+		# A centre fan covers the curved perimeter without degenerate wedges.
+		# Keep the established outward-facing winding used by the water mesh.
+		for boundary_index in range(water_boundary.size()):
+			var current_index := base_index + 1 + boundary_index
+			var next_index := base_index + 1 + ((boundary_index + 1) % water_boundary.size())
+			water_indices.append_array(PackedInt32Array([base_index, next_index, current_index]))
 		group["normals"] = normals + water_normals
 		group["colors"] = colors + water_colors
 		group["indices"] = indices + water_indices
