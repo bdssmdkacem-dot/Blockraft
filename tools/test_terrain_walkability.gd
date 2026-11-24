@@ -194,6 +194,36 @@ func _run() -> void:
 		push_error("Terrain edge samples: " + str(samples))
 		_fail("Generated terrain still contains %d abrupt edges; worst adjacent height difference is %d blocks at %s" % [steep_edges, worst_step, worst_edge])
 		return
+	# Render-only shoreline acceptance: dry voxel side walls that touch water
+	# must be suppressed so they cannot appear as exposed brown staircase bands.
+	var shoreline_edges_checked := 0
+	for position_variant in blocks:
+		if shoreline_edges_checked >= 64:
+			break
+		var position: Vector3i = position_variant
+		var kind := str(blocks[position])
+		if kind not in GROUND_KINDS:
+			continue
+		var wet_offsets: Array[Vector3i] = []
+		for offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+			if str(blocks.get(position + offset, "")) == "water":
+				wet_offsets.append(offset)
+		if wet_offsets.is_empty():
+			continue
+		var render_groups: Dictionary = {}
+		game.call("_append_exposed_render_faces", render_groups, position, kind)
+		var rendered_group: Dictionary = render_groups.get(kind, {})
+		var rendered_normals: PackedVector3Array = rendered_group.get("normals", PackedVector3Array())
+		for wet_offset in wet_offsets:
+			for rendered_normal in rendered_normals:
+				if rendered_normal.dot(Vector3(wet_offset)) > 0.99:
+					_fail("exposed dry-bank wall still faces water at %s toward %s" % [position, wet_offset])
+					return
+		shoreline_edges_checked += wet_offsets.size()
+	if shoreline_edges_checked < 16:
+		_fail("too few shoreline edges were sampled for render acceptance: %d" % shoreline_edges_checked)
+		return
+	print("WATER_BANK_SIDE_OCCLUSION_PASS: ", shoreline_edges_checked, " water-facing dry soil walls suppressed")
 	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " two_block_edges=", steep_edges, " hill_relief=", annulus_max - annulus_min, " distinct_hill_heights=", annulus_heights.size(), " river_wet_rows=", river_rows, " river_widest_run=", widest_river_run, " shallow_river_columns=", shallow_river_columns, " deep_river_columns=", deep_river_columns)
 	quit(0)
 
