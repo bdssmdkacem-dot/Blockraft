@@ -1367,6 +1367,12 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			var ib := int(local_triangles[triangle_index + 1])
 			var ic := int(local_triangles[triangle_index + 2])
 			var geometric_normal := (water_vertices[ib] - water_vertices[ia]).cross(water_vertices[ic] - water_vertices[ia])
+			# Polygon triangulation can retain near-collinear sliver triangles at
+			# Bezier joins. Do not submit zero-area faces to the renderer; the
+			# acceptance test separately verifies that the remaining triangles
+			# still cover the complete polygon area within a tight tolerance.
+			if geometric_normal.length_squared() < 0.0001:
+				continue
 			if geometric_normal.dot(Vector3.UP) > 0.0:
 				var swap_index := ib
 				ib = ic
