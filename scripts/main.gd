@@ -1260,6 +1260,14 @@ func _water_surface_edge_points(a: Vector3, b: Vector3, landward_offset: Vector2
 	var offset := Vector3(float(landward_offset.x), 0.0, float(landward_offset.y))
 	if offset.length_squared() > 0.0001:
 		offset = offset.normalized()
+	# Interior water-to-water edges must stay exactly linear: both adjacent
+	# cells emit the same shared seam even when built by different chunks.
+	if bulge <= 0.0001:
+		var straight_points := PackedVector3Array()
+		var straight_segments := maxi(segments, 1)
+		for straight_index in range(straight_segments + 1):
+			straight_points.append(a.lerp(b, float(straight_index) / float(straight_segments)))
+		return straight_points
 	var edge_direction := (b - a).normalized()
 	var corner_a := Vector2i(roundi(a.x), roundi(a.z))
 	var corner_b := Vector2i(roundi(b.x), roundi(b.z))
