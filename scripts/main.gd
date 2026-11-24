@@ -753,13 +753,21 @@ func _generate_world() -> void:
 			for clear_y in range(4, 25):
 				blocks.erase(Vector3i(x, clear_y, z))
 			blocks[Vector3i(x, 3, z)] = "wood"
-	# Side stringers, low handrails and outer piers add a readable timber
-	# silhouette without occupying any of the three tested walking lanes.
+	# The underside uses two longitudinal timber girders and three transverse
+	# cross-ties. This open frame is visible beneath the deck and reads as a
+	# load-bearing bridge assembly without turning the river into a solid slab.
+	for girder_x in [-1, 1]:
+		for girder_z in range(-20, -12):
+			blocks[Vector3i(girder_x, 2, girder_z)] = "wood"
+	for tie_z in [-20, -17, -14]:
+		for tie_x in range(-1, 2):
+			blocks[Vector3i(tie_x, 2, tie_z)] = "wood"
+	# Side stringers, low handrails and repeated uprights complete both edges.
+	# Keep the cap at y=6: it ties the four uprights together without blocking
+	# any of the three tested walking lanes.
 	for rail_x in [-2, 2]:
 		for rail_z in range(-20, -12):
 			blocks[Vector3i(rail_x, 4, rail_z)] = "wood"
-			# A continuous cap rail ties the uprights into one bridge assembly.
-			# It stays outside the three tested player lanes and never replaces bank terrain.
 			blocks[Vector3i(rail_x, 6, rail_z)] = "wood"
 		for post_z in [-20, -18, -16, -14]:
 			blocks[Vector3i(rail_x, 5, post_z)] = "wood"
