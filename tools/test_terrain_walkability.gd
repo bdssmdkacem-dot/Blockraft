@@ -302,6 +302,10 @@ func _run() -> void:
 		var water_position: Vector3i = water_position_variant
 		if str(blocks[water_position]) != "water":
 			continue
+		# This acceptance gate targets the visible scenic crossing beside the
+		# bridge, not the remote lake or the separate rear river.
+		if water_position.x < -14 or water_position.x > 14 or water_position.z < -27 or water_position.z > -6:
+			continue
 		var transition_groups: Dictionary = {}
 		game.call("_append_exposed_render_faces", transition_groups, water_position, "water")
 		var transition_group: Dictionary = transition_groups.get("sand", {})
