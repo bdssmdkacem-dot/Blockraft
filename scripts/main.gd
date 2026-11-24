@@ -20,7 +20,7 @@ const SPAWN_CLEAR_MAX_Y := 80
 const SPAWN_CONTACT_EPSILON := 0.04
 const TERRAIN_SURFACE_KINDS := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
 const WATER_EDGE_BULGE := 0.07
-const WATER_EDGE_CURVE_SEGMENTS := 3
+const WATER_EDGE_CURVE_SEGMENTS := 5
 const WATER_INTERIOR_EDGE_SEGMENTS := 2
 
 var blocks: Dictionary = {}
@@ -630,13 +630,13 @@ func _generate_world() -> void:
 				var kind := "stone"
 				if is_river and y < water_level: kind = "dirt"
 				elif y == height:
-					if is_river: kind = "sand" if river_d < 3.5 or bool(info["lake"]) else "dirt"
+					if is_river: kind = "sand" if river_d < 3.2 or bool(info["lake"]) else "dirt"
 					elif steep: kind = "rock" if height >= 7 else "stone"
-					elif height <= 3 and river_d < 3.8: kind = "sand"
+					elif height <= 3 and river_d < 3.2: kind = "sand"
 					elif bool(info.get("path", false)): kind = "dirt"
 					else: kind = "grass"
 				elif y >= height - 1:
-					if is_river or (height <= 3 and river_d < 3.8): kind = "sand"
+					if is_river or (height <= 3 and river_d < 3.2): kind = "sand"
 					elif steep: kind = "stone"
 					else: kind = "dirt"
 				elif y >= height - 3: kind = "dirt" if not steep else "stone"
@@ -1164,13 +1164,14 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 	var shelf_row := PackedVector3Array()
 	var upper_row := PackedVector3Array()
 	var land_row := PackedVector3Array()
-	var shelf_t := 0.26
-	var upper_t := 0.62
+	var shelf_t := 0.22
+	var upper_t := 0.55
 	for point_index in range(edge_points.size()):
 		var along := float(point_index) / float(edge_points.size() - 1)
 		var edge_point: Vector3 = edge_points[point_index]
 		edge_point.y = water_top - 0.04
-		var land_point := edge_point + landward_vector * float(land_step)
+		var shoreline_width := minf(float(land_step), 1.25)
+		var land_point := edge_point + landward_vector * shoreline_width
 		land_point.y = clampf(lerpf(dry_height_a, dry_height_b, along) + 0.012, float(MIN_Y), water_top + 1.5)
 		var shelf_point := edge_point.lerp(land_point, shelf_t)
 		shelf_point.y = lerpf(edge_point.y, land_point.y, smoothstep(0.0, 1.0, shelf_t))
@@ -1182,10 +1183,10 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 		land_row.append(land_point)
 	var rows := [edge_row, shelf_row, upper_row, land_row]
 	var row_colors := [
-		Color("#84977f"),
-		Color("#8d9b78"),
-		Color("#969d76"),
-		Color("#909a73")
+		Color("#668c83"),
+		Color("#789477"),
+		Color("#6f9658"),
+		Color("#4f803f")
 	]
 	for segment in range(edge_points.size() - 1):
 		for band in range(3):
@@ -1234,20 +1235,45 @@ func _water_surface_corner(corner: Vector2i, water_y: int) -> Vector3:
 			position += inward.normalized() * rounding
 	return Vector3(position.x, float(water_y + 1), position.y)
 
+func _water_boundary_tangent(corner: Vector2i, edge_direction: Vector3) -> Vector3:
+	# Derive one deterministic tangent from the global four-cell water
+	# neighbourhood. Every water cell and every chunk therefore uses the same
+	# tangent at a shared contour corner instead of choosing a per-cell curve.
+	var inward := Vector2.ZERO
+	for offset in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i(0, 0)]:
+		var cell := Vector3i(corner.x + offset.x, 2, corner.y + offset.y)
+		if str(blocks.get(cell, "")) == "water":
+			inward += Vector2(float(offset.x) + 0.5, float(offset.y) + 0.5)
+	if inward.length_squared() < 0.0001:
+		return edge_direction.normalized()
+	inward = inward.normalized()
+	var tangent := Vector3(-inward.y, 0.0, inward.x).normalized()
+	if tangent.dot(edge_direction) < 0.0:
+		tangent = -tangent
+	return tangent
+
 func _water_surface_edge_points(a: Vector3, b: Vector3, landward_offset: Vector2i, bulge: float, segments: int) -> PackedVector3Array:
-	# Quadratic edge samples are shared by the water and its shoreline ribbon.
-	# Interior water-to-water edges use zero bulge and therefore remain exactly
-	# coincident across independently built chunks.
+	# Cubic Bezier samples share endpoint tangents computed from the global
+	# water occupancy field. Consecutive exposed edges meet with matching
+	# tangents, producing one visually continuous shoreline through cell and
+	# chunk boundaries. Interior edges remain exactly coincident and straight.
 	var offset := Vector3(float(landward_offset.x), 0.0, float(landward_offset.y))
 	if offset.length_squared() > 0.0001:
 		offset = offset.normalized()
-	var control := (a + b) * 0.5 + offset * bulge
+	var edge_direction := (b - a).normalized()
+	var corner_a := Vector2i(roundi(a.x), roundi(a.z))
+	var corner_b := Vector2i(roundi(b.x), roundi(b.z))
+	var tangent_a := _water_boundary_tangent(corner_a, edge_direction)
+	var tangent_b := _water_boundary_tangent(corner_b, edge_direction)
+	var handle := a.distance_to(b) * 0.28
+	var control_a := a + tangent_a * handle + offset * bulge
+	var control_b := b - tangent_b * handle + offset * bulge
 	var segment_count := maxi(segments, 1)
 	var points := PackedVector3Array()
 	for point_index in range(segment_count + 1):
 		var t := float(point_index) / float(segment_count)
 		var inverse_t := 1.0 - t
-		var point := a * (inverse_t * inverse_t) + control * (2.0 * inverse_t * t) + b * (t * t)
+		var point := a * (inverse_t * inverse_t * inverse_t) + control_a * (3.0 * inverse_t * inverse_t * t) + control_b * (3.0 * inverse_t * t * t) + b * (t * t * t)
 		points.append(point)
 	return points
 
