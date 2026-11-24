@@ -230,7 +230,13 @@ func _run() -> void:
 			continue
 		var wet_offsets: Array[Vector3i] = []
 		for offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
-			if str(blocks.get(position + offset, "")) == "water":
+			var adjacent_water := false
+			for water_y in range(maxi(position.y, -8), 3):
+				if str(blocks.get(Vector3i(position.x + offset.x, water_y, position.z + offset.z), "")) == "water":
+					adjacent_water = true
+					break
+			var same_level_neighbor := str(blocks.get(position + offset, ""))
+			if adjacent_water and (same_level_neighbor == "" or same_level_neighbor == "water"):
 				wet_offsets.append(offset)
 		if wet_offsets.is_empty():
 			continue
@@ -256,6 +262,32 @@ func _run() -> void:
 	if shoreline_edges_checked < 16:
 		_fail("too few shoreline faces were sampled for render acceptance: %d" % shoreline_edges_checked)
 		return
+	var buffer_groups: Dictionary = {}
+	for render_position_variant in blocks:
+		var render_position: Vector3i = render_position_variant
+		if render_position.x < -14 or render_position.x > 14 or render_position.z < -27 or render_position.z > -6:
+			continue
+		var render_kind := str(blocks[render_position])
+		if render_kind not in GROUND_KINDS and render_kind != "water":
+			continue
+		game.call("_append_exposed_render_faces", buffer_groups, render_position, render_kind)
+	for batch_name_variant in buffer_groups:
+		var batch_name := str(batch_name_variant)
+		var batch_group: Dictionary = buffer_groups[batch_name]
+		var batch_vertices: PackedVector3Array = batch_group.get("vertices", PackedVector3Array())
+		var batch_normals: PackedVector3Array = batch_group.get("normals", PackedVector3Array())
+		var batch_colors: PackedColorArray = batch_group.get("colors", PackedColorArray())
+		var batch_indices: PackedInt32Array = batch_group.get("indices", PackedInt32Array())
+		if batch_vertices.size() != batch_normals.size() or batch_vertices.size() != batch_colors.size():
+			_fail("render batch %s has mismatched vertex/normal/color buffers: %d/%d/%d" % [batch_name, batch_vertices.size(), batch_normals.size(), batch_colors.size()])
+			return
+		if batch_indices.size() % 3 != 0:
+			_fail("render batch %s has a non-triangle index buffer: %d" % [batch_name, batch_indices.size()])
+			return
+		for index_value in batch_indices:
+			if index_value < 0 or index_value >= batch_vertices.size():
+				_fail("render batch %s contains an out-of-range index %d of %d" % [batch_name, index_value, batch_vertices.size()])
+				return
 
 	var shoreline_transition_cells := 0
 	var raised_shoreline_cells := 0

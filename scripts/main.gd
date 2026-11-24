@@ -428,8 +428,8 @@ func _generate_world() -> void:
 				if dist > 11.0 and fz > 0.0 and trib_d < bank_distance:
 					bank_distance = trib_d
 					bank_inner_width = 1.25
-				if bank_distance < 9.5 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 9.5, bank_distance))
+				if bank_distance < 7.0 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 7.0, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
@@ -1132,10 +1132,23 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var landward_offset := Vector2i(-signi(roundi(inward_direction.x)), -signi(roundi(inward_direction.z)))
 	var land_corner_a := corner_a + landward_offset
 	var land_corner_b := corner_b + landward_offset
-	# End exactly on the neighbouring dry-bank corner. The previous endpoint
-	# stopped short and was clamped below the water plane, leaving a brown ledge.
-	var land_a := start - inward_direction
-	var land_b := end - inward_direction
+	var land_step := 1
+	# The immediate dry cell is a submerged gravel shelf in the generated
+	# valley. Follow the same bank normal to the first shared corner that reaches
+	# dry ground; this avoids ending the beach ribbon under the water plane.
+	for candidate_step in range(2, 7):
+		var candidate_a := corner_a + landward_offset * candidate_step
+		var candidate_b := corner_b + landward_offset * candidate_step
+		if terrain_corner_heights.has(candidate_a) and terrain_corner_heights.has(candidate_b):
+			land_corner_a = candidate_a
+			land_corner_b = candidate_b
+			land_step = candidate_step
+			var candidate_min_height := minf(float(terrain_corner_heights[candidate_a]), float(terrain_corner_heights[candidate_b]))
+			if candidate_min_height >= water_top + 0.08:
+				break
+	var landward_vector := Vector3(float(landward_offset.x), 0.0, float(landward_offset.y))
+	var land_a := start + landward_vector * float(land_step)
+	var land_b := end + landward_vector * float(land_step)
 	land_a.y = clampf(float(terrain_corner_heights.get(land_corner_a, water_top + 0.24)) + 0.012, float(MIN_Y), water_top + 1.5)
 	land_b.y = clampf(float(terrain_corner_heights.get(land_corner_b, water_top + 0.24)) + 0.012, float(MIN_Y), water_top + 1.5)
 	var edge_row_a := edge_a
@@ -1217,6 +1230,14 @@ func _water_surface_polygon(pos: Vector3i) -> PackedVector3Array:
 		# expose triangular gaps between neighbouring water and shoreline.
 		polygon.append((a + b) * 0.5)
 	return polygon
+
+func _column_has_water_at_or_above(x: int, z: int, from_y: int) -> bool:
+	# Water is filled upward to y=2. A lower bank block can face a wet column
+	# even when there is no water voxel at that exact block height.
+	for water_y in range(maxi(from_y, MIN_Y), 3):
+		if str(blocks.get(Vector3i(x, water_y, z), "")) == "water":
+			return true
+	return false
 
 func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: String, chunk_min_x: int = -2147483648, chunk_max_x: int = 2147483647) -> void:
 	if not groups.has(kind):
@@ -1360,23 +1381,22 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			tint = tint.lightened(0.035)
 		elif absf(normal.y) < 0.5:
 			tint = tint.darkened(0.045)
-		# Wet bank faces use the existing sand surface batch, whose white base
-		# albedo preserves these authored vertex colours. Keeping the wet faces in
-		# dirt/grass batches multiplied pale silt by a dark soil material.
+		# Tint the grassy lip using its own colour buffer, without routing the
+		# horizontal meadow face into the sand material batch.
 		var wet_shore_face := false
-		if kind == "grass" and normal.y > 0.5:
+		if kind == "grass" and normal.y > 0.5 and pos.y <= 3:
 			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
-				if str(blocks.get(pos + water_offset, "")) == "water":
-					wet_shore_face = true
+				if _column_has_water_at_or_above(pos.x + water_offset.x, pos.z + water_offset.z, maxi(pos.y - 1, MIN_Y)):
 					tint = Color("#b9c29f").lerp(Color("#d9cda7"), fine_biome * 0.28) * variation
 					break
-		if kind != "water" and absf(normal.y) < 0.5:
-			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
-				if str(blocks.get(pos + water_offset, "")) == "water":
-					wet_shore_face = true
-					var wet_silt := Color("#b7c1a2").lerp(Color("#d6c99f"), fine_biome * 0.36)
-					tint = wet_silt * variation * 1.04
-					break
+		# Lower exposed bank walls are wet when the adjacent column contains
+		# water above them, even if the water starts one or two blocks higher.
+		if kind != "water" and absf(normal.y) < 0.5 and pos.y <= 2:
+			var wet_column_x := pos.x + roundi(normal.x)
+			var wet_column_z := pos.z + roundi(normal.z)
+			if _column_has_water_at_or_above(wet_column_x, wet_column_z, pos.y):
+				wet_shore_face = true
+				tint = Color("#c5bea1")
 		# Fade the water colour toward a soft turquoise at exposed shoreline
 		# edges. The fade is vertex-coloured on the existing top quad: it adds no
 		# geometry, collision, water voxels, draw calls, or chunk rebuild work.
@@ -1488,14 +1508,16 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		var surface_material := (block_materials.get(kind, block_materials["stone"]) as StandardMaterial3D).duplicate() as StandardMaterial3D
 		# Preserve normal back-face culling after emitting clockwise front faces.
 		surface_material.cull_mode = BaseMaterial3D.CULL_BACK
-		surface_material.vertex_color_use_as_albedo = true
+		surface_material.vertex_color_use_as_albedo = kind != "sand"
 		# Water vertex colours already contain the full display colour. A dark
-		# blue base albedo multiplied them a second time and crushed the river
-		# into near-navy polygons in the rendered gameplay camera.
-		if kind == "water" or kind == "sand":
-			# Water and sand vertex colours are authored as final display colours;
-			# multiplying them by the dark base albedo reintroduced muddy banks.
+		# blue base albedo multiplied them a second time and crushed the river.
+		if kind == "water":
 			surface_material.albedo_color = Color.WHITE
+		elif kind == "sand":
+			# The sand batch contains both the render-only beach ribbon and wet
+			# vertical bank faces. A stable muted silt base prevents missing/default
+			# vertex colours from appearing as white holes while keeping one batch.
+			surface_material.albedo_color = Color("#c6b997")
 		instance.material_override = surface_material
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(instance)
