@@ -1272,12 +1272,11 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var neighbor_exists: bool = blocks.has(neighbor)
 		var neighbor_kind := str(blocks.get(neighbor, ""))
 		var visible := not neighbor_exists
-		# Do not draw the exposed vertical soil wall where dry terrain meets
-		# water. The rounded water perimeter and submerged sediment transition
-		# own this boundary; retaining the voxel wall creates the dark brown
-		# staircase band that visually cuts across the river.
+		# Keep the bank's real vertical face so the terrain remains watertight.
+		# The adjacent-water tint below renders this narrow face as pale wet silt
+		# rather than the dark brown soil stripe; hiding it exposed sky-blue gaps.
 		if kind != "water" and neighbor_kind == "water":
-			visible = false
+			visible = true
 		if kind == "water" and neighbor_exists:
 			visible = false
 		if not visible:
@@ -1368,8 +1367,8 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 					touches_water_face = true
 					break
 			if touches_water_face:
-				var wet_silt := Color("#897451").lerp(Color("#b39a68"), fine_biome * 0.32)
-				tint = wet_silt * variation
+				var wet_silt := Color("#b69b68").lerp(Color("#d8c18c"), fine_biome * 0.36)
+				tint = wet_silt * variation * 1.03
 		# Fade the water colour toward a soft turquoise at exposed shoreline
 		# edges. The fade is vertex-coloured on the existing top quad: it adds no
 		# geometry, collision, water voxels, draw calls, or chunk rebuild work.
