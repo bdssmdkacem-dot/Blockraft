@@ -1343,8 +1343,16 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var water_boundary := _water_surface_polygon(pos)
 		if water_boundary.size() < 4:
 			return
-		var water_vertices := PackedVector3Array([Vector3(x + 0.5, y + 1.0, z + 0.5)])
-		water_vertices.append_array(water_boundary)
+		# Triangulate the actual curved outline instead of assuming every
+		# per-cell boundary is convex enough for a centre fan. Concave shoreline
+		# corners can otherwise invert individual fan wedges as tessellation rises.
+		var water_vertices := water_boundary
+		var water_polygon_2d := PackedVector2Array()
+		for boundary_point in water_boundary:
+			water_polygon_2d.append(Vector2(boundary_point.x, boundary_point.z))
+		var local_triangles := Geometry2D.triangulate_polygon(water_polygon_2d)
+		if local_triangles.size() < 3:
+			return
 		var water_tint := Color("#1d5366").lerp(Color("#367d83"), 0.16)
 		var base_index := vertices.size()
 		group["vertices"] = vertices + water_vertices
@@ -1354,12 +1362,16 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		for _vertex_index in range(water_vertices.size()):
 			water_normals.append(Vector3.UP)
 			water_colors.append(water_tint)
-		# A centre fan covers the curved perimeter without degenerate wedges.
-		# Keep the established outward-facing winding used by the water mesh.
-		for boundary_index in range(water_boundary.size()):
-			var current_index := base_index + 1 + boundary_index
-			var next_index := base_index + 1 + ((boundary_index + 1) % water_boundary.size())
-			water_indices.append_array(PackedInt32Array([base_index, next_index, current_index]))
+		for triangle_index in range(0, local_triangles.size(), 3):
+			var ia := int(local_triangles[triangle_index])
+			var ib := int(local_triangles[triangle_index + 1])
+			var ic := int(local_triangles[triangle_index + 2])
+			var geometric_normal := (water_vertices[ib] - water_vertices[ia]).cross(water_vertices[ic] - water_vertices[ia])
+			if geometric_normal.dot(Vector3.UP) > 0.0:
+				var swap_index := ib
+				ib = ic
+				ic = swap_index
+			water_indices.append_array(PackedInt32Array([base_index + ia, base_index + ib, base_index + ic]))
 		group["normals"] = normals + water_normals
 		group["colors"] = colors + water_colors
 		group["indices"] = indices + water_indices
