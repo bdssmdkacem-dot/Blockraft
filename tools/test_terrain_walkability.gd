@@ -194,8 +194,8 @@ func _run() -> void:
 		push_error("Terrain edge samples: " + str(samples))
 		_fail("Generated terrain still contains %d abrupt edges; worst adjacent height difference is %d blocks at %s" % [steep_edges, worst_step, worst_edge])
 		return
-	# Render-only shoreline acceptance: dry voxel side walls that touch water
-	# must be suppressed so they cannot appear as exposed brown staircase bands.
+	# Render acceptance: each bank face adjacent to water must remain present
+	# (watertight terrain) and use the brighter wet-silt vertex tint.
 	var shoreline_edges_checked := 0
 	for position_variant in blocks:
 		if shoreline_edges_checked >= 64:
@@ -214,16 +214,24 @@ func _run() -> void:
 		game.call("_append_exposed_render_faces", render_groups, position, kind)
 		var rendered_group: Dictionary = render_groups.get(kind, {})
 		var rendered_normals: PackedVector3Array = rendered_group.get("normals", PackedVector3Array())
+		var rendered_colors: PackedColorArray = rendered_group.get("colors", PackedColorArray())
 		for wet_offset in wet_offsets:
-			for rendered_normal in rendered_normals:
-				if rendered_normal.dot(Vector3(wet_offset)) > 0.99:
-					_fail("exposed dry-bank wall still faces water at %s toward %s" % [position, wet_offset])
+			var matching_face_found := false
+			for vertex_index in range(rendered_normals.size()):
+				if rendered_normals[vertex_index].dot(Vector3(wet_offset)) <= 0.99:
+					continue
+				matching_face_found = true
+				if rendered_colors[vertex_index].get_luminance() < 0.42:
+					_fail("water-facing bank face is too dark at %s toward %s" % [position, wet_offset])
 					return
-		shoreline_edges_checked += wet_offsets.size()
+			if not matching_face_found:
+				_fail("watertight bank face is missing at %s toward %s" % [position, wet_offset])
+				return
+			shoreline_edges_checked += 1
 	if shoreline_edges_checked < 16:
-		_fail("too few shoreline edges were sampled for render acceptance: %d" % shoreline_edges_checked)
+		_fail("too few shoreline faces were sampled for render acceptance: %d" % shoreline_edges_checked)
 		return
-	print("WATER_BANK_SIDE_OCCLUSION_PASS: ", shoreline_edges_checked, " water-facing dry soil walls suppressed")
+	print("WATER_BANK_WATERTIGHT_SILT_PASS: ", shoreline_edges_checked, " shoreline faces retained with bright wet-silt tint")
 	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " two_block_edges=", steep_edges, " hill_relief=", annulus_max - annulus_min, " distinct_hill_heights=", annulus_heights.size(), " river_wet_rows=", river_rows, " river_widest_run=", widest_river_run, " shallow_river_columns=", shallow_river_columns, " deep_river_columns=", deep_river_columns)
 	quit(0)
 
