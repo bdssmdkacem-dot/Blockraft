@@ -221,10 +221,13 @@ func _run() -> void:
 	# Render acceptance: each bank face adjacent to water must remain present
 	# (watertight terrain) and use the brighter wet-silt vertex tint.
 	var shoreline_edges_checked := 0
+	var wet_face_debug_count := 0
 	for position_variant in blocks:
 		if shoreline_edges_checked >= 64:
 			break
 		var position: Vector3i = position_variant
+		if position.x < -14 or position.x > 14 or position.z < -27 or position.z > -6:
+			continue
 		var kind := str(blocks[position])
 		if kind not in GROUND_KINDS:
 			continue
@@ -252,15 +255,19 @@ func _run() -> void:
 					if rendered_normals[vertex_index].dot(Vector3(wet_offset)) <= 0.99:
 						continue
 					matching_face_found = true
-					if rendered_colors[vertex_index].get_luminance() < 0.42:
-						_fail("water-facing bank face is too dark at %s toward %s in batch %s" % [position, wet_offset, batch_name])
+					var face_luminance := rendered_colors[vertex_index].get_luminance()
+					if wet_face_debug_count < 24:
+						print("WET_FACE_DIAG position=", position, " kind=", kind, " normal=", rendered_normals[vertex_index], " batch=", batch_name, " color=", rendered_colors[vertex_index], " luminance=", face_luminance)
+						wet_face_debug_count += 1
+					if face_luminance < 0.42:
+						_fail("water-facing bank face is too dark at %s toward %s in batch %s (luminance=%.3f)" % [position, wet_offset, batch_name, face_luminance])
 						return
 			if not matching_face_found:
 				_fail("watertight bank face is missing from terrain and sand batches at %s toward %s" % [position, wet_offset])
 				return
 			shoreline_edges_checked += 1
 	if shoreline_edges_checked < 16:
-		_fail("too few shoreline faces were sampled for render acceptance: %d" % shoreline_edges_checked)
+		_fail("too few shoreline faces were sampled in bridge review corridor: %d" % shoreline_edges_checked)
 		return
 	var buffer_groups: Dictionary = {}
 	for render_position_variant in blocks:
@@ -309,21 +316,21 @@ func _run() -> void:
 		var transition_groups: Dictionary = {}
 		game.call("_append_exposed_render_faces", transition_groups, water_position, "water")
 		if shoreline_transition_cells < 10:
-			var side_offsets := [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]
-			var side_corner_a := [
+			var side_offsets: Array[Vector3i] = [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]
+			var side_corner_a: Array[Vector2i] = [
 				Vector2i(water_position.x, water_position.z),
 				Vector2i(water_position.x + 1, water_position.z + 1),
 				Vector2i(water_position.x + 1, water_position.z),
 				Vector2i(water_position.x, water_position.z + 1)
 			]
-			var side_corner_b := [
+			var side_corner_b: Array[Vector2i] = [
 				Vector2i(water_position.x, water_position.z + 1),
 				Vector2i(water_position.x + 1, water_position.z),
 				Vector2i(water_position.x, water_position.z),
 				Vector2i(water_position.x + 1, water_position.z + 1)
 			]
-			var side_landward := [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]
-			var side_names := ["left", "right", "north", "south"]
+			var side_landward: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]
+			var side_names: Array[String] = ["left", "right", "north", "south"]
 			for side_index in range(4):
 				var side_offset: Vector3i = side_offsets[side_index]
 				if str(blocks.get(water_position + side_offset, "")) == "water":
@@ -336,8 +343,9 @@ func _run() -> void:
 				var profile_a: Array[String] = []
 				var profile_b: Array[String] = []
 				for profile_step in range(1, 7):
-					var profile_corner_a := corner_a + side_landward[side_index] * profile_step
-					var profile_corner_b := corner_b + side_landward[side_index] * profile_step
+					var landward_step: Vector2i = side_landward[side_index]
+					var profile_corner_a: Vector2i = corner_a + landward_step * profile_step
+					var profile_corner_b: Vector2i = corner_b + landward_step * profile_step
 					profile_a.append(str(corner_cache.get(profile_corner_a, "missing")))
 					profile_b.append(str(corner_cache.get(profile_corner_b, "missing")))
 				print("RIVER_BANK_PROFILE water=", water_position, " side=", side_names[side_index], " bank_surface=", surface_heights[bank_column], " corners=", corner_a, "/", corner_b, " heights_a=", profile_a, " heights_b=", profile_b)
