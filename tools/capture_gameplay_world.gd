@@ -5,47 +5,6 @@ func _initialize() -> void:
     call_deferred("_capture")
 
 
-func _clear_review_sightline(scene: Node3D, camera_position: Vector3, target: Vector3) -> void:
-	# Remove only voxel trees that physically occlude the fixed geometry-review
-	# camera. This is a capture-only cleanup; the gameplay world is never saved.
-	var view_direction := (target - camera_position).normalized()
-	var right_direction := view_direction.cross(Vector3.UP).normalized()
-	var up_direction := right_direction.cross(view_direction).normalized()
-	var removed_positions: Array[Vector3i] = []
-	var chunk_keys: Dictionary = {}
-	for position_variant in scene.blocks.keys():
-		var position: Vector3i = position_variant
-		var kind := str(scene.blocks[position])
-		if kind not in ["wood", "leaves"]:
-			continue
-		# Preserve the wooden river bridge itself.
-		if kind == "wood" and abs(position.x) <= 3 and position.z >= -25 and position.z <= -10:
-			continue
-		var centre := Vector3(float(position.x) + 0.5, float(position.y) + 0.5, float(position.z) + 0.5)
-		var relative := centre - camera_position
-		var along := relative.dot(view_direction)
-		if along < 2.0 or along > 65.0:
-			continue
-		var horizontal_offset := absf(relative.dot(right_direction))
-		var vertical_offset := absf(relative.dot(up_direction))
-		if horizontal_offset > along * tan(deg_to_rad(41.0)) or vertical_offset > along * tan(deg_to_rad(26.0)):
-			continue
-		removed_positions.append(position)
-		chunk_keys[Vector2i(floori(float(position.x) / 16.0), floori(float(position.z) / 16.0))] = true
-	for position in removed_positions:
-		scene.blocks.erase(position)
-	for chunk_variant in chunk_keys:
-		var chunk_key: Vector2i = chunk_variant
-		if not scene.loaded_chunks.has(chunk_key):
-			continue
-		var old_chunk := scene.loaded_chunks[chunk_key] as Node3D
-		scene.loaded_chunks.erase(chunk_key)
-		scene.remove_child(old_chunk)
-		old_chunk.free()
-		scene.call("_load_chunk", chunk_key)
-	print("RIVER_REVIEW_OCCLUDERS_REMOVED=", removed_positions.size(), " rebuilt_chunks=", chunk_keys.size())
-
-
 func _capture() -> void:
     var packed := load("res://scenes/main.tscn") as PackedScene
     if packed == null:
@@ -100,7 +59,6 @@ func _capture() -> void:
     review_camera.look_at(Vector3(0.0, 3.0, -16.0), Vector3.UP)
     review_camera.fov = 52.0
     review_camera.current = true
-    _clear_review_sightline(scene, review_camera.global_position, Vector3(0.0, 3.0, -16.0))
     print("GAMEPLAY_CAPTURE_MODE=dedicated_river_bridge_review camera_position=",
         review_camera.global_position, " target=", Vector3(0.0, 3.0, -16.0))
 

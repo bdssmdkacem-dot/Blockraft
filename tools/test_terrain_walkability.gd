@@ -308,6 +308,39 @@ func _run() -> void:
 			continue
 		var transition_groups: Dictionary = {}
 		game.call("_append_exposed_render_faces", transition_groups, water_position, "water")
+		if shoreline_transition_cells < 10:
+			var side_offsets := [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]
+			var side_corner_a := [
+				Vector2i(water_position.x, water_position.z),
+				Vector2i(water_position.x + 1, water_position.z + 1),
+				Vector2i(water_position.x + 1, water_position.z),
+				Vector2i(water_position.x, water_position.z + 1)
+			]
+			var side_corner_b := [
+				Vector2i(water_position.x, water_position.z + 1),
+				Vector2i(water_position.x + 1, water_position.z),
+				Vector2i(water_position.x, water_position.z),
+				Vector2i(water_position.x + 1, water_position.z + 1)
+			]
+			var side_landward := [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]
+			var side_names := ["left", "right", "north", "south"]
+			for side_index in range(4):
+				var side_offset: Vector3i = side_offsets[side_index]
+				if str(blocks.get(water_position + side_offset, "")) == "water":
+					continue
+				var bank_column := Vector2i(water_position.x + side_offset.x, water_position.z + side_offset.z)
+				if not surface_heights.has(bank_column):
+					continue
+				var corner_a: Vector2i = side_corner_a[side_index]
+				var corner_b: Vector2i = side_corner_b[side_index]
+				var profile_a: Array[String] = []
+				var profile_b: Array[String] = []
+				for profile_step in range(1, 7):
+					var profile_corner_a := corner_a + side_landward[side_index] * profile_step
+					var profile_corner_b := corner_b + side_landward[side_index] * profile_step
+					profile_a.append(str(corner_cache.get(profile_corner_a, "missing")))
+					profile_b.append(str(corner_cache.get(profile_corner_b, "missing")))
+				print("RIVER_BANK_PROFILE water=", water_position, " side=", side_names[side_index], " bank_surface=", surface_heights[bank_column], " corners=", corner_a, "/", corner_b, " heights_a=", profile_a, " heights_b=", profile_b)
 		var transition_group: Dictionary = transition_groups.get("sand", {})
 		var transition_vertices: PackedVector3Array = transition_group.get("vertices", PackedVector3Array())
 		var transition_colors: PackedColorArray = transition_group.get("colors", PackedColorArray())
@@ -322,6 +355,8 @@ func _run() -> void:
 			raised_shoreline_cells += 1
 		for transition_color in transition_colors:
 			transition_min_luminance = minf(transition_min_luminance, transition_color.get_luminance())
+		if shoreline_transition_cells < 10:
+			print("RIVER_BANK_TRANSITION water=", water_position, " vertices=", transition_vertices.size(), " cell_max_y=", cell_max_height, " color_luminance=", transition_min_luminance)
 		shoreline_transition_cells += 1
 
 		# The dry bank collision must use exactly the same shared corner heights

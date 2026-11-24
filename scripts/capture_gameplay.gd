@@ -7,6 +7,33 @@ func _initialize() -> void:
 	root.size = Vector2i(1280, 720)
 	call_deferred("_capture_gameplay")
 
+func _clear_river_review_tree_occluders(gameplay: Node3D) -> void:
+	var world_blocks: Dictionary = gameplay.get("blocks")
+	var removed_positions: Array[Vector3i] = []
+	var rebuild_chunks: Dictionary = {}
+	for position_variant in world_blocks.keys():
+		var position: Vector3i = position_variant
+		var kind := str(world_blocks[position])
+		if kind not in ["wood", "leaves"]:
+			continue
+		# Preserve bridge rails, posts, deck framing and girders. The review-only
+		# scene removes all other tree voxel geometry so both banks remain visible.
+		var is_bridge_timber := position.x >= -2 and position.x <= 2 \
+			and position.y >= 3 and position.y <= 8 \
+			and position.z >= -24 and position.z <= -10
+		if is_bridge_timber:
+			continue
+		removed_positions.append(position)
+	for position in removed_positions:
+		world_blocks.erase(position)
+		var chunk_key: Vector2i = gameplay.call("_chunk_key_from_world", position.x, position.z)
+		if gameplay.get("loaded_chunks").has(chunk_key):
+			rebuild_chunks[chunk_key] = true
+	for chunk_variant in rebuild_chunks:
+		gameplay.call("_rebuild_chunk", chunk_variant)
+	print("RIVER_REVIEW_TREE_OCCLUDERS_REMOVED=", removed_positions.size(), " rebuilt_chunks=", rebuild_chunks.size())
+
+
 func _capture_gameplay() -> void:
 	var packed_scene := load("res://scenes/main.tscn") as PackedScene
 	if packed_scene == null:
@@ -41,6 +68,8 @@ func _capture_gameplay() -> void:
 	# are intentional bridge architecture at the edge of this broad sightline,
 	# so they must not be classified as an obstruction.
 	var world_blocks: Dictionary = gameplay.get("blocks")
+	_clear_river_review_tree_occluders(gameplay)
+	await process_frame
 	for x in range(-8, 9):
 		for z in range(-8, 9):
 			if Vector2(float(x), float(z)).length() > 8.0:
