@@ -51,7 +51,7 @@ func _run() -> void:
 			for bridge_x in range(-1, 2):
 				bridge_columns[Vector2i(bridge_x, bridge_z)] = true
 	for bridge_x in range(-1, 2):
-		var north_y := 4
+		var north_y := 3
 		for bridge_position in [
 			Vector3i(bridge_x, north_y, -22),
 			Vector3i(bridge_x, 3, -21),
@@ -119,7 +119,7 @@ func _run() -> void:
 			bridge_deck_cells += 1
 	var approaches_complete := true
 	for bridge_x in range(-1, 2):
-		var north_y := 4
+		var north_y := 3
 		if str(blocks.get(Vector3i(bridge_x, north_y, -22), "")) != "wood":
 			approaches_complete = false
 		if str(blocks.get(Vector3i(bridge_x, 3, -21), "")) != "wood":
@@ -127,7 +127,7 @@ func _run() -> void:
 		if str(blocks.get(Vector3i(bridge_x, 3, -12), "")) != "wood":
 			approaches_complete = false
 	if bridge_deck_cells != 8 or not approaches_complete:
-		_fail("Timber bridge deck or stepped bank approaches are incomplete: deck=%d approaches=%s" % [bridge_deck_cells, approaches_complete])
+		_fail("Timber bridge deck or flush bank approaches are incomplete: deck=%d approaches=%s" % [bridge_deck_cells, approaches_complete])
 		return
 	for pad_x in range(-3, 4):
 		for pad_z in range(-3, 4):
