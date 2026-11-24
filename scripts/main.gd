@@ -1405,15 +1405,16 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var target_normals: PackedVector3Array = normals
 		var target_colors: PackedColorArray = colors
 		var target_indices: PackedInt32Array = indices
+		var output_group: Dictionary = {}
 		if wet_shore_face and kind != "sand":
 			target_group_name = "sand"
-			var wet_group: Dictionary = groups.get("sand", {})
-			if wet_group.is_empty():
-				wet_group = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
-			target_vertices = wet_group["vertices"]
-			target_normals = wet_group["normals"]
-			target_colors = wet_group["colors"]
-			target_indices = wet_group["indices"]
+			output_group = groups.get("sand", {})
+			if output_group.is_empty():
+				output_group = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
+			target_vertices = output_group["vertices"]
+			target_normals = output_group["normals"]
+			target_colors = output_group["colors"]
+			target_indices = output_group["indices"]
 		var base_index := target_vertices.size()
 		if smoothed_face:
 			# A warped quad is two non-coplanar triangles. Give each triangle its
@@ -1446,19 +1447,22 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			target_normals.append_array(PackedVector3Array([normal, normal, normal, normal]))
 			target_colors.append_array(PackedColorArray([color_a, color_b, color_c, color_d]))
 			target_indices.append_array(PackedInt32Array([base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]))
-	if target_group_name == kind:
-		group["vertices"] = target_vertices
-		group["normals"] = target_normals
-		group["colors"] = target_colors
-		group["indices"] = target_indices
-		groups[kind] = group
-	else:
-		var wet_group: Dictionary = groups.get(target_group_name, {})
-		wet_group["vertices"] = target_vertices
-		wet_group["normals"] = target_normals
-		wet_group["colors"] = target_colors
-		wet_group["indices"] = target_indices
-		groups[target_group_name] = wet_group
+		if target_group_name == kind:
+			vertices = target_vertices
+			normals = target_normals
+			colors = target_colors
+			indices = target_indices
+		else:
+			output_group["vertices"] = target_vertices
+			output_group["normals"] = target_normals
+			output_group["colors"] = target_colors
+			output_group["indices"] = target_indices
+			groups[target_group_name] = output_group
+	group["vertices"] = vertices
+	group["normals"] = normals
+	group["colors"] = colors
+	group["indices"] = indices
+	groups[kind] = group
 
 func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> void:
 	for kind_variant in render_groups.keys():
