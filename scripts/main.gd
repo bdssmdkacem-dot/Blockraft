@@ -20,7 +20,7 @@ const SPAWN_CLEAR_MAX_Y := 80
 const SPAWN_CONTACT_EPSILON := 0.04
 const TERRAIN_SURFACE_KINDS := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
 const WATER_EDGE_BULGE := 0.07
-const WATER_EDGE_CURVE_SEGMENTS := 5
+const WATER_EDGE_CURVE_SEGMENTS := 3
 const WATER_INTERIOR_EDGE_SEGMENTS := 2
 
 var blocks: Dictionary = {}
