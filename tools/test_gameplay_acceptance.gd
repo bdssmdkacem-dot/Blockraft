@@ -569,9 +569,10 @@ func _run_checks() -> void:
     else:
         scene.blocks[face_test_neighbor] = old_neighbor
     print("CULLED_SURFACE_MESH_ACCEPTANCE_PASS: two adjacent blocks emit ten boundary quads, with the shared face removed")
-    # A single water cell produces four three-segment curved shoreline edges.
-    # A centre fan must cover every boundary segment without degenerate wedges,
-    # while retaining the established water-normal/index winding contract.
+    # A single water cell produces a curved 32-point shoreline. Polygon
+    # triangulation may omit negligible collinear slivers, but every emitted
+    # face must be non-degenerate, outward-wound, and collectively cover the
+    # source polygon area within a tight tolerance.
     var water_test_origin := Vector3i(1000, 100, 1000)
     var old_water_test: Variant = scene.blocks.get(water_test_origin, null)
     scene.blocks[water_test_origin] = "water"
@@ -582,17 +583,28 @@ func _run_checks() -> void:
     var water_test_normals: PackedVector3Array = water_test_group["normals"]
     var water_test_indices: PackedInt32Array = water_test_group["indices"]
     var water_test_boundary: PackedVector3Array = scene.call("_water_surface_polygon", water_test_origin)
-    if water_test_boundary.size() != 32 or water_test_vertices.size() != water_test_boundary.size() or water_test_normals.size() != water_test_vertices.size() or water_test_indices.size() != (water_test_boundary.size() - 2) * 3:
-        _fail("isolated water surface must emit four curved shoreline edges and a complete centre fan: boundary=%d vertices=%d normals=%d indices=%d" % [water_test_boundary.size(), water_test_vertices.size(), water_test_normals.size(), water_test_indices.size()], 68)
+    if water_test_boundary.size() != 32 or water_test_vertices.size() != water_test_boundary.size() or water_test_normals.size() != water_test_vertices.size() or water_test_indices.size() < (water_test_boundary.size() - 2) * 3 - 12 or water_test_indices.size() % 3 != 0:
+        _fail("isolated water surface must retain its curved perimeter and nearly complete polygon triangulation: boundary=%d vertices=%d normals=%d indices=%d" % [water_test_boundary.size(), water_test_vertices.size(), water_test_normals.size(), water_test_indices.size()], 68)
         return
+    var polygon_area := 0.0
+    for point_index in range(water_test_boundary.size()):
+        var current: Vector3 = water_test_boundary[point_index]
+        var next: Vector3 = water_test_boundary[(point_index + 1) % water_test_boundary.size()]
+        polygon_area += current.x * next.z - next.x * current.z
+    polygon_area = absf(polygon_area) * 0.5
+    var triangle_area := 0.0
     for index_offset in range(0, water_test_indices.size(), 3):
         var ia := water_test_indices[index_offset]
         var ib := water_test_indices[index_offset + 1]
         var ic := water_test_indices[index_offset + 2]
         var geometric_normal := (water_test_vertices[ib] - water_test_vertices[ia]).cross(water_test_vertices[ic] - water_test_vertices[ia])
         if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(water_test_normals[ia]) > -0.99:
-            _fail("water polygon emitted a degenerate or inward-facing fan triangle", 69)
+            _fail("water polygon emitted a degenerate or inward-facing triangle", 69)
             return
+        triangle_area += geometric_normal.length() * 0.5
+    if absf(triangle_area - polygon_area) > maxf(0.001, polygon_area * 0.002):
+        _fail("water polygon triangulation does not cover its curved perimeter: polygon_area=%.5f triangle_area=%.5f" % [polygon_area, triangle_area], 70)
+        return
     if old_water_test == null:
         scene.blocks.erase(water_test_origin)
     else:
