@@ -348,10 +348,10 @@ func _primary_river_centerline(x: float) -> float:
 	return sin(x * 0.052) * 10.2 + cos(x * 0.026) * 4.4 + sin(x * 0.105 + 0.8) * 1.1
 
 func _scenic_river_centerline(x: float) -> float:
-	# A broad, asymmetric multi-frequency meander creates a more natural
-	# river course while keeping each one-block sample continuous for terrain
-	# generation and bridge traversal.
-	return -15.0 - sin(x * 0.072) * 6.4 - cos(x * 0.031) * 2.3 + sin(x * 0.021 + 0.2) * 0.9 + sin(x * 0.15 - 0.4) * 0.35
+	# Preserve the validated bridge-corridor channel centreline. The contour
+	# refinement is performed by shared sub-cell water edges, not by shifting
+	# the underlying channel away from the accepted approach geometry.
+	return -15.0 - sin(x * 0.084) * 5.4 - cos(x * 0.036) * 1.5 + sin(x * 0.024 + 0.2) * 0.55
 
 func _generate_world() -> void:
 	var generation_started_usec := Time.get_ticks_usec()
