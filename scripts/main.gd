@@ -1371,7 +1371,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			# Bezier joins. Do not submit zero-area faces to the renderer; the
 			# acceptance test separately verifies that the remaining triangles
 			# still cover the complete polygon area within a tight tolerance.
-			if geometric_normal.length_squared() < 0.0001:
+			if geometric_normal.length_squared() < 0.0000000001:
 				continue
 			if geometric_normal.dot(Vector3.UP) > 0.0:
 				var swap_index := ib
