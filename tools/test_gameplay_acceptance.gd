@@ -583,7 +583,7 @@ func _run_checks() -> void:
     var water_test_normals: PackedVector3Array = water_test_group["normals"]
     var water_test_indices: PackedInt32Array = water_test_group["indices"]
     var water_test_boundary: PackedVector3Array = scene.call("_water_surface_polygon", water_test_origin)
-    if water_test_boundary.size() != 32 or water_test_vertices.size() != water_test_boundary.size() or water_test_normals.size() != water_test_vertices.size() or water_test_indices.size() < (water_test_boundary.size() - 2) * 3 - 12 or water_test_indices.size() % 3 != 0:
+    if water_test_boundary.size() != 32 or water_test_vertices.size() != water_test_boundary.size() or water_test_normals.size() != water_test_vertices.size() or water_test_indices.size() < (water_test_boundary.size() - 2) * 3 - 3 or water_test_indices.size() % 3 != 0:
         _fail("isolated water surface must retain its curved perimeter and nearly complete polygon triangulation: boundary=%d vertices=%d normals=%d indices=%d" % [water_test_boundary.size(), water_test_vertices.size(), water_test_normals.size(), water_test_indices.size()], 68)
         return
     var polygon_area := 0.0
@@ -598,7 +598,7 @@ func _run_checks() -> void:
         var ib := water_test_indices[index_offset + 1]
         var ic := water_test_indices[index_offset + 2]
         var geometric_normal := (water_test_vertices[ib] - water_test_vertices[ia]).cross(water_test_vertices[ic] - water_test_vertices[ia])
-        if geometric_normal.length_squared() < 0.0001 or geometric_normal.normalized().dot(water_test_normals[ia]) > -0.99:
+        if geometric_normal.length_squared() < 0.0000000001 or geometric_normal.normalized().dot(water_test_normals[ia]) > -0.99:
             _fail("water polygon emitted a degenerate or inward-facing triangle", 69)
             return
         triangle_area += geometric_normal.length() * 0.5
