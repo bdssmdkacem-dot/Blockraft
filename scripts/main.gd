@@ -1183,10 +1183,10 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 		land_row.append(land_point)
 	var rows := [edge_row, shelf_row, upper_row, land_row]
 	var row_colors := [
-		Color("#668c83"),
-		Color("#789477"),
-		Color("#6f9658"),
-		Color("#4f803f")
+		Color("#9ca37c"),
+		Color("#a9a47c"),
+		Color("#9fb274"),
+		Color("#86b94a")
 	]
 	for segment in range(edge_points.size() - 1):
 		for band in range(3):
@@ -1286,7 +1286,7 @@ func _water_surface_polygon(pos: Vector3i) -> PackedVector3Array:
 	]
 	# Corner order: west, south, east, north. A wet neighbour keeps the shared
 	# edge straight and identical in both chunks; an exposed shoreline edge is
-	# a three-segment quadratic curve bulged gently toward the bank.
+	# a shared tangent-matched cubic curve.
 	var edge_neighbours := [Vector2i(-1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1)]
 	var polygon := PackedVector3Array()
 	for edge_index in range(4):
