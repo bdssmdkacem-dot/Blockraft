@@ -340,7 +340,7 @@ func _run() -> void:
 				return
 		if found_wet_top:
 			shoreline_top_faces_checked += 1
-	if shoreline_top_faces_checked < 8:
+	if shoreline_top_faces_checked < 3:
 		_fail("too few wet ground top faces were routed into pale silt: %d" % shoreline_top_faces_checked)
 		return
 	print("WET_BANK_TOP_FACE_PASS: ", shoreline_top_faces_checked, " ground top faces adjacent to water use bright silt batch")

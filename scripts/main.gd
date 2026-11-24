@@ -1186,7 +1186,7 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 		normals.append_array(PackedVector3Array([outward_1, outward_1, outward_1, outward_2, outward_2, outward_2]))
 		# Pale wet-silt to dry-sand transition; avoid the previous red-brown
 		# inner band that read as a second hard terrain edge.
-		var sediment_tint := Color("#aeb99d").lerp(Color("#d5cba7"), float(band) / 2.0)
+		var sediment_tint := Color("#929a82").lerp(Color("#b0a17c"), float(band) / 2.0)
 		colors.append_array(PackedColorArray([sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint]))
 		indices.append_array(PackedInt32Array([base, base + 1, base + 2, base + 3, base + 4, base + 5]))
 	group["vertices"] = vertices
@@ -1392,7 +1392,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
 				if _column_has_water_at_or_above(pos.x + water_offset.x, pos.z + water_offset.z, maxi(pos.y, MIN_Y)):
 					wet_shore_face = true
-					tint = Color("#c2c6a8").lerp(Color("#d8cda9"), fine_biome * 0.24) * variation
+					tint = Color("#9ca185").lerp(Color("#b6a77f"), fine_biome * 0.24) * variation
 					break
 		# Lower exposed bank walls are wet when the adjacent column contains
 		# water above them, even if the water starts one or two blocks higher.
@@ -1401,7 +1401,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			var wet_column_z := pos.z + roundi(normal.z)
 			if _column_has_water_at_or_above(wet_column_x, wet_column_z, pos.y):
 				wet_shore_face = true
-				tint = Color("#c5bea1")
+				tint = Color("#9ea188")
 		# Fade the water colour toward a soft turquoise at exposed shoreline
 		# edges. The fade is vertex-coloured on the existing top quad: it adds no
 		# geometry, collision, water voxels, draw calls, or chunk rebuild work.
