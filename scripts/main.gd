@@ -262,6 +262,8 @@ func _setup_materials() -> void:
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = colors[key]
 		mat.roughness = 0.92
+		if key == "wet_silt":
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		if key == "water":
 			# Retain the project's alpha water contract, but keep opacity near-opaque so
 			# submerged bank geometry cannot break the visible water sheet.
@@ -1382,13 +1384,15 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			tint = tint.lightened(0.035)
 		elif absf(normal.y) < 0.5:
 			tint = tint.darkened(0.045)
-		# Tint the grassy lip using its own colour buffer, without routing the
-		# horizontal meadow face into the sand material batch.
+		# The reddish band was often the *top* of a low dirt/sand bank block,
+		# not its vertical wall. Route every ground top that touches a water
+		# column into the dedicated unshaded silt batch.
 		var wet_shore_face := false
-		if kind == "grass" and normal.y > 0.5 and pos.y <= 3:
+		if kind in GROUND_KINDS and normal.y > 0.5 and pos.y <= 3:
 			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
-				if _column_has_water_at_or_above(pos.x + water_offset.x, pos.z + water_offset.z, maxi(pos.y - 1, MIN_Y)):
-					tint = Color("#b9c29f").lerp(Color("#d9cda7"), fine_biome * 0.28) * variation
+				if _column_has_water_at_or_above(pos.x + water_offset.x, pos.z + water_offset.z, maxi(pos.y, MIN_Y)):
+					wet_shore_face = true
+					tint = Color("#c2c6a8").lerp(Color("#d8cda9"), fine_biome * 0.24) * variation
 					break
 		# Lower exposed bank walls are wet when the adjacent column contains
 		# water above them, even if the water starts one or two blocks higher.

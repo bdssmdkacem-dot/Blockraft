@@ -308,6 +308,42 @@ func _run() -> void:
 	if wet_silt_material == null or wet_silt_material.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
 		_fail("wet_silt material must remain unshaded so shoreline sediment cannot render as dark soil")
 		return
+	var shoreline_top_faces_checked := 0
+	for top_position_variant in blocks:
+		if shoreline_top_faces_checked >= 20:
+			break
+		var top_position: Vector3i = top_position_variant
+		if top_position.x < -14 or top_position.x > 14 or top_position.z < -27 or top_position.z > -6 or top_position.y > 3:
+			continue
+		var top_kind := str(blocks[top_position])
+		if top_kind not in GROUND_KINDS:
+			continue
+		var touches_water_column := false
+		for top_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+			if bool(game.call("_column_has_water_at_or_above", top_position.x + top_offset.x, top_position.z + top_offset.z, top_position.y)):
+				touches_water_column = true
+				break
+		if not touches_water_column:
+			continue
+		var top_groups: Dictionary = {}
+		game.call("_append_exposed_render_faces", top_groups, top_position, top_kind)
+		var wet_top_group: Dictionary = top_groups.get("wet_silt", {})
+		var wet_top_normals: PackedVector3Array = wet_top_group.get("normals", PackedVector3Array())
+		var wet_top_colors: PackedColorArray = wet_top_group.get("colors", PackedColorArray())
+		var found_wet_top := false
+		for top_vertex_index in range(wet_top_normals.size()):
+			if wet_top_normals[top_vertex_index].y < 0.99:
+				continue
+			found_wet_top = true
+			if wet_top_colors[top_vertex_index].get_luminance() < 0.55:
+				_fail("water-facing ground top remains dark at %s: luminance=%.3f" % [top_position, wet_top_colors[top_vertex_index].get_luminance()])
+				return
+		if found_wet_top:
+			shoreline_top_faces_checked += 1
+	if shoreline_top_faces_checked < 8:
+		_fail("too few wet ground top faces were routed into pale silt: %d" % shoreline_top_faces_checked)
+		return
+	print("WET_BANK_TOP_FACE_PASS: ", shoreline_top_faces_checked, " ground top faces adjacent to water use bright silt batch")
 	for water_position_variant in blocks:
 		if shoreline_transition_cells >= 64 and shoreline_collision_samples >= 12:
 			break
