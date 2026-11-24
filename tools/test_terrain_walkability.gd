@@ -236,20 +236,21 @@ func _run() -> void:
 			continue
 		var render_groups: Dictionary = {}
 		game.call("_append_exposed_render_faces", render_groups, position, kind)
-		var rendered_group: Dictionary = render_groups.get(kind, {})
-		var rendered_normals: PackedVector3Array = rendered_group.get("normals", PackedVector3Array())
-		var rendered_colors: PackedColorArray = rendered_group.get("colors", PackedColorArray())
 		for wet_offset in wet_offsets:
 			var matching_face_found := false
-			for vertex_index in range(rendered_normals.size()):
-				if rendered_normals[vertex_index].dot(Vector3(wet_offset)) <= 0.99:
-					continue
-				matching_face_found = true
-				if rendered_colors[vertex_index].get_luminance() < 0.42:
-					_fail("water-facing bank face is too dark at %s toward %s" % [position, wet_offset])
-					return
+			for batch_name in [kind, "sand"]:
+				var rendered_group: Dictionary = render_groups.get(batch_name, {})
+				var rendered_normals: PackedVector3Array = rendered_group.get("normals", PackedVector3Array())
+				var rendered_colors: PackedColorArray = rendered_group.get("colors", PackedColorArray())
+				for vertex_index in range(rendered_normals.size()):
+					if rendered_normals[vertex_index].dot(Vector3(wet_offset)) <= 0.99:
+						continue
+					matching_face_found = true
+					if rendered_colors[vertex_index].get_luminance() < 0.42:
+						_fail("water-facing bank face is too dark at %s toward %s in batch %s" % [position, wet_offset, batch_name])
+						return
 			if not matching_face_found:
-				_fail("watertight bank face is missing at %s toward %s" % [position, wet_offset])
+				_fail("watertight bank face is missing from terrain and sand batches at %s toward %s" % [position, wet_offset])
 				return
 			shoreline_edges_checked += 1
 	if shoreline_edges_checked < 16:
@@ -257,13 +258,14 @@ func _run() -> void:
 		return
 
 	var shoreline_transition_cells := 0
+	var raised_shoreline_cells := 0
 	var shoreline_collision_samples := 0
 	var transition_min_luminance := 1.0
 	var transition_min_height := INF
 	var transition_max_height := -INF
 	var corner_cache: Dictionary = game.get("terrain_corner_heights")
 	for water_position_variant in blocks:
-		if shoreline_transition_cells >= 16 and shoreline_collision_samples >= 12:
+		if shoreline_transition_cells >= 64 and shoreline_collision_samples >= 12:
 			break
 		var water_position: Vector3i = water_position_variant
 		if str(blocks[water_position]) != "water":
@@ -275,17 +277,15 @@ func _run() -> void:
 		var transition_colors: PackedColorArray = transition_group.get("colors", PackedColorArray())
 		if transition_vertices.is_empty():
 			continue
+		var cell_max_height := -INF
 		for transition_vertex in transition_vertices:
 			transition_min_height = minf(transition_min_height, transition_vertex.y)
 			transition_max_height = maxf(transition_max_height, transition_vertex.y)
+			cell_max_height = maxf(cell_max_height, transition_vertex.y)
+		if cell_max_height > 3.05:
+			raised_shoreline_cells += 1
 		for transition_color in transition_colors:
 			transition_min_luminance = minf(transition_min_luminance, transition_color.get_luminance())
-		if transition_max_height <= 3.05:
-			_fail("shoreline bevel does not rise onto the dry bank: max_y=%.3f" % transition_max_height)
-			return
-		if transition_min_luminance < 0.55:
-			_fail("shoreline sediment is still too dark: min_luminance=%.3f" % transition_min_luminance)
-			return
 		shoreline_transition_cells += 1
 
 		# The dry bank collision must use exactly the same shared corner heights
@@ -318,13 +318,19 @@ func _run() -> void:
 			if matching_corner_vertices >= 4:
 				shoreline_collision_samples += 1
 				break
-	if shoreline_transition_cells < 8:
-		_fail("too few rendered shoreline transitions were sampled: %d" % shoreline_transition_cells)
+	if shoreline_transition_cells < 32:
+		_fail("too few rendered shoreline transitions were sampled across the river: %d" % shoreline_transition_cells)
+		return
+	if raised_shoreline_cells < 8 or transition_max_height <= 3.05:
+		_fail("shoreline bevel does not rise onto enough dry-bank sections: raised=%d/%d max_y=%.3f" % [raised_shoreline_cells, shoreline_transition_cells, transition_max_height])
+		return
+	if transition_min_luminance < 0.55:
+		_fail("shoreline sediment is still too dark: min_luminance=%.3f" % transition_min_luminance)
 		return
 	if shoreline_collision_samples < 8:
 		_fail("too few river-bank collision tops matched the shared rendered corner heights: %d" % shoreline_collision_samples)
 		return
-	print("WATER_BANK_BEVEL_PASS: ", shoreline_transition_cells, " transitions rise onto the bank; minimum sediment luminance=", transition_min_luminance)
+	print("WATER_BANK_BEVEL_PASS: ", shoreline_transition_cells, " transitions sampled, ", raised_shoreline_cells, " raised onto the dry bank; min_height=", transition_min_height, " max_height=", transition_max_height, " minimum sediment luminance=", transition_min_luminance)
 	print("RIVER_BANK_COLLISION_MATCH_PASS: ", shoreline_collision_samples, " bank tops share render/collision corner heights")
 	print("WATER_BANK_WATERTIGHT_SILT_PASS: ", shoreline_edges_checked, " shoreline faces retained with bright wet-silt tint")
 	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " two_block_edges=", steep_edges, " hill_relief=", annulus_max - annulus_min, " distinct_hill_heights=", annulus_heights.size(), " river_wet_rows=", river_rows, " river_widest_run=", widest_river_run, " shallow_river_columns=", shallow_river_columns, " deep_river_columns=", deep_river_columns)

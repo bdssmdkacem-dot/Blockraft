@@ -1360,29 +1360,23 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			tint = tint.lightened(0.035)
 		elif absf(normal.y) < 0.5:
 			tint = tint.darkened(0.045)
-		# Tint the uppermost grass lip beside water as damp sand/silt too. Previously
-		# only vertical faces were recoloured, leaving a conspicuous brown top strip.
-		# This affects vertex colour only and does not alter the terrain or collision.
+		# Wet bank faces use the existing sand surface batch, whose white base
+		# albedo preserves these authored vertex colours. Keeping the wet faces in
+		# dirt/grass batches multiplied pale silt by a dark soil material.
+		var wet_shore_face := false
 		if kind == "grass" and normal.y > 0.5:
-			var wet_bank_top := false
 			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
 				if str(blocks.get(pos + water_offset, "")) == "water":
-					wet_bank_top = true
+					wet_shore_face = true
+					tint = Color("#b9c29f").lerp(Color("#d9cda7"), fine_biome * 0.28) * variation
 					break
-			if wet_bank_top:
-				tint = Color("#b9c29f").lerp(Color("#d9cda7"), fine_biome * 0.28) * variation
-		# Give the exposed bank face touching water a damp sediment tone instead of
-		# the default dark soil stripe. This is vertex colour only: no extra geometry,
-		# material, collision surface, draw call, or change to water topology.
 		if kind != "water" and absf(normal.y) < 0.5:
-			var touches_water_face := false
 			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
 				if str(blocks.get(pos + water_offset, "")) == "water":
-					touches_water_face = true
+					wet_shore_face = true
+					var wet_silt := Color("#b7c1a2").lerp(Color("#d6c99f"), fine_biome * 0.36)
+					tint = wet_silt * variation * 1.04
 					break
-			if touches_water_face:
-				var wet_silt := Color("#b7c1a2").lerp(Color("#d6c99f"), fine_biome * 0.36)
-				tint = wet_silt * variation * 1.04
 		# Fade the water colour toward a soft turquoise at exposed shoreline
 		# edges. The fade is vertex-coloured on the existing top quad: it adds no
 		# geometry, collision, water voxels, draw calls, or chunk rebuild work.
@@ -1404,7 +1398,23 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			if str(blocks.get(pos + Vector3i(0, 0, 1), "")) != "water":
 				color_b = color_b.lerp(shore_tint, 0.34)
 				color_c = color_c.lerp(shore_tint, 0.34)
-		var base_index := vertices.size()
+		# Route only wet-bank faces into the pale sand batch. This reuses the
+		# shoreline mesh's existing material and adds no extra chunk draw call.
+		var target_group_name := kind
+		var target_vertices: PackedVector3Array = vertices
+		var target_normals: PackedVector3Array = normals
+		var target_colors: PackedColorArray = colors
+		var target_indices: PackedInt32Array = indices
+		if wet_shore_face and kind != "sand":
+			target_group_name = "sand"
+			var wet_group: Dictionary = groups.get("sand", {})
+			if wet_group.is_empty():
+				wet_group = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
+			target_vertices = wet_group["vertices"]
+			target_normals = wet_group["normals"]
+			target_colors = wet_group["colors"]
+			target_indices = wet_group["indices"]
+		var base_index := target_vertices.size()
 		if smoothed_face:
 			# A warped quad is two non-coplanar triangles. Give each triangle its
 			# own three vertices/normals so the mesh winding test and lighting stay exact.
@@ -1412,7 +1422,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			var second_normal := (d - a).cross(c - a)
 			if first_normal.length_squared() < 0.0001 or second_normal.length_squared() < 0.0001:
 				continue
-			vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
+			target_vertices.append_array(PackedVector3Array([a, c, b, a, d, c]))
 			if normal.y > 0.5:
 				# The indexed-surface acceptance contract requires each triangle's
 				# vertex normals to match its exact geometric face normal. Keep the
@@ -1426,21 +1436,29 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 				var normal_d := second_outward
 				var second_normal_a := second_outward
 				var second_normal_c := second_outward
-				normals.append_array(PackedVector3Array([normal_a, normal_c, normal_b, second_normal_a, normal_d, second_normal_c]))
+				target_normals.append_array(PackedVector3Array([normal_a, normal_c, normal_b, second_normal_a, normal_d, second_normal_c]))
 			else:
-				normals.append_array(PackedVector3Array([-first_normal.normalized(), -first_normal.normalized(), -first_normal.normalized(), -second_normal.normalized(), -second_normal.normalized(), -second_normal.normalized()]))
-			colors.append_array(PackedColorArray([tint, tint, tint, tint, tint, tint]))
-			indices.append_array(PackedInt32Array([base_index, base_index + 1, base_index + 2, base_index + 3, base_index + 4, base_index + 5]))
+				target_normals.append_array(PackedVector3Array([-first_normal.normalized(), -first_normal.normalized(), -first_normal.normalized(), -second_normal.normalized(), -second_normal.normalized(), -second_normal.normalized()]))
+			target_colors.append_array(PackedColorArray([tint, tint, tint, tint, tint, tint]))
+			target_indices.append_array(PackedInt32Array([base_index, base_index + 1, base_index + 2, base_index + 3, base_index + 4, base_index + 5]))
 		else:
-			vertices.append_array(PackedVector3Array([a, b, c, d]))
-			normals.append_array(PackedVector3Array([normal, normal, normal, normal]))
-			colors.append_array(PackedColorArray([color_a, color_b, color_c, color_d]))
-			indices.append_array(PackedInt32Array([base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]))
-	group["vertices"] = vertices
-	group["normals"] = normals
-	group["colors"] = colors
-	group["indices"] = indices
-	groups[kind] = group
+			target_vertices.append_array(PackedVector3Array([a, b, c, d]))
+			target_normals.append_array(PackedVector3Array([normal, normal, normal, normal]))
+			target_colors.append_array(PackedColorArray([color_a, color_b, color_c, color_d]))
+			target_indices.append_array(PackedInt32Array([base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]))
+	if target_group_name == kind:
+		group["vertices"] = target_vertices
+		group["normals"] = target_normals
+		group["colors"] = target_colors
+		group["indices"] = target_indices
+		groups[kind] = group
+	else:
+		var wet_group: Dictionary = groups.get(target_group_name, {})
+		wet_group["vertices"] = target_vertices
+		wet_group["normals"] = target_normals
+		wet_group["colors"] = target_colors
+		wet_group["indices"] = target_indices
+		groups[target_group_name] = wet_group
 
 func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> void:
 	for kind_variant in render_groups.keys():
