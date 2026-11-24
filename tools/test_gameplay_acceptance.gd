@@ -301,7 +301,7 @@ func _run_checks() -> void:
     # bevel triangles above y=3.0 masked water cells and appeared as blue gaps.
     var bevel_groups: Dictionary = {}
     scene.call("_append_shoreline_transition", bevel_groups, Vector3(100.0, 0.0, 100.0), Vector3(100.0, 0.0, 101.0), Vector3(0.65, 0.0, 0.0), Vector2i(100, 100), Vector2i(100, 101), 3.0)
-    var bevel_vertices: PackedVector3Array = bevel_groups.get("sand", {}).get("vertices", PackedVector3Array())
+    var bevel_vertices: PackedVector3Array = bevel_groups.get("wet_silt", {}).get("vertices", PackedVector3Array())
     if bevel_vertices.size() < 18 or bevel_vertices.size() % 6 != 0:
         _fail("shoreline transition did not emit three sediment bands: vertices=%d" % bevel_vertices.size(), 89)
         return

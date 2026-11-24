@@ -256,6 +256,7 @@ func _setup_materials() -> void:
 		"gold": Color(0.92, 0.78, 0.22), "crystal": Color(0.45, 0.85, 0.95),
 		"leaves": Color(0.15, 0.33, 0.16), "chest": Color(0.55, 0.32, 0.12),
 		"planks": Color(0.68, 0.43, 0.22), "stone_brick": Color(0.58, 0.61, 0.62),
+		"wet_silt": Color("#bfc5aa"),
 	}
 	for key in colors:
 		var mat := StandardMaterial3D.new()
@@ -1116,9 +1117,9 @@ func _smooth_terrain_vertex(vertex: Vector3) -> Vector3:
 func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vector3, inward: Vector3, corner_a: Vector2i, corner_b: Vector2i, water_top: float) -> void:
 	# A render-only, three-band beach bevel bridges the rounded water edge to
 	# the actual smoothed bank top. It never changes voxel or collision geometry.
-	if not groups.has("sand"):
-		groups["sand"] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
-	var group: Dictionary = groups["sand"]
+	if not groups.has("wet_silt"):
+		groups["wet_silt"] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
+	var group: Dictionary = groups["wet_silt"]
 	var vertices: PackedVector3Array = group["vertices"]
 	var normals: PackedVector3Array = group["normals"]
 	var colors: PackedColorArray = group["colors"]
@@ -1149,8 +1150,8 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var landward_vector := Vector3(float(landward_offset.x), 0.0, float(landward_offset.y))
 	var land_a := start + landward_vector * float(land_step)
 	var land_b := end + landward_vector * float(land_step)
-	land_a.y = clampf(float(terrain_corner_heights.get(land_corner_a, water_top + 0.24)) + 0.012, float(MIN_Y), water_top + 1.5)
-	land_b.y = clampf(float(terrain_corner_heights.get(land_corner_b, water_top + 0.24)) + 0.012, float(MIN_Y), water_top + 1.5)
+	land_a.y = clampf(float(terrain_corner_heights.get(land_corner_a, water_top - 0.16)) + 0.012, float(MIN_Y), water_top + 1.5)
+	land_b.y = clampf(float(terrain_corner_heights.get(land_corner_b, water_top - 0.16)) + 0.012, float(MIN_Y), water_top + 1.5)
 	var edge_row_a := edge_a
 	var edge_row_b := edge_b
 	var shelf_t := 0.32
@@ -1190,7 +1191,7 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	group["normals"] = normals
 	group["colors"] = colors
 	group["indices"] = indices
-	groups["sand"] = group
+	groups["wet_silt"] = group
 
 func _water_surface_corner(corner: Vector2i, water_y: int) -> Vector3:
 	# Shared topology-aware rounding: every adjacent water cell and every chunk
@@ -1426,9 +1427,9 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var target_colors: PackedColorArray = colors
 		var target_indices: PackedInt32Array = indices
 		var output_group: Dictionary = {}
-		if wet_shore_face and kind != "sand":
-			target_group_name = "sand"
-			output_group = groups.get("sand", {})
+		if wet_shore_face and kind != "wet_silt":
+			target_group_name = "wet_silt"
+			output_group = groups.get("wet_silt", {})
 			if output_group.is_empty():
 				output_group = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
 			target_vertices = output_group["vertices"]
@@ -1514,10 +1515,13 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		if kind == "water":
 			surface_material.albedo_color = Color.WHITE
 		elif kind == "sand":
-			# The sand batch contains both the render-only beach ribbon and wet
-			# vertical bank faces. A stable muted silt base prevents missing/default
-			# vertex colours from appearing as white holes while keeping one batch.
 			surface_material.albedo_color = Color("#c6b997")
+		elif kind == "wet_silt":
+			# Silt is a narrow, authored transition layer. Unshaded rendering keeps
+			# its pale wet-beach colour legible instead of inheriting deep soil shade.
+			surface_material.albedo_color = Color.WHITE
+			surface_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			surface_material.roughness = 1.0
 		instance.material_override = surface_material
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(instance)

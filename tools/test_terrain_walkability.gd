@@ -247,7 +247,7 @@ func _run() -> void:
 		game.call("_append_exposed_render_faces", render_groups, position, kind)
 		for wet_offset in wet_offsets:
 			var matching_face_found := false
-			for batch_name in [kind, "sand"]:
+			for batch_name in [kind, "wet_silt"]:
 				var rendered_group: Dictionary = render_groups.get(batch_name, {})
 				var rendered_normals: PackedVector3Array = rendered_group.get("normals", PackedVector3Array())
 				var rendered_colors: PackedColorArray = rendered_group.get("colors", PackedColorArray())
@@ -303,6 +303,11 @@ func _run() -> void:
 	var transition_min_height := INF
 	var transition_max_height := -INF
 	var corner_cache: Dictionary = game.get("terrain_corner_heights")
+	var block_materials: Dictionary = game.get("block_materials")
+	var wet_silt_material := block_materials.get("wet_silt") as StandardMaterial3D
+	if wet_silt_material == null or wet_silt_material.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
+		_fail("wet_silt material must remain unshaded so shoreline sediment cannot render as dark soil")
+		return
 	for water_position_variant in blocks:
 		if shoreline_transition_cells >= 64 and shoreline_collision_samples >= 12:
 			break
@@ -349,7 +354,7 @@ func _run() -> void:
 					profile_a.append(str(corner_cache.get(profile_corner_a, "missing")))
 					profile_b.append(str(corner_cache.get(profile_corner_b, "missing")))
 				print("RIVER_BANK_PROFILE water=", water_position, " side=", side_names[side_index], " bank_surface=", surface_heights[bank_column], " corners=", corner_a, "/", corner_b, " heights_a=", profile_a, " heights_b=", profile_b)
-		var transition_group: Dictionary = transition_groups.get("sand", {})
+		var transition_group: Dictionary = transition_groups.get("wet_silt", {})
 		var transition_vertices: PackedVector3Array = transition_group.get("vertices", PackedVector3Array())
 		var transition_colors: PackedColorArray = transition_group.get("colors", PackedColorArray())
 		if transition_vertices.is_empty():
