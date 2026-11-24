@@ -730,6 +730,10 @@ func _generate_world() -> void:
 		# The southern approach also meets the lower eastern bank at deck height.
 		var north_approach_top := 4
 		var approach_cells: Array[Vector2i] = [
+			# Extend the level landing half a tile into the natural bank. Without
+			# this overlap the rounded terrain edge leaves a small vertical lip
+			# that a real capsule cannot climb despite matching the ray heights.
+			Vector2i(-23, north_approach_top - 1),
 			Vector2i(-22, north_approach_top - 1),
 			Vector2i(-21, 3),
 			Vector2i(-12, 3)
