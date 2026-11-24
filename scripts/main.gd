@@ -632,11 +632,11 @@ func _generate_world() -> void:
 				elif y == height:
 					if is_river: kind = "sand" if river_d < 3.5 or bool(info["lake"]) else "dirt"
 					elif steep: kind = "rock" if height >= 7 else "stone"
-					elif height <= 3 and river_d < 6.0: kind = "sand"
+					elif height <= 3 and river_d < 4.6: kind = "sand"
 					elif bool(info.get("path", false)): kind = "dirt"
 					else: kind = "grass"
 				elif y >= height - 1:
-					if is_river or (height <= 3 and river_d < 6.0): kind = "sand"
+					if is_river or (height <= 3 and river_d < 4.6): kind = "sand"
 					elif steep: kind = "stone"
 					else: kind = "dirt"
 				elif y >= height - 3: kind = "dirt" if not steep else "stone"
@@ -1145,7 +1145,7 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 	var land_step := 1
 	# The immediate dry cell can be a submerged gravel shelf. Extend only as
 	# far as needed to find the first real dry bank height.
-	for candidate_step in range(2, 7):
+	for candidate_step in range(2, 4):
 		var candidate_a := corner_a + landward_offset * candidate_step
 		var candidate_b := corner_b + landward_offset * candidate_step
 		if terrain_corner_heights.has(candidate_a) and terrain_corner_heights.has(candidate_b):
@@ -1164,8 +1164,8 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 	var shelf_row := PackedVector3Array()
 	var upper_row := PackedVector3Array()
 	var land_row := PackedVector3Array()
-	var shelf_t := 0.32
-	var upper_t := 0.70
+	var shelf_t := 0.26
+	var upper_t := 0.62
 	for point_index in range(edge_points.size()):
 		var along := float(point_index) / float(edge_points.size() - 1)
 		var edge_point: Vector3 = edge_points[point_index]
