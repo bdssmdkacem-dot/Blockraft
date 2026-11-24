@@ -1272,8 +1272,12 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		var neighbor_exists: bool = blocks.has(neighbor)
 		var neighbor_kind := str(blocks.get(neighbor, ""))
 		var visible := not neighbor_exists
+		# Do not draw the exposed vertical soil wall where dry terrain meets
+		# water. The rounded water perimeter and submerged sediment transition
+		# own this boundary; retaining the voxel wall creates the dark brown
+		# staircase band that visually cuts across the river.
 		if kind != "water" and neighbor_kind == "water":
-			visible = true
+			visible = false
 		if kind == "water" and neighbor_exists:
 			visible = false
 		if not visible:
