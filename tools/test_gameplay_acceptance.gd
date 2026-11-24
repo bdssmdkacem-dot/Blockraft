@@ -569,9 +569,9 @@ func _run_checks() -> void:
     else:
         scene.blocks[face_test_neighbor] = old_neighbor
     print("CULLED_SURFACE_MESH_ACCEPTANCE_PASS: two adjacent blocks emit ten boundary quads, with the shared face removed")
-    # A single water cell produces an eight-vertex clipped polygon. Its edge
-    # midpoints are collinear with adjacent corners, so the fan must omit the
-    # zero-area first wedge and keep every emitted triangle outward-facing.
+    # A single water cell produces four three-segment curved shoreline edges.
+    # A centre fan must cover every boundary segment without degenerate wedges,
+    # while retaining the established water-normal/index winding contract.
     var water_test_origin := Vector3i(1000, 100, 1000)
     var old_water_test: Variant = scene.blocks.get(water_test_origin, null)
     scene.blocks[water_test_origin] = "water"
@@ -597,7 +597,7 @@ func _run_checks() -> void:
         scene.blocks.erase(water_test_origin)
     else:
         scene.blocks[water_test_origin] = old_water_test
-    print("WATER_POLYGON_TRIANGULATION_PASS: clipped water polygon has four non-degenerate outward-facing triangles")
+    print("WATER_POLYGON_TRIANGULATION_PASS: curved water perimeter is fully covered by non-degenerate centre-fan triangles")
 
     # Chunk rendering should use a handful of draw batches and one static collision
     # shape, not hundreds of physics bodies for individual voxel blocks.
