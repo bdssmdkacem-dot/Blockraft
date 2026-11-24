@@ -336,6 +336,11 @@ func use_depot() -> void:
 		_show_toast(inventory.upgrade_cost_text(), 3.0)
 	_refresh_backpack_ui()
 
+func _primary_river_centerline(x: float) -> float:
+	# Shared by world generation and acceptance tests so the continuity check
+	# cannot silently drift from the procedural channel's actual path.
+	return sin(x * 0.052) * 10.2 + cos(x * 0.026) * 4.4 + sin(x * 0.105 + 0.8) * 1.1
+
 func _generate_world() -> void:
 	var generation_started_usec := Time.get_ticks_usec()
 	blocks.clear()
@@ -385,7 +390,7 @@ func _generate_world() -> void:
 			# Keep the channel centreline's lateral drift below half a voxel per step.
 			# The previous steep sine could move the river diagonally by a full cell
 			# between adjacent columns, leaving only corner-touching water tiles.
-			var river_centerline := sin(fx * 0.052) * 10.2 + cos(fx * 0.026) * 4.4 + sin(fx * 0.105 + 0.8) * 1.1
+			var river_centerline := _primary_river_centerline(fx)
 			var river_d := absf(fz - river_centerline)
 			# The forward scenic tributary gives the spawn view a visible crossing.
 			var scenic_river_centerline := -15.0 - sin(fx * 0.092) * 5.2 - cos(fx * 0.038) * 1.7
