@@ -280,7 +280,7 @@ func _run_checks() -> void:
     # fixed surface level.
     var missing_river_center_cells: Array[Vector2i] = []
     for river_x in range(-30, 31):
-        var river_z := int(round(sin(float(river_x) * 0.055) * 8.0 + cos(float(river_x) * 0.025) * 3.0))
+        var river_z := int(round(float(scene.call("_primary_river_centerline", float(river_x))))
         if absi(river_x) <= 8 and absi(river_z) <= 8:
             continue
         var river_center := Vector3i(river_x, 2, river_z)
