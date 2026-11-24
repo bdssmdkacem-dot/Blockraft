@@ -53,6 +53,7 @@ func _run() -> void:
 	for bridge_x in range(-1, 2):
 		var north_y := 3
 		for bridge_position in [
+			Vector3i(bridge_x, 3, -23),
 			Vector3i(bridge_x, north_y, -22),
 			Vector3i(bridge_x, 3, -21),
 			Vector3i(bridge_x, 3, -12)
@@ -120,6 +121,8 @@ func _run() -> void:
 	var approaches_complete := true
 	for bridge_x in range(-1, 2):
 		var north_y := 3
+		if str(blocks.get(Vector3i(bridge_x, 3, -23), "")) != "wood":
+			approaches_complete = false
 		if str(blocks.get(Vector3i(bridge_x, north_y, -22), "")) != "wood":
 			approaches_complete = false
 		if str(blocks.get(Vector3i(bridge_x, 3, -21), "")) != "wood":
