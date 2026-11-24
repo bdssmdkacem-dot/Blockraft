@@ -19,8 +19,8 @@ const SPAWN_SURFACE_Y := 5.0
 const SPAWN_CLEAR_MAX_Y := 80
 const SPAWN_CONTACT_EPSILON := 0.04
 const TERRAIN_SURFACE_KINDS := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
-const WATER_EDGE_BULGE := 0.14
-const WATER_EDGE_CURVE_SEGMENTS := 3
+const WATER_EDGE_BULGE := 0.22
+const WATER_EDGE_CURVE_SEGMENTS := 4
 const WATER_INTERIOR_EDGE_SEGMENTS := 2
 
 var blocks: Dictionary = {}
@@ -1182,10 +1182,10 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 		land_row.append(land_point)
 	var rows := [edge_row, shelf_row, upper_row, land_row]
 	var row_colors := [
-		Color("#929f91"),
-		Color("#a19f7e"),
-		Color("#ada27c"),
-		Color("#a0a17e")
+		Color("#8b9c8e"),
+		Color("#929e7a"),
+		Color("#9ba07a"),
+		Color("#95a078")
 	]
 	for segment in range(edge_points.size() - 1):
 		for band in range(3):
@@ -1440,7 +1440,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
 				if _column_has_water_at_or_above(pos.x + water_offset.x, pos.z + water_offset.z, maxi(pos.y, MIN_Y)):
 					wet_shore_face = true
-					tint = Color("#aca584").lerp(Color("#c1b28a"), fine_biome * 0.24) * variation * 1.02
+					tint = Color("#9ca37c").lerp(Color("#a9a47c"), fine_biome * 0.24) * variation * 1.02
 					break
 		# Lower exposed bank walls are wet when the adjacent column contains
 		# water above them, even if the water starts one or two blocks higher.
@@ -1449,7 +1449,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 			var wet_column_z := pos.z + roundi(normal.z)
 			if _column_has_water_at_or_above(wet_column_x, wet_column_z, pos.y):
 				wet_shore_face = true
-				tint = Color("#a49b7a")
+				tint = Color("#929b7b")
 		# Fade the water colour toward a soft turquoise at exposed shoreline
 		# edges. The fade is vertex-coloured on the existing top quad: it adds no
 		# geometry, collision, water voxels, draw calls, or chunk rebuild work.
