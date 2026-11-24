@@ -73,6 +73,12 @@ func _run() -> void:
             profile.append("%d:%s" % [z, str(scene.terrain_surface_heights.get(column, -999.0))])
         print("BRIDGE_BANK_PROFILE x=", x, " surfaces=", ", ".join(profile))
 
+    # The northern landing must overlap the natural bank so the capsule has no exposed vertical lip.
+    for lane_x in range(-1, 2):
+        if str(scene.blocks.get(Vector3i(lane_x, 3, -23), "")) != "wood":
+            _fail("north approach does not extend onto the bank in lane x=%d" % lane_x, 15)
+            return
+
     # Verify every lane on the actual static chunk collision, not the voxel map.
     for x in range(-1, 2):
         var wx := float(x) + 0.5
