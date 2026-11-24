@@ -724,10 +724,11 @@ func _generate_world() -> void:
 	# A low, broad timber crossing: three walkable deck lanes, flush bank
 	# approaches, and no tall rail posts that obstruct the valley view.
 	for x in range(-1, 2):
-		# The northern bank is one voxel higher in the two western lanes.
-		# Match its existing top elevation, then step down once onto the level
-		# deck. The southern approach meets the lower eastern bank at deck height.
-		var north_approach_top := 5
+		# The sampled northern bank at the actual crossing is already near y=4.
+		# Keep the first approach flush with the level deck instead of adding a
+		# half-to-one-block vertical lip that stops a real CharacterBody capsule.
+		# The southern approach also meets the lower eastern bank at deck height.
+		var north_approach_top := 4
 		var approach_cells: Array[Vector2i] = [
 			Vector2i(-22, north_approach_top - 1),
 			Vector2i(-21, 3),
