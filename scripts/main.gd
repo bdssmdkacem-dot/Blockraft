@@ -20,7 +20,7 @@ const SPAWN_CLEAR_MAX_Y := 80
 const SPAWN_CONTACT_EPSILON := 0.04
 const TERRAIN_SURFACE_KINDS := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
 const WATER_EDGE_BULGE := 0.07
-const WATER_EDGE_CURVE_SEGMENTS := 3
+const WATER_EDGE_CURVE_SEGMENTS := 8
 const WATER_INTERIOR_EDGE_SEGMENTS := 2
 
 var blocks: Dictionary = {}
@@ -1170,7 +1170,7 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 		var along := float(point_index) / float(edge_points.size() - 1)
 		var edge_point: Vector3 = edge_points[point_index]
 		edge_point.y = water_top - 0.04
-		var shoreline_width := minf(float(land_step), 1.25)
+		var shoreline_width := minf(float(land_step) * 0.55, 0.75)
 		var land_point := edge_point + landward_vector * shoreline_width
 		land_point.y = clampf(lerpf(dry_height_a, dry_height_b, along) + 0.012, float(MIN_Y), water_top + 1.5)
 		var shelf_point := edge_point.lerp(land_point, shelf_t)
@@ -1235,13 +1235,13 @@ func _water_surface_corner(corner: Vector2i, water_y: int) -> Vector3:
 			position += inward.normalized() * rounding
 	return Vector3(position.x, float(water_y + 1), position.y)
 
-func _water_boundary_tangent(corner: Vector2i, edge_direction: Vector3) -> Vector3:
+func _water_boundary_tangent(corner: Vector2i, edge_direction: Vector3, water_y: int) -> Vector3:
 	# Derive one deterministic tangent from the global four-cell water
 	# neighbourhood. Every water cell and every chunk therefore uses the same
 	# tangent at a shared contour corner instead of choosing a per-cell curve.
 	var inward := Vector2.ZERO
 	for offset in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i(0, 0)]:
-		var cell := Vector3i(corner.x + offset.x, 2, corner.y + offset.y)
+		var cell := Vector3i(corner.x + offset.x, water_y, corner.y + offset.y)
 		if str(blocks.get(cell, "")) == "water":
 			inward += Vector2(float(offset.x) + 0.5, float(offset.y) + 0.5)
 	if inward.length_squared() < 0.0001:
@@ -1271,8 +1271,9 @@ func _water_surface_edge_points(a: Vector3, b: Vector3, landward_offset: Vector2
 	var edge_direction := (b - a).normalized()
 	var corner_a := Vector2i(roundi(a.x), roundi(a.z))
 	var corner_b := Vector2i(roundi(b.x), roundi(b.z))
-	var tangent_a := _water_boundary_tangent(corner_a, edge_direction)
-	var tangent_b := _water_boundary_tangent(corner_b, edge_direction)
+	var water_y := roundi(a.y - 1.0)
+	var tangent_a := _water_boundary_tangent(corner_a, edge_direction, water_y)
+	var tangent_b := _water_boundary_tangent(corner_b, edge_direction, water_y)
 	var handle := a.distance_to(b) * 0.28
 	var control_a := a + tangent_a * handle + offset * bulge
 	var control_b := b - tangent_b * handle + offset * bulge
