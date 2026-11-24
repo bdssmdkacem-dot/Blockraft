@@ -114,6 +114,30 @@ func _run() -> void:
 	if shallow_river_columns < 8 or deep_river_columns < 8:
 		_fail("River needs both shallow shoreline shelves and a deeper centre: shallow=%d deep=%d" % [shallow_river_columns, deep_river_columns])
 		return
+
+	# The scenic crossing must have a broad, smoothly varying meander. This
+	# prevents a visually straight channel or a one-cell side-to-side jump.
+	var scenic_min := INF
+	var scenic_max := -INF
+	var previous_center := 0.0
+	var previous_delta := 0.0
+	var centerline_turns := 0
+	var max_centerline_step := 0.0
+	for sample_x in range(-24, 25):
+		var center_x := float(game.call("_scenic_river_centerline", float(sample_x)))
+		scenic_min = minf(scenic_min, center_x)
+		scenic_max = maxf(scenic_max, center_x)
+		if sample_x > -24:
+			var delta := center_x - previous_center
+			max_centerline_step = maxf(max_centerline_step, absf(delta))
+			if previous_delta != 0.0 and delta * previous_delta < 0.0:
+				centerline_turns += 1
+			previous_delta = delta
+		previous_center = center_x
+	if scenic_max - scenic_min < 8.0 or max_centerline_step > 0.7 or centerline_turns < 1:
+		_fail("Scenic river meander is too straight or abrupt: range=%.2f max_step=%.2f turns=%d" % [scenic_max - scenic_min, max_centerline_step, centerline_turns])
+		return
+
 	var bridge_deck_cells := 0
 	for bridge_z in range(-20, -12):
 		if str(blocks.get(Vector3i(0, 3, bridge_z), "")) == "wood":
@@ -231,6 +255,77 @@ func _run() -> void:
 	if shoreline_edges_checked < 16:
 		_fail("too few shoreline faces were sampled for render acceptance: %d" % shoreline_edges_checked)
 		return
+
+	var shoreline_transition_cells := 0
+	var shoreline_collision_samples := 0
+	var transition_min_luminance := 1.0
+	var transition_min_height := INF
+	var transition_max_height := -INF
+	var corner_cache: Dictionary = game.get("terrain_corner_heights")
+	for water_position_variant in blocks:
+		if shoreline_transition_cells >= 16 and shoreline_collision_samples >= 12:
+			break
+		var water_position: Vector3i = water_position_variant
+		if str(blocks[water_position]) != "water":
+			continue
+		var transition_groups: Dictionary = {}
+		game.call("_append_exposed_render_faces", transition_groups, water_position, "water")
+		var transition_group: Dictionary = transition_groups.get("sand", {})
+		var transition_vertices: PackedVector3Array = transition_group.get("vertices", PackedVector3Array())
+		var transition_colors: PackedColorArray = transition_group.get("colors", PackedColorArray())
+		if transition_vertices.is_empty():
+			continue
+		for transition_vertex in transition_vertices:
+			transition_min_height = minf(transition_min_height, transition_vertex.y)
+			transition_max_height = maxf(transition_max_height, transition_vertex.y)
+		for transition_color in transition_colors:
+			transition_min_luminance = minf(transition_min_luminance, transition_color.get_luminance())
+		if transition_max_height <= 3.05:
+			_fail("shoreline bevel does not rise onto the dry bank: max_y=%.3f" % transition_max_height)
+			return
+		if transition_min_luminance < 0.55:
+			_fail("shoreline sediment is still too dark: min_luminance=%.3f" % transition_min_luminance)
+			return
+		shoreline_transition_cells += 1
+
+		# The dry bank collision must use exactly the same shared corner heights
+		# as the smoothed visible top, so changing the render bevel cannot hide a
+		# gap or create a floating walkable lip.
+		for bank_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+			var bank_key := Vector2i(water_position.x + bank_offset.x, water_position.z + bank_offset.z)
+			if not surface_heights.has(bank_key) or bridge_columns.has(bank_key):
+				continue
+			var bank_top := Vector3i(bank_key.x, int(surface_heights[bank_key]), bank_key.y)
+			if str(blocks.get(bank_top, "")) not in GROUND_KINDS:
+				continue
+			var collision_faces := PackedVector3Array()
+			game.call("_append_exposed_collision_faces", collision_faces, bank_top)
+			if collision_faces.is_empty():
+				_fail("river-bank collision mesh is missing at %s" % bank_top)
+				return
+			var matching_corner_vertices := 0
+			for collision_vertex in collision_faces:
+				if collision_vertex.y <= float(bank_top.y) + 0.5:
+					continue
+				var collision_corner := Vector2i(roundi(collision_vertex.x), roundi(collision_vertex.z))
+				if not corner_cache.has(collision_corner):
+					continue
+				var expected_height := float(corner_cache[collision_corner])
+				if absf(collision_vertex.y - expected_height) > 0.001:
+					_fail("river-bank collision/render corner mismatch at %s: collision=%.3f render=%.3f" % [collision_corner, collision_vertex.y, expected_height])
+					return
+				matching_corner_vertices += 1
+			if matching_corner_vertices >= 4:
+				shoreline_collision_samples += 1
+				break
+	if shoreline_transition_cells < 8:
+		_fail("too few rendered shoreline transitions were sampled: %d" % shoreline_transition_cells)
+		return
+	if shoreline_collision_samples < 8:
+		_fail("too few river-bank collision tops matched the shared rendered corner heights: %d" % shoreline_collision_samples)
+		return
+	print("WATER_BANK_BEVEL_PASS: ", shoreline_transition_cells, " transitions rise onto the bank; minimum sediment luminance=", transition_min_luminance)
+	print("RIVER_BANK_COLLISION_MATCH_PASS: ", shoreline_collision_samples, " bank tops share render/collision corner heights")
 	print("WATER_BANK_WATERTIGHT_SILT_PASS: ", shoreline_edges_checked, " shoreline faces retained with bright wet-silt tint")
 	print("TERRAIN_WALKABILITY_PASS columns=", surface_heights.size(), " max_adjacent_height_step=", worst_step, " two_block_edges=", steep_edges, " hill_relief=", annulus_max - annulus_min, " distinct_hill_heights=", annulus_heights.size(), " river_wet_rows=", river_rows, " river_widest_run=", widest_river_run, " shallow_river_columns=", shallow_river_columns, " deep_river_columns=", deep_river_columns)
 	quit(0)

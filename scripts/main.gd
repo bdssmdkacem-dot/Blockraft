@@ -341,6 +341,11 @@ func _primary_river_centerline(x: float) -> float:
 	# cannot silently drift from the procedural channel's actual path.
 	return sin(x * 0.052) * 10.2 + cos(x * 0.026) * 4.4 + sin(x * 0.105 + 0.8) * 1.1
 
+func _scenic_river_centerline(x: float) -> float:
+	# Broad, overlapping meanders create a longer natural bend without a sharp
+	# one-cell lateral jump at the bridge or along a streamed chunk seam.
+	return -15.0 - sin(x * 0.084) * 5.4 - cos(x * 0.036) * 1.5 + sin(x * 0.024 + 0.2) * 0.55
+
 func _generate_world() -> void:
 	var generation_started_usec := Time.get_ticks_usec()
 	blocks.clear()
@@ -393,14 +398,14 @@ func _generate_world() -> void:
 			var river_centerline := _primary_river_centerline(fx)
 			var river_d := absf(fz - river_centerline)
 			# The forward scenic tributary gives the spawn view a visible crossing.
-			var scenic_river_centerline := -15.0 - sin(fx * 0.092) * 5.2 - cos(fx * 0.038) * 1.7
+			var scenic_river_centerline := _scenic_river_centerline(fx)
 			var scenic_river_d := absf(fz - scenic_river_centerline)
 			if dist > 12.0 and dist < 48.0:
 				river_d = minf(river_d, scenic_river_d)
 			var trib_d := absf(fx - cos(fz * 0.13) * 5.0 + 10.0)
 			# A gently varying channel width avoids the ruler-straight, uniformly
 			# narrow trench. Width modulation is low-frequency and deterministic.
-			var main_river_width := 1.68 + sin(fx * 0.078 + fz * 0.035) * 0.18 + cos(fz * 0.065) * 0.07
+			var main_river_width := 1.78 + sin(fx * 0.064 + fz * 0.028) * 0.26 + cos(fz * 0.046) * 0.10
 			var in_main := river_d < main_river_width and dist > 7.0
 			var in_trib := trib_d < 1.25 and dist > 11.0 and fz > 0.0
 			var in_river := in_main or in_trib
@@ -423,8 +428,8 @@ func _generate_world() -> void:
 				if dist > 11.0 and fz > 0.0 and trib_d < bank_distance:
 					bank_distance = trib_d
 					bank_inner_width = 1.25
-				if bank_distance < 8.5 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 8.5, bank_distance))
+				if bank_distance < 9.5 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 9.5, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
@@ -1109,8 +1114,8 @@ func _smooth_terrain_vertex(vertex: Vector3) -> Vector3:
 	return vertex
 
 func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vector3, inward: Vector3, corner_a: Vector2i, corner_b: Vector2i, water_top: float) -> void:
-	# Three render-only sediment bands bridge the rounded water edge to the
-	# dry bank. Geometry remains outside the water footprint and below its plane.
+	# A render-only, three-band beach bevel bridges the rounded water edge to
+	# the actual smoothed bank top. It never changes voxel or collision geometry.
 	if not groups.has("sand"):
 		groups["sand"] = {"vertices": PackedVector3Array(), "normals": PackedVector3Array(), "colors": PackedColorArray(), "indices": PackedInt32Array()}
 	var group: Dictionary = groups["sand"]
@@ -1123,23 +1128,30 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 	var shared_b := _water_surface_corner(corner_b, water_y)
 	var edge_a := Vector3(shared_a.x, water_top - 0.04, shared_a.z)
 	var edge_b := Vector3(shared_b.x, water_top - 0.04, shared_b.z)
-	var landward_offset := Vector2i(-signi(roundi(inward.x)), -signi(roundi(inward.z)))
+	var inward_direction := inward.normalized()
+	var landward_offset := Vector2i(-signi(roundi(inward_direction.x)), -signi(roundi(inward_direction.z)))
 	var land_corner_a := corner_a + landward_offset
 	var land_corner_b := corner_b + landward_offset
-	var land_a := start - inward * 1.35
-	var land_b := end - inward * 1.35
-	land_a.y = clampf(float(terrain_corner_heights.get(land_corner_a, terrain_corner_heights.get(corner_a, water_top - 0.4))), float(MIN_Y), water_top - 0.08)
-	land_b.y = clampf(float(terrain_corner_heights.get(land_corner_b, terrain_corner_heights.get(corner_b, water_top - 0.4))), float(MIN_Y), water_top - 0.08)
+	# End exactly on the neighbouring dry-bank corner. The previous endpoint
+	# stopped short and was clamped below the water plane, leaving a brown ledge.
+	var land_a := start - inward_direction
+	var land_b := end - inward_direction
+	land_a.y = clampf(float(terrain_corner_heights.get(land_corner_a, water_top + 0.24)) + 0.012, float(MIN_Y), water_top + 1.5)
+	land_b.y = clampf(float(terrain_corner_heights.get(land_corner_b, water_top + 0.24)) + 0.012, float(MIN_Y), water_top + 1.5)
 	var edge_row_a := edge_a
 	var edge_row_b := edge_b
-	var shelf_row_a := edge_a.lerp(land_a, 0.38)
-	var shelf_row_b := edge_b.lerp(land_b, 0.38)
-	shelf_row_a.y = minf(shelf_row_a.y, water_top - 0.18)
-	shelf_row_b.y = minf(shelf_row_b.y, water_top - 0.18)
-	var upper_row_a := edge_a.lerp(land_a, 0.72)
-	var upper_row_b := edge_b.lerp(land_b, 0.72)
-	upper_row_a.y = minf(upper_row_a.y, water_top - 0.12)
-	upper_row_b.y = minf(upper_row_b.y, water_top - 0.12)
+	var shelf_t := 0.32
+	var upper_t := 0.70
+	var shelf_row_a := edge_a.lerp(land_a, shelf_t)
+	var shelf_row_b := edge_b.lerp(land_b, shelf_t)
+	var upper_row_a := edge_a.lerp(land_a, upper_t)
+	var upper_row_b := edge_b.lerp(land_b, upper_t)
+	# Ease the bank rise so the wet edge is shallow and the dry end meets the
+	# true terrain height rather than flattening the whole strip under water.
+	shelf_row_a.y = lerpf(edge_a.y, land_a.y, smoothstep(0.0, 1.0, shelf_t))
+	shelf_row_b.y = lerpf(edge_b.y, land_b.y, smoothstep(0.0, 1.0, shelf_t))
+	upper_row_a.y = lerpf(edge_a.y, land_a.y, smoothstep(0.0, 1.0, upper_t))
+	upper_row_b.y = lerpf(edge_b.y, land_b.y, smoothstep(0.0, 1.0, upper_t))
 	var rows_a := [edge_row_a, shelf_row_a, upper_row_a, land_a]
 	var rows_b := [edge_row_b, shelf_row_b, upper_row_b, land_b]
 	for band in range(3):
@@ -1156,7 +1168,9 @@ func _append_shoreline_transition(groups: Dictionary, start: Vector3, end: Vecto
 		var outward_1 := -n1.normalized()
 		var outward_2 := -n2.normalized()
 		normals.append_array(PackedVector3Array([outward_1, outward_1, outward_1, outward_2, outward_2, outward_2]))
-		var sediment_tint := Color("#b7a276").lerp(Color("#8f7956"), float(band) * 0.18)
+		# Pale wet-silt to dry-sand transition; avoid the previous red-brown
+		# inner band that read as a second hard terrain edge.
+		var sediment_tint := Color("#aeb99d").lerp(Color("#d5cba7"), float(band) / 2.0)
 		colors.append_array(PackedColorArray([sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint, sediment_tint]))
 		indices.append_array(PackedInt32Array([base, base + 1, base + 2, base + 3, base + 4, base + 5]))
 	group["vertices"] = vertices
@@ -1356,7 +1370,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 					wet_bank_top = true
 					break
 			if wet_bank_top:
-				tint = Color("#b39a68").lerp(Color("#d0b77f"), fine_biome * 0.28) * variation
+				tint = Color("#b9c29f").lerp(Color("#d9cda7"), fine_biome * 0.28) * variation
 		# Give the exposed bank face touching water a damp sediment tone instead of
 		# the default dark soil stripe. This is vertex colour only: no extra geometry,
 		# material, collision surface, draw call, or change to water topology.
@@ -1367,8 +1381,8 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 					touches_water_face = true
 					break
 			if touches_water_face:
-				var wet_silt := Color("#b69b68").lerp(Color("#d8c18c"), fine_biome * 0.36)
-				tint = wet_silt * variation * 1.03
+				var wet_silt := Color("#b7c1a2").lerp(Color("#d6c99f"), fine_biome * 0.36)
+				tint = wet_silt * variation * 1.04
 		# Fade the water colour toward a soft turquoise at exposed shoreline
 		# edges. The fade is vertex-coloured on the existing top quad: it adds no
 		# geometry, collision, water voxels, draw calls, or chunk rebuild work.
@@ -1456,7 +1470,9 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		# Water vertex colours already contain the full display colour. A dark
 		# blue base albedo multiplied them a second time and crushed the river
 		# into near-navy polygons in the rendered gameplay camera.
-		if kind == "water":
+		if kind == "water" or kind == "sand":
+			# Water and sand vertex colours are authored as final display colours;
+			# multiplying them by the dark base albedo reintroduced muddy banks.
 			surface_material.albedo_color = Color.WHITE
 		instance.material_override = surface_material
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
