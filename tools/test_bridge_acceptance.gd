@@ -102,6 +102,21 @@ func _run() -> void:
             if absf(bank_y - approach_y) > 1.25:
                 _fail("bank-to-approach height discontinuity in lane x=%d z=%f: bank=%f approach=%f" % [x, bank_z, bank_y, approach_y], 9)
                 return
+    # Require a real underside frame: two longitudinal girders and three
+    # transverse cross-ties, all below the deck and outside the walking surface.
+    var missing_frame_members: Array[String] = []
+    for girder_x in [-1, 1]:
+        for girder_z in range(-20, -12):
+            if str(scene.blocks.get(Vector3i(girder_x, 2, girder_z), "")) != "wood":
+                missing_frame_members.append("girder(%d,%d)" % [girder_x, girder_z])
+    for tie_z in [-20, -17, -14]:
+        for tie_x in range(-1, 2):
+            if str(scene.blocks.get(Vector3i(tie_x, 2, tie_z), "")) != "wood":
+                missing_frame_members.append("cross_tie(%d,%d)" % [tie_x, tie_z])
+    if not missing_frame_members.is_empty():
+        _fail("underside timber frame is incomplete: " + ", ".join(missing_frame_members), 16)
+        return
+    print("BRIDGE_TIMBER_FRAME_PASS: two continuous girders and three transverse cross-ties support the deck")
     print("BRIDGE_LANE_COLLISION_PASS: 3 deck lanes, 6 approach surfaces, and 6 bank contacts hit real chunk colliders")
 
     # Exercise a real CharacterBody3D across bank -> stepped approach -> deck
