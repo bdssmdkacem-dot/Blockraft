@@ -220,8 +220,9 @@ func _run_checks() -> void:
     scene.call("_append_exposed_render_faces", exposed_water_groups, stepped_water_probe, "water")
     var exposed_water_group: Dictionary = exposed_water_groups.get("water", {})
     var exposed_water_vertices: PackedVector3Array = exposed_water_group.get("vertices", PackedVector3Array())
-    if exposed_water_vertices.size() != 8:
-        _fail("lower water surface did not retain its rounded perimeter beside a taller water column: vertices=%d" % exposed_water_vertices.size(), 85)
+    var exposed_water_boundary: PackedVector3Array = scene.call("_water_surface_polygon", stepped_water_probe)
+    if exposed_water_vertices.size() != exposed_water_boundary.size() + 1 or exposed_water_boundary.size() < 14:
+        _fail("lower water surface lost its curved perimeter beside a taller water column: boundary=%d vertices=%d" % [exposed_water_boundary.size(), exposed_water_vertices.size()], 85)
         return
     var rounded_water_vertex_count := 0
     for water_vertex in exposed_water_vertices:
@@ -580,8 +581,9 @@ func _run_checks() -> void:
     var water_test_vertices: PackedVector3Array = water_test_group["vertices"]
     var water_test_normals: PackedVector3Array = water_test_group["normals"]
     var water_test_indices: PackedInt32Array = water_test_group["indices"]
-    if water_test_vertices.size() != 8 or water_test_normals.size() != 8 or water_test_indices.size() != 12:
-        _fail("water polygon fan must emit eight boundary vertices and four non-degenerate triangles", 68)
+    var water_test_boundary: PackedVector3Array = scene.call("_water_surface_polygon", water_test_origin)
+    if water_test_boundary.size() != 16 or water_test_vertices.size() != water_test_boundary.size() + 1 or water_test_normals.size() != water_test_vertices.size() or water_test_indices.size() != water_test_boundary.size() * 3:
+        _fail("isolated water surface must emit four curved shoreline edges and a complete centre fan: boundary=%d vertices=%d normals=%d indices=%d" % [water_test_boundary.size(), water_test_vertices.size(), water_test_normals.size(), water_test_indices.size()], 68)
         return
     for index_offset in range(0, water_test_indices.size(), 3):
         var ia := water_test_indices[index_offset]
