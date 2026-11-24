@@ -19,8 +19,8 @@ const SPAWN_SURFACE_Y := 5.0
 const SPAWN_CLEAR_MAX_Y := 80
 const SPAWN_CONTACT_EPSILON := 0.04
 const TERRAIN_SURFACE_KINDS := ["grass", "dirt", "stone", "rock", "sand", "gravel"]
-const WATER_EDGE_BULGE := 0.22
-const WATER_EDGE_CURVE_SEGMENTS := 4
+const WATER_EDGE_BULGE := 0.07
+const WATER_EDGE_CURVE_SEGMENTS := 3
 const WATER_INTERIOR_EDGE_SEGMENTS := 2
 
 var blocks: Dictionary = {}
@@ -1182,10 +1182,10 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 		land_row.append(land_point)
 	var rows := [edge_row, shelf_row, upper_row, land_row]
 	var row_colors := [
-		Color("#8b9c8e"),
-		Color("#929e7a"),
-		Color("#9ba07a"),
-		Color("#95a078")
+		Color("#84977f"),
+		Color("#8d9b78"),
+		Color("#969d76"),
+		Color("#909a73")
 	]
 	for segment in range(edge_points.size() - 1):
 		for band in range(3):
