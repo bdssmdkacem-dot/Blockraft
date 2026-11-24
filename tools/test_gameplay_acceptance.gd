@@ -582,7 +582,7 @@ func _run_checks() -> void:
     var water_test_normals: PackedVector3Array = water_test_group["normals"]
     var water_test_indices: PackedInt32Array = water_test_group["indices"]
     var water_test_boundary: PackedVector3Array = scene.call("_water_surface_polygon", water_test_origin)
-    if water_test_boundary.size() != 12 or water_test_vertices.size() != water_test_boundary.size() + 1 or water_test_normals.size() != water_test_vertices.size() or water_test_indices.size() != water_test_boundary.size() * 3:
+    if water_test_boundary.size() != 32 or water_test_vertices.size() != water_test_boundary.size() + 1 or water_test_normals.size() != water_test_vertices.size() or water_test_indices.size() != water_test_boundary.size() * 3:
         _fail("isolated water surface must emit four curved shoreline edges and a complete centre fan: boundary=%d vertices=%d normals=%d indices=%d" % [water_test_boundary.size(), water_test_vertices.size(), water_test_normals.size(), water_test_indices.size()], 68)
         return
     for index_offset in range(0, water_test_indices.size(), 3):
