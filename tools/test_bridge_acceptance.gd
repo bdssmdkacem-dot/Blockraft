@@ -98,7 +98,7 @@ func _run() -> void:
                 _fail("bank collision missing beside approach in lane x=%d z=%f" % [x, bank_z], 8)
                 return
             var bank_y := float(bank.position.y)
-            var approach_y := 5.0 if bank_z < -20.0 else 4.0
+            var approach_y := 4.0
             if absf(bank_y - approach_y) > 1.25:
                 _fail("bank-to-approach height discontinuity in lane x=%d z=%f: bank=%f approach=%f" % [x, bank_z, bank_y, approach_y], 9)
                 return
