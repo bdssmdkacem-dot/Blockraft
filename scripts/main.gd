@@ -1388,7 +1388,7 @@ func _append_exposed_render_faces(groups: Dictionary, pos: Vector3i, kind: Strin
 		# not its vertical wall. Route every ground top that touches a water
 		# column into the dedicated unshaded silt batch.
 		var wet_shore_face := false
-		if kind in GROUND_KINDS and normal.y > 0.5 and pos.y <= 3:
+		if kind in TERRAIN_SURFACE_KINDS and normal.y > 0.5 and pos.y <= 3:
 			for water_offset in [Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
 				if _column_has_water_at_or_above(pos.x + water_offset.x, pos.z + water_offset.z, maxi(pos.y, MIN_Y)):
 					wet_shore_face = true
