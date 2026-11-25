@@ -632,11 +632,11 @@ func _generate_world() -> void:
 				elif y == height:
 					if is_river: kind = "sand" if river_d < 1.85 or bool(info["lake"]) else "dirt"
 					elif steep: kind = "rock" if height >= 7 else "stone"
-					elif height <= 3 and river_d < 2.15: kind = "sand"
+					elif height <= 3 and river_d < 1.95: kind = "sand"
 					elif bool(info.get("path", false)): kind = "dirt"
 					else: kind = "grass"
 				elif y >= height - 1:
-					if is_river or (height <= 3 and river_d < 2.15): kind = "sand"
+					if is_river or (height <= 3 and river_d < 1.95): kind = "sand"
 					elif steep: kind = "stone"
 					else: kind = "dirt"
 				elif y >= height - 3: kind = "dirt" if not steep else "stone"
@@ -654,7 +654,7 @@ func _generate_world() -> void:
 					blocks[Vector3i(x, wy, z)] = "water"
 				if height < water_level:
 					blocks[Vector3i(x, water_level, z)] = "water"
-			if not is_river and river_d < 2.35 and height <= water_level + 1 and rng.randf() < 0.35:
+			if not is_river and river_d < 2.05 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			var camera_clearance := Vector2(float(x), float(z)).length()
 			var tree_edge_clearance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
