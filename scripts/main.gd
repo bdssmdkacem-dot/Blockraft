@@ -436,7 +436,7 @@ func _generate_world() -> void:
 					bank_distance = trib_d
 					bank_inner_width = 1.25
 				if bank_distance < 5.8 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 4.6, bank_distance))
+					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 3.8, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
@@ -630,7 +630,7 @@ func _generate_world() -> void:
 				var kind := "stone"
 				if is_river and y < water_level: kind = "dirt"
 				elif y == height:
-					if is_river: kind = "sand" if river_d < 2.35 or bool(info["lake"]) else "dirt"
+					if is_river: kind = "sand" if river_d < 1.85 or bool(info["lake"]) else "dirt"
 					elif steep: kind = "rock" if height >= 7 else "stone"
 					elif height <= 3 and river_d < 3.2: kind = "sand"
 					elif bool(info.get("path", false)): kind = "dirt"
@@ -654,7 +654,7 @@ func _generate_world() -> void:
 					blocks[Vector3i(x, wy, z)] = "water"
 				if height < water_level:
 					blocks[Vector3i(x, water_level, z)] = "water"
-			if not is_river and river_d < 2.85 and height <= water_level + 1 and rng.randf() < 0.35:
+			if not is_river and river_d < 2.35 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			var camera_clearance := Vector2(float(x), float(z)).length()
 			var tree_edge_clearance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
@@ -1170,7 +1170,7 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 		var along := float(point_index) / float(edge_points.size() - 1)
 		var edge_point: Vector3 = edge_points[point_index]
 		edge_point.y = water_top - 0.04
-		var shoreline_width := minf(float(land_step) * 0.42, 0.48)
+		var shoreline_width := minf(float(land_step) * 0.32, 0.36)
 		var land_point := edge_point + landward_vector * shoreline_width
 		land_point.y = clampf(lerpf(dry_height_a, dry_height_b, along) + 0.012, float(MIN_Y), water_top + 1.5)
 		var shelf_point := edge_point.lerp(land_point, shelf_t)
