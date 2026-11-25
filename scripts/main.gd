@@ -1606,6 +1606,12 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		# convention as every other culled surface.
 		if kind == "water":
 			var corrected_water_triangles := 0
+			if indices.size() >= 3:
+				var first_ia := indices[0]
+				var first_ib := indices[1]
+				var first_ic := indices[2]
+				var first_normal := (vertices[first_ib] - vertices[first_ia]).cross(vertices[first_ic] - vertices[first_ia])
+				print("WATER_BATCH_PRE_ARRAY: triangles=", indices.size() / 3, " first_dot=", first_normal.normalized().dot(normals[first_ia]), " first_geom=", first_normal.normalized(), " first_normal=", normals[first_ia])
 			for index_offset in range(0, indices.size(), 3):
 				var water_ia := indices[index_offset]
 				var water_ib := indices[index_offset + 1]
