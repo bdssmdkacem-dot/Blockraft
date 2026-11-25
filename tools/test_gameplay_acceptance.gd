@@ -319,10 +319,10 @@ func _run_checks() -> void:
     for shoreline_vertex in bevel_vertices:
         shoreline_min_x = minf(shoreline_min_x, shoreline_vertex.x)
         shoreline_max_x = maxf(shoreline_max_x, shoreline_vertex.x)
-    if shoreline_max_x - shoreline_min_x > 0.45:
-        _fail("shoreline ribbon is too wide for a one-cell bank: width=%.4f" % (shoreline_max_x - shoreline_min_x), 100)
+    if shoreline_max_x - shoreline_min_x > 0.40:
+        _fail("shoreline ribbon is too wide for a one-cell bank (max 0.40): width=%.4f" % (shoreline_max_x - shoreline_min_x), 100)
         return
-    print("WATER_SHORELINE_WIDTH_PASS: one-cell wet-to-grass transition width=%.3f" % (shoreline_max_x - shoreline_min_x))
+    print("WATER_SHORELINE_WIDTH_PASS: one-cell wet-to-grass transition width=%.3f (max 0.40)" % (shoreline_max_x - shoreline_min_x))
 
     # The smoothed dry-bank mesh must never rise above the fixed water
     # surface at any corner shared with an actual generated water column.
