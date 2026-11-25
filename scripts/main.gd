@@ -435,8 +435,8 @@ func _generate_world() -> void:
 				if dist > 11.0 and fz > 0.0 and trib_d < bank_distance:
 					bank_distance = trib_d
 					bank_inner_width = 1.25
-				if bank_distance < 5.8 and dist > 7.0:
-					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 3.8, bank_distance))
+				if bank_distance < 4.4 and dist > 7.0:
+					var bank_height := lerpf(1.2, h, smoothstep(bank_inner_width, 3.0, bank_distance))
 					h = minf(h, bank_height)
 			var in_lake := (fx + 22.0) * (fx + 22.0) + (fz - 18.0) * (fz - 18.0) < 55.0
 			if in_lake:
@@ -632,11 +632,11 @@ func _generate_world() -> void:
 				elif y == height:
 					if is_river: kind = "sand" if river_d < 1.85 or bool(info["lake"]) else "dirt"
 					elif steep: kind = "rock" if height >= 7 else "stone"
-					elif height <= 3 and river_d < 1.95: kind = "sand"
+					elif height <= 3 and river_d < 1.86: kind = "sand"
 					elif bool(info.get("path", false)): kind = "dirt"
 					else: kind = "grass"
 				elif y >= height - 1:
-					if is_river or (height <= 3 and river_d < 1.95): kind = "sand"
+					if is_river or (height <= 3 and river_d < 1.86): kind = "sand"
 					elif steep: kind = "stone"
 					else: kind = "dirt"
 				elif y >= height - 3: kind = "dirt" if not steep else "stone"
@@ -654,7 +654,7 @@ func _generate_world() -> void:
 					blocks[Vector3i(x, wy, z)] = "water"
 				if height < water_level:
 					blocks[Vector3i(x, water_level, z)] = "water"
-			if not is_river and river_d < 2.05 and height <= water_level + 1 and rng.randf() < 0.35:
+			if not is_river and river_d < 1.92 and height <= water_level + 1 and rng.randf() < 0.35:
 				blocks[Vector3i(x, height, z)] = "gravel"
 			var camera_clearance := Vector2(float(x), float(z)).length()
 			var tree_edge_clearance := float(WORLD_RADIUS - maxi(absi(x), absi(z)))
@@ -1170,7 +1170,7 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 		var along := float(point_index) / float(edge_points.size() - 1)
 		var edge_point: Vector3 = edge_points[point_index]
 		edge_point.y = water_top - 0.04
-		var shoreline_width := minf(float(land_step) * 0.32, 0.36)
+		var shoreline_width := minf(float(land_step) * 0.25, 0.28)
 		var land_point := edge_point + landward_vector * shoreline_width
 		land_point.y = clampf(lerpf(dry_height_a, dry_height_b, along) + 0.012, float(MIN_Y), water_top + 1.5)
 		var shelf_point := edge_point.lerp(land_point, shelf_t)
@@ -1183,8 +1183,8 @@ func _append_shoreline_transition(groups: Dictionary, _start: Vector3, _end: Vec
 		land_row.append(land_point)
 	var rows := [edge_row, shelf_row, upper_row, land_row]
 	var row_colors := [
-		Color("#9ca37c"),
-		Color("#a9a47c"),
+		Color("#899d79"),
+		Color("#91a77c"),
 		Color("#9fb274"),
 		Color("#86b94a")
 	]
