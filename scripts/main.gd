@@ -632,11 +632,11 @@ func _generate_world() -> void:
 				elif y == height:
 					if is_river: kind = "sand" if river_d < 1.85 or bool(info["lake"]) else "dirt"
 					elif steep: kind = "rock" if height >= 7 else "stone"
-					elif height <= 3 and river_d < 3.2: kind = "sand"
+					elif height <= 3 and river_d < 2.15: kind = "sand"
 					elif bool(info.get("path", false)): kind = "dirt"
 					else: kind = "grass"
 				elif y >= height - 1:
-					if is_river or (height <= 3 and river_d < 3.2): kind = "sand"
+					if is_river or (height <= 3 and river_d < 2.15): kind = "sand"
 					elif steep: kind = "stone"
 					else: kind = "dirt"
 				elif y >= height - 3: kind = "dirt" if not steep else "stone"
