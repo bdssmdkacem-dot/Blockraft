@@ -659,9 +659,13 @@ func _run_checks() -> void:
                         _fail("chunk %s index buffer references an invalid vertex" % str(key), 66)
                         return
                     var geometric_normal := (mesh_vertices[ib] - mesh_vertices[ia]).cross(mesh_vertices[ic] - mesh_vertices[ia])
-                    var normal_alignment := geometric_normal.normalized().dot(mesh_normals[ia]) if geometric_normal.length_squared() >= 0.0001 else 1.0
-                    if geometric_normal.length_squared() < 0.0001 or normal_alignment > -0.99:
-                        _fail("chunk %s batch %s triangle %d winding disagrees with outward normals (dot=%.4f geom=%s normal=%s vertices=%s|%s|%s indices=%d,%d,%d)" % [str(key), child.name, index_offset / 3, normal_alignment, str(geometric_normal.normalized()), str(mesh_normals[ia]), str(mesh_vertices[ia]), str(mesh_vertices[ib]), str(mesh_vertices[ic]), ia, ib, ic], 65)
+                    # Curved water contours can legitimately contain tiny but
+                    # non-zero Bezier slivers. Match the dedicated polygon test's
+                    # 1e-10 area-squared floor; keep the stricter voxel-face floor.
+                    var minimum_triangle_area_squared := 0.0000000001 if child.name == "Surface_water" else 0.0001
+                    var normal_alignment := geometric_normal.normalized().dot(mesh_normals[ia]) if geometric_normal.length_squared() >= minimum_triangle_area_squared else 1.0
+                    if geometric_normal.length_squared() < minimum_triangle_area_squared or normal_alignment > -0.99:
+                        _fail("chunk %s batch %s triangle %d is degenerate or has incorrect outward winding (dot=%.4f minimum_area_squared=%.10f)" % [str(key), child.name, index_offset / 3, normal_alignment, minimum_triangle_area_squared], 65)
                         return
                 var surface_material := child.material_override as StandardMaterial3D
                 if surface_material == null or surface_material.cull_mode != BaseMaterial3D.CULL_BACK:

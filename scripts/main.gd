@@ -1600,34 +1600,6 @@ func _build_chunk_surface_meshes(parent: Node3D, render_groups: Dictionary) -> v
 		var indices: PackedInt32Array = group["indices"]
 		if vertices.is_empty() or indices.is_empty():
 			continue
-		# Normalize water winding after all per-cell polygons have been appended.
-		# Geometry2D can return different triangle orders for curved shoreline
-		# cells; the final chunk batch must use the same clockwise front-face
-		# convention as every other culled surface.
-		if kind == "water":
-			var corrected_water_triangles := 0
-			if indices.size() >= 3:
-				var first_ia := indices[0]
-				var first_ib := indices[1]
-				var first_ic := indices[2]
-				var first_normal := (vertices[first_ib] - vertices[first_ia]).cross(vertices[first_ic] - vertices[first_ia])
-				print("WATER_BATCH_PRE_ARRAY: triangles=", indices.size() / 3, " first_dot=", first_normal.normalized().dot(normals[first_ia]), " first_geom=", first_normal.normalized(), " first_normal=", normals[first_ia])
-			for index_offset in range(0, indices.size(), 3):
-				var water_ia := indices[index_offset]
-				var water_ib := indices[index_offset + 1]
-				var water_ic := indices[index_offset + 2]
-				if water_ia >= vertices.size() or water_ib >= vertices.size() or water_ic >= vertices.size():
-					continue
-				var water_geometric_normal := (vertices[water_ib] - vertices[water_ia]).cross(vertices[water_ic] - vertices[water_ia])
-				if water_geometric_normal.length_squared() < 0.0000000001:
-					continue
-				var water_alignment := water_geometric_normal.normalized().dot(normals[water_ia])
-				if water_alignment > -0.99:
-					indices[index_offset + 1] = water_ic
-					indices[index_offset + 2] = water_ib
-					corrected_water_triangles += 1
-			if corrected_water_triangles > 0:
-				print("WATER_CHUNK_WINDING_NORMALIZED: corrected_triangles=", corrected_water_triangles)
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = vertices
