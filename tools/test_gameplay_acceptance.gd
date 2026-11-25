@@ -311,6 +311,18 @@ func _run_checks() -> void:
             _fail("shoreline bevel overlaps the visible water plane: y=%f" % bevel_vertex.y, 90)
             return
     print("WATER_SHORELINE_CLEARANCE_PASS: opaque sediment bevel remains below the y=3 water plane")
+    # The shoreline transition must remain a narrow wet-to-grass ribbon rather
+    # than a broad pale shelf. The fixture has a one-cell dry step and should
+    # never extend more than 0.45 world units from the water contour.
+    var shoreline_min_x := INF
+    var shoreline_max_x := -INF
+    for shoreline_vertex in bevel_vertices:
+        shoreline_min_x = minf(shoreline_min_x, shoreline_vertex.x)
+        shoreline_max_x = maxf(shoreline_max_x, shoreline_vertex.x)
+    if shoreline_max_x - shoreline_min_x > 0.45:
+        _fail("shoreline ribbon is too wide for a one-cell bank: width=%.4f" % (shoreline_max_x - shoreline_min_x), 100)
+        return
+    print("WATER_SHORELINE_WIDTH_PASS: one-cell wet-to-grass transition width=%.3f" % (shoreline_max_x - shoreline_min_x))
 
     # The smoothed dry-bank mesh must never rise above the fixed water
     # surface at any corner shared with an actual generated water column.
