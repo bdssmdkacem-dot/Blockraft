@@ -616,6 +616,7 @@ func _run_checks() -> void:
     var collision_chunk: Node = null
     var collision_body: StaticBody3D = null
     var collision_key := Vector2i.ZERO
+    var water_chunk_triangle_count := 0
     for key_variant in scene.loaded_chunks.keys():
         var key: Vector2i = key_variant
         var chunk: Node = scene.loaded_chunks[key]
@@ -640,6 +641,12 @@ func _run_checks() -> void:
                 var mesh_normals: PackedVector3Array = mesh_arrays[Mesh.ARRAY_NORMAL]
                 var mesh_colors: PackedColorArray = mesh_arrays[Mesh.ARRAY_COLOR]
                 var mesh_indices: PackedInt32Array = mesh_arrays[Mesh.ARRAY_INDEX]
+                if child.name == "Surface_water":
+                    water_chunk_triangle_count += mesh_indices.size() / 3
+                    for water_normal in mesh_normals:
+                        if water_normal.dot(Vector3.UP) < 0.99:
+                            _fail("water chunk surface contains a non-upward top normal: %s" % str(water_normal), 65)
+                            return
                 var mesh_material := child.material_override as StandardMaterial3D
                 if mesh_vertices.is_empty() or mesh_vertices.size() != mesh_normals.size() or mesh_vertices.size() != mesh_colors.size() or mesh_material == null or not mesh_material.vertex_color_use_as_albedo or mesh_indices.is_empty() or mesh_indices.size() % 3 != 0:
                     _fail("chunk %s contains invalid indexed culled surface geometry" % str(key), 62)
@@ -666,6 +673,10 @@ func _run_checks() -> void:
         if static_bodies > 1:
             _fail("chunk %s has more than one batched collision body" % str(key), 22)
             return
+    if water_chunk_triangle_count < 20:
+        _fail("loaded chunks do not expose a complete indexed water surface: triangles=%d" % water_chunk_triangle_count, 65)
+        return
+    print("WATER_CHUNK_MESH_WINDING_PASS: triangles=", water_chunk_triangle_count, " upward normals and consistent culled winding")
     if collision_body == null:
         _fail("no batched chunk collision body was generated", 23)
         return
