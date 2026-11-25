@@ -169,12 +169,13 @@ func _run_checks() -> void:
 	if bank_vertices.size() != 292 or bank_indices.size() != 864:
 		_fail("menu river banks are missing their low-cost paired shoreline ribbons", 57)
 		return
-	# The former floating-island landmark was removed because it read as
-	# disconnected debris in the menu skyline. Keep the grounded mountain,
-	# castle, village and river landmarks as the panorama's focal composition.
-	if world.find_child("FloatingIsland", true, false) != null:
-		_fail("menu panorama still contains distracting floating-island debris", 28)
-		return
+	# The owner-approved north-star reference explicitly includes floating
+	# islands and waterfalls. Do not reject this landmark by name: an integrated
+	# island is a required visual direction, not inherently disconnected debris.
+	# Keep this manual visual gate visible until the landmark is implemented and
+	# reviewed in a fresh capture; structural CI must not imply visual acceptance.
+	if world.find_child("FloatingIsland", true, false) == null:
+		print("MENU_FLOATING_ISLAND_VISUAL_GATE_PENDING: north-star composition still requires an integrated floating island and waterfall")
 
 	var forests := world.find_child("Forests", true, false) as Node3D
 	var right_grove := forests.get_node_or_null("RightGrove") as Node3D if forests else null
