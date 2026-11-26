@@ -207,42 +207,62 @@ func _capture_gameplay() -> void:
 	for animal in animals:
 		animal_start_positions[animal.get_instance_id()] = animal.global_position
 
-	# Use a temporary observer camera inside the same live gameplay world.
-	# Frame the four animals nearest the player so their movement is visible
-	# instead of relying on tiny distant silhouettes in the third-person view.
-	# Frame the single animal nearest the player at a readable distance.
-	# A centroid of several widely separated animals previously aimed the camera
-	# at empty ground, making the movement capture useless despite a passing test.
+	# Keep the fauna review focused on one real gameplay animal. Hide the player,
+	# HUD and non-focus fauna so they cannot clip or obscure the model in either
+	# frame. The separate gameplay-camera artifact retains the normal player/HUD.
+	var player_was_visible := player.visible
+	player.hide()
+	var fauna_control_visibility: Dictionary = {}
+	for control_node in gameplay.find_children("*", "Control", true, false):
+		var control := control_node as Control
+		if control:
+			fauna_control_visibility[control.get_instance_id()] = control.visible
+			control.visible = false
+	var fauna_visibility: Dictionary = {}
 	var focus_animal: CharacterBody3D = animals[0] as CharacterBody3D
 	for candidate in animals:
 		var candidate_animal := candidate as CharacterBody3D
 		if candidate_animal.global_position.distance_squared_to(player.global_position) < focus_animal.global_position.distance_squared_to(player.global_position):
 			focus_animal = candidate_animal
+	for animal in animals:
+		var animal_model := animal as Node3D
+		if animal_model:
+			fauna_visibility[animal_model.get_instance_id()] = animal_model.visible
+			animal_model.visible = animal_model == focus_animal
+
 	var fauna_camera := Camera3D.new()
 	fauna_camera.name = "FaunaObservationCamera"
 	fauna_camera.fov = 48.0
 	gameplay.add_child(fauna_camera)
-	# A spawn-facing three-quarter view keeps the animal model large enough
-	# to inspect. The separate movement assertion verifies its real world motion.
 	var observer_offset := player.global_position - focus_animal.global_position
 	observer_offset.y = 0.0
 	if observer_offset.length_squared() < 0.01:
 		observer_offset = Vector3(0.0, 0.0, 1.0)
 	observer_offset = observer_offset.normalized()
-	fauna_camera.global_position = focus_animal.global_position - observer_offset * 6.0 + Vector3.UP * 7.0
-	fauna_camera.look_at(focus_animal.global_position + Vector3(0.0, 0.72, 0.0), Vector3.UP)
+	var fauna_camera_distance := 5.0
+	var fauna_camera_height := 3.2
+	var fauna_target := focus_animal.global_position + Vector3(0.0, 0.72, 0.0)
+	fauna_camera.global_position = focus_animal.global_position - observer_offset * fauna_camera_distance + Vector3.UP * fauna_camera_height
+	fauna_camera.look_at(fauna_target, Vector3.UP)
 	fauna_camera.make_current()
-	print("GAMEPLAY_FAUNA_FOCUS name=", focus_animal.name, " kind=", focus_animal.get("kind"), " start=", focus_animal.global_position, " camera=", fauna_camera.global_position)
+	print("GAMEPLAY_FAUNA_FOCUS name=", focus_animal.name, " kind=", focus_animal.get("kind"),
+		" start=", focus_animal.global_position, " camera=", fauna_camera.global_position)
+
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var before_image := root.get_texture().get_image()
 	var fauna_output_dir := ProjectSettings.globalize_path("res://artifacts")
 	DirAccess.make_dir_recursive_absolute(fauna_output_dir)
 	var before_path := fauna_output_dir.path_join("gameplay-animals-before.png")
+	if before_image.is_empty() or before_image.get_width() != 1280 or before_image.get_height() != 720:
+		push_error("Pre-roaming fauna screenshot returned an invalid 1280x720 frame.")
+		quit(10)
+		return
 	if before_image.save_png(before_path) != OK:
 		push_error("Could not save pre-roaming gameplay fauna screenshot.")
 		quit(10)
 		return
+
 	for _frame in range(180):
 		await physics_frame
 	var moved_animals := 0
@@ -257,17 +277,35 @@ func _capture_gameplay() -> void:
 		quit(11)
 		return
 	print("GAMEPLAY_FAUNA_ROAMING_PASS animals=", animals.size(), " moved=", moved_animals, " observation_frames=180")
+
+	# The animal may roam several metres during the observation interval. Re-aim
+	# the same observer camera at its new position so the after frame is still a
+	# valid silhouette review instead of capturing the animal at the frame edge.
+	fauna_target = focus_animal.global_position + Vector3(0.0, 0.72, 0.0)
+	fauna_camera.global_position = focus_animal.global_position - observer_offset * fauna_camera_distance + Vector3.UP * fauna_camera_height
+	fauna_camera.look_at(fauna_target, Vector3.UP)
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var after_image := root.get_texture().get_image()
 	var after_path := fauna_output_dir.path_join("gameplay-animals-after.png")
+	if after_image.is_empty() or after_image.get_width() != 1280 or after_image.get_height() != 720:
+		push_error("Post-roaming fauna screenshot returned an invalid 1280x720 frame.")
+		quit(12)
+		return
 	if after_image.save_png(after_path) != OK:
 		push_error("Could not save post-roaming gameplay fauna screenshot.")
 		quit(12)
 		return
+	print("GAMEPLAY_FAUNA_FRAMING_PASS: focus animal re-centered before and after roaming; player and HUD excluded")
+
 	# Restore the production third-person view for the gameplay baseline.
 	fauna_camera.queue_free()
 	camera.make_current()
+	player.visible = player_was_visible
+	for control_node in gameplay.find_children("*", "Control", true, false):
+		var control := control_node as Control
+		if control and fauna_control_visibility.has(control.get_instance_id()):
+			control.visible = bool(fauna_control_visibility[control.get_instance_id()])
 	# Keep the final player-camera baseline unobstructed. The live fauna has
 	# already been observed and captured above; aggressive chickens/foxes can
 	# otherwise walk directly into the camera during the observation interval.
