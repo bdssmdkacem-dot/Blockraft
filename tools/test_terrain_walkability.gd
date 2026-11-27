@@ -40,6 +40,21 @@ func _run() -> void:
 		return
 
 	var blocks: Dictionary = game.get("blocks")
+	# The river review camera looks along the starter crossing. Require actual
+	# grounded trunks on both visible banks; counting off-screen tree voxels is
+	# not sufficient evidence that the starter valley is visually framed.
+	var visible_flank_tree_bases := 0
+	for tree_candidate in [Vector2i(4, -11), Vector2i(4, -25), Vector2i(-8, -25)]:
+		for tree_y in range(30, -5, -1):
+			var trunk_kind := str(blocks.get(Vector3i(tree_candidate.x, tree_y, tree_candidate.y), ""))
+			var ground_kind := str(blocks.get(Vector3i(tree_candidate.x, tree_y - 1, tree_candidate.y), ""))
+			if trunk_kind == "wood" and GROUND_KINDS.has(ground_kind):
+				visible_flank_tree_bases += 1
+				break
+	if visible_flank_tree_bases < 2:
+		_fail("Starter river view needs at least two grounded flank trees in camera-visible positions; found=%d" % visible_flank_tree_bases)
+		return
+	print("STARTER_RIVER_VISIBLE_FOREST_PASS grounded_visible_flank_trees=", visible_flank_tree_bases)
 	var surface_heights: Dictionary = {}
 	var water_columns: Dictionary = {}
 	# Columns occupied by the actual bridge deck/approaches are not exposed
