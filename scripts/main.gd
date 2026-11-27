@@ -681,9 +681,13 @@ func _generate_world() -> void:
 	# trunks stay grounded and never spawn in water or inside the clear corridor.
 	var flank_tree_count := 0
 	var flank_candidates := [
-		# Keep guaranteed trunks in the middle distance. Trees near x=+/-9 and
-		# z=-12 were so close to the third-person camera that their crowns filled
-		# the top of the frame instead of framing the valley.
+		# Place a small, deterministic foreground frame on both river banks.
+		# These positions sit outside the bridge camera's clear corridor and
+		# outside the generated channel, but remain close enough to appear in
+		# the actual starter-valley view rather than only on the distant skyline.
+		Vector2i(4, -11), Vector2i(4, -25), Vector2i(-8, -25),
+		# Retain the wider middle-distance forest groups for depth beyond the
+		# immediate river frame.
 		Vector2i(-18, -22), Vector2i(18, -22),
 		Vector2i(-23, -28), Vector2i(23, -28),
 		Vector2i(-14, -31), Vector2i(14, -31)
