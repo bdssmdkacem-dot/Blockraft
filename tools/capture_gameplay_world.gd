@@ -9,18 +9,25 @@ func _clear_review_tree_occluders(gameplay: Node3D) -> int:
 	var world_blocks: Dictionary = gameplay.get("blocks")
 	var removed_positions: Array[Vector3i] = []
 	var rebuild_chunks: Dictionary = {}
+	var preserved_tree_voxels := 0
 	for position_variant in world_blocks.keys():
 		var position: Vector3i = position_variant
 		var kind := str(world_blocks[position])
 		if kind not in ["wood", "leaves"]:
 			continue
-		# Preserve bridge deck framing, girders and rails. This is a review-only
-		# copy of the world, so non-bridge tree voxels can be removed to expose
-		# the complete river corridor without changing gameplay generation.
+		# Preserve bridge deck framing, girders and rails. The review camera looks
+		# west along z=-16; clear only tree voxels in that narrow sightline so the
+		# river remains visible while the real flank forests still frame the scene.
+		# This edits only the disposable capture scene, never saved gameplay data.
 		var is_bridge_timber := position.x >= -2 and position.x <= 2 \
 			and position.y >= 3 and position.y <= 8 \
 			and position.z >= -24 and position.z <= -10
 		if is_bridge_timber:
+			continue
+		var blocks_review_sightline := position.x >= -4 and position.x <= 22 \
+			and absf(float(position.z) + 16.0) <= 3.0
+		if not blocks_review_sightline:
+			preserved_tree_voxels += 1
 			continue
 		removed_positions.append(position)
 
@@ -33,7 +40,12 @@ func _clear_review_tree_occluders(gameplay: Node3D) -> int:
 	for chunk_variant in rebuild_chunks:
 		gameplay.call("_rebuild_chunk", chunk_variant)
 	print("GAMEPLAY_WORLD_REVIEW_TREE_OCCLUDERS_REMOVED=", removed_positions.size(),
+		" preserved_flank_tree_voxels=", preserved_tree_voxels,
 		" rebuilt_chunks=", rebuild_chunks.size())
+	if preserved_tree_voxels < 80:
+		push_error("Gameplay review removed too much of the environment: preserved flank tree voxels=%d" % preserved_tree_voxels)
+		return -1
+	print("GAMEPLAY_WORLD_REVIEW_TREES_PRESERVED_PASS: flank forest retained outside the camera sightline")
 	return removed_positions.size()
 
 
