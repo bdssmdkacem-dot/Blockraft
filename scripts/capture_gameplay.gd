@@ -31,9 +31,11 @@ func _clear_river_review_tree_occluders(gameplay: Node3D) -> int:
 			continue
 		# Preserve bridge rails, posts, deck framing and girders. These remain
 		# part of the actual crossing rather than removable tree geometry.
-		var is_bridge_timber := position.x >= -2 and position.x <= 2 \\
-			and position.y >= 3 and position.y <= 8 \\
+		var is_bridge_timber := (
+			position.x >= -2 and position.x <= 2
+			and position.y >= 3 and position.y <= 8
 			and position.z >= -24 and position.z <= -10
+		)
 		if is_bridge_timber:
 			continue
 		removed_positions.append(position)
