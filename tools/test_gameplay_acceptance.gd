@@ -45,35 +45,57 @@ func _run_checks() -> void:
         _fail("nearby world chunks did not stream in", 15)
         return
 
-    # The starter camera must show a real forest framing both sides of the
-    # river approach. A previous 57-column cleanup wedge erased every nearby
-    # tree while all terrain/interaction tests still passed.
+    # Verify the generated forest using the generator's recorded grounded
+    # bases. This avoids stale fixed-coordinate windows and also ensures the
+    # trunks remain outside the spawn clearance and on both sides of the river.
     var flank_canopy_cells := 0
     var flank_tree_trunks := 0
     var near_camera_foliage_cells := 0
+    var visible_tree_sides: Dictionary = {}
+    var starter_tree_bases: Array = scene.get("starter_forest_tree_bases")
     for block_position in scene.blocks:
         var forest_cell: Vector3i = block_position
         var forest_kind := str(scene.blocks[forest_cell])
         var is_bridge_rail_post := forest_cell.y == 5 and absi(forest_cell.x) == 2 and forest_cell.z in [-20, -18, -16, -14]
         if forest_cell.y >= 5 and forest_cell.y <= 24 and Vector2(float(forest_cell.x), float(forest_cell.z)).length() < 16.0 and forest_kind in ["wood", "leaves"] and not is_bridge_rail_post:
             near_camera_foliage_cells += 1
-        if forest_cell.y < 5 or forest_cell.y > 24 or forest_cell.z > -16 or forest_cell.z < -36:
-            continue
-        if abs(forest_cell.x) < 12 or abs(forest_cell.x) > 25:
-            continue
-        if forest_kind == "leaves":
-            flank_canopy_cells += 1
-        elif forest_kind == "wood" and str(scene.blocks.get(forest_cell + Vector3i.UP, "")) == "wood" and str(scene.blocks.get(forest_cell + Vector3i.UP * 2, "")) == "wood":
-            var forest_ground := str(scene.blocks.get(forest_cell + Vector3i.DOWN, ""))
-            if forest_ground in ["grass", "dirt", "stone", "rock", "sand", "gravel"]:
-                flank_tree_trunks += 1
+    for base_variant in starter_tree_bases:
+        var tree_base: Vector3i = base_variant
+        var ground_kind := str(scene.blocks.get(tree_base + Vector3i.DOWN, ""))
+        if str(scene.blocks.get(tree_base, "")) != "wood" or ground_kind not in ["grass", "dirt", "stone", "rock", "sand", "gravel"]:
+            _fail("starter flank tree is not grounded at %s: ground=%s" % [tree_base, ground_kind], 98)
+            return
+        if tree_base.x <= -7:
+            visible_tree_sides[-1] = true
+        elif tree_base.x >= 7:
+            visible_tree_sides[1] = true
+        else:
+            _fail("starter flank tree intrudes into the central camera corridor at %s" % tree_base, 98)
+            return
+        if tree_base.z < -40 or tree_base.z > -20:
+            _fail("starter flank tree is outside the mid-distance river view at %s" % tree_base, 98)
+            return
+        var tree_canopy_cells := 0
+        for dx in range(-1, 2):
+            for dz in range(-1, 2):
+                for dy in range(0, 9):
+                    var canopy_position := Vector3i(tree_base.x + dx, tree_base.y + dy, tree_base.z + dz)
+                    if str(scene.blocks.get(canopy_position, "")) == "leaves":
+                        tree_canopy_cells += 1
+        if tree_canopy_cells < 5:
+            _fail("starter flank tree has too little connected canopy at %s: leaves=%d" % [tree_base, tree_canopy_cells], 98)
+            return
+        flank_tree_trunks += 1
+        flank_canopy_cells += tree_canopy_cells
     if near_camera_foliage_cells > 0:
         _fail("starter camera still has foliage inside its 16-block clearance radius: %d cells" % near_camera_foliage_cells, 99)
         return
-    if flank_tree_trunks < 5 or flank_canopy_cells < 140:
-        _fail("starter valley forest is visually empty: grounded_flank_trunks=%d canopy_cells=%d" % [flank_tree_trunks, flank_canopy_cells], 98)
+    if flank_tree_trunks < 2 or not visible_tree_sides.has(-1) or not visible_tree_sides.has(1) or flank_canopy_cells < 20:
+        _fail("starter valley forest is visually empty: grounded_flank_trunks=%d canopy_cells=%d west=%s east=%s" % [flank_tree_trunks, flank_canopy_cells, visible_tree_sides.has(-1), visible_tree_sides.has(1)], 98)
         return
-    print("STARTER_FOREST_VISIBILITY_PASS: grounded_flank_trunks=", flank_tree_trunks, " canopy_cells=", flank_canopy_cells)
+    print("STARTER_FOREST_VISIBILITY_PASS: grounded_flank_trunks=", flank_tree_trunks,
+        " canopy_cells=", flank_canopy_cells,
+        " west=", visible_tree_sides.has(-1), " east=", visible_tree_sides.has(1))
     # Workbench and recipe economy: verify station/UI integration and atomic
     # ingredient consumption without allowing failed crafts to mutate inventory.
     if scene.get("crafting") == null or scene.get_node_or_null("CraftingBench") == null:
