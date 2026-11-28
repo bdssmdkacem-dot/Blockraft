@@ -2,7 +2,7 @@ name: Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, perf/culled-chunk-surface-meshes]
     paths:
       - "project.godot"
       - "export_presets.cfg"
@@ -45,7 +45,7 @@ jobs:
       image: barichello/godot-ci:4.4.1
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure Android export templates and SDK paths
         run: |
@@ -154,7 +154,7 @@ jobs:
           unzip -l "$APK" | grep -q 'lib/armeabi-v7a/'
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: blockraft-android-debug-apk
           path: build/Blockraft-debug.apk

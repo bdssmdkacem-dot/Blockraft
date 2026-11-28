@@ -15,12 +15,12 @@ func _capture() -> void:
 	env.background_color = Color("#9db9d1")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color("#ffffff")
-	env.ambient_light_energy = 0.65
+	env.ambient_light_energy = 0.46
 	env_node.environment = env
 	world.add_child(env_node)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-42, -28, 0)
-	sun.light_energy = 1.1
+	sun.light_energy = 0.92
 	sun.shadow_enabled = true
 	world.add_child(sun)
 	var floor_body := StaticBody3D.new()
@@ -41,11 +41,12 @@ func _capture() -> void:
 	floor_body.add_child(floor_shape)
 	world.add_child(floor_body)
 	var names := ["FOX", "CHICKEN", "COW", "SHEEP"]
+	var gallery_labels: Array[Label3D] = []
 	for kind in range(4):
 		var animal := ANIMAL_SCRIPT.new() as CharacterBody3D
 		animal.name = "AnimalGallery_%s" % names[kind]
 		world.add_child(animal)
-		animal.setup(kind, Vector3(-5.1 + float(kind) * 3.4, 0.1, 0))
+		animal.setup(kind, Vector3(-4.2 + float(kind) * 2.8, 0.1, 0))
 		animal.set_physics_process(false)
 		var label := Label3D.new()
 		label.text = names[kind]
@@ -54,14 +55,23 @@ func _capture() -> void:
 		label.font_size = 48
 		label.modulate = Color("#17232d")
 		animal.add_child(label)
+		gallery_labels.append(label)
 	var camera := Camera3D.new()
-	camera.position = Vector3(0, 4.2, 12.5)
-	camera.fov = 43.0
+	camera.position = Vector3(0.0, 3.4, 12.0)
+	camera.fov = 42.0
 	world.add_child(camera)
-	camera.look_at(Vector3(0, 0.9, 0), Vector3.UP)
+	camera.look_at(Vector3(0, 0.88, 0), Vector3.UP)
 	camera.make_current()
 	for _i in range(4):
 		await process_frame
+	for kind in range(4):
+		var label: Label3D = gallery_labels[kind]
+		var label_screen := camera.unproject_position(label.global_position)
+		if label_screen.x < 100.0 or label_screen.x > 1180.0 or label_screen.y < 60.0 or label_screen.y > 660.0:
+			push_error("Animal gallery species label is outside the safe frame: %s at %s" % [names[kind], str(label_screen)])
+			quit(5)
+			return
+	print("ANIMAL_GALLERY_FRAMING_PASS: all four species labels fit within the safe 1280x720 frame")
 	await RenderingServer.frame_post_draw
 	var image := root.get_texture().get_image()
 	if image.is_empty() or image.get_width() != 1280 or image.get_height() != 720:

@@ -2,7 +2,7 @@ name: Godot validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, perf/culled-chunk-surface-meshes]
   pull_request:
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
       image: barichello/godot-ci:4.4.1
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Import project and parse scripts
         run: godot --headless --path . --editor --quit
       - name: Verify configured launcher icon
@@ -43,8 +43,12 @@ jobs:
         run: godot --headless --verbose --path . --script res://tools/test_main_menu_acceptance.gd
       - name: Verify raw Android touch movement and action controls
         run: timeout 60s godot --headless --path . --script res://tools/test_touch_controls.gd
+      - name: Verify bridge lanes, both bank approaches, and real character traversal
+        timeout-minutes: 3
+        run: timeout 150s godot --headless --verbose --path . --script res://tools/test_bridge_acceptance.gd
       - name: Verify gameplay world interactions and persistence
-        run: godot --headless --verbose --path . --script res://tools/test_gameplay_acceptance.gd
+        timeout-minutes: 3
+        run: timeout 150s godot --headless --verbose --path . --script res://tools/test_gameplay_acceptance.gd
       - name: Save world and inventory before simulated process restart
         timeout-minutes: 3
         run: timeout 120s godot --headless --path . --script res://tools/test_save_process_restart.gd -- --write
@@ -68,7 +72,7 @@ jobs:
       - name: Verify animal gallery screenshot was generated
         run: test -s animal_gallery_capture.png
       - name: Upload animal visual gallery
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: blockraft-animal-gallery
           path: animal_gallery_capture.png
@@ -79,7 +83,7 @@ jobs:
       - name: Verify gameplay world screenshot was generated
         run: test -s gameplay_world_capture.png
       - name: Upload rendered gameplay world screenshot
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: blockraft-gameplay-world-capture
           path: gameplay_world_capture.png
@@ -90,7 +94,7 @@ jobs:
       - name: Verify screenshot was generated
         run: test -s main_menu_capture.png
       - name: Upload rendered menu screenshot
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: blockraft-main-menu-capture
           path: main_menu_capture.png
@@ -100,8 +104,8 @@ jobs:
         run: timeout 45s xvfb-run -a godot --audio-driver Dummy --path . --rendering-method gl_compatibility --script res://tools/capture_reference_assets.gd
       - name: Verify reference asset screenshot was generated
         run: test -s reference_assets_capture.png
-      - name: Upload rendered reference asset screenshot
-        uses: actions/upload-artifact@v4
+      - name: Upload reference asset gallery
+        uses: actions/upload-artifact@v6
         with:
           name: blockraft-reference-assets-capture
           path: reference_assets_capture.png

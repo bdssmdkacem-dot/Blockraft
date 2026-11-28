@@ -28,7 +28,14 @@ func _run() -> void:
 	if packed == null:
 		_fail("gameplay scene could not load", 2)
 		return
+	# This acceptance run must exercise a genuine first-generation world, not a
+	# restored user snapshot. The test runs in an isolated CI user-data directory.
+	for save_name in ["world_blocks.json", "world_blocks.json.bak"]:
+		var save_path: String = "user://" + str(save_name)
+		if FileAccess.file_exists(save_path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 	var scene := packed.instantiate() as Node3D
+	var cold_start_started_usec := Time.get_ticks_usec()
 	root.add_child(scene)
 	var player := scene.get_node_or_null("Player") as CharacterBody3D
 	if player == null:
@@ -43,6 +50,21 @@ func _run() -> void:
 	if not ready:
 		_fail("world did not initialize before stress route", 4)
 		return
+	var cold_start_ms := float(Time.get_ticks_usec() - cold_start_started_usec) / 1000.0
+	var generation_ms := float(scene.world_generation_ms)
+	var heightfield_ms := float(scene.world_generation_heightfield_ms)
+	var voxel_fill_ms := float(scene.world_generation_voxel_fill_ms)
+	if generation_ms <= 0.0 or int(scene.world_generation_block_count) < 20000 or scene.blocks.size() < 20000:
+		_fail("fresh world generation metrics are missing or inconsistent: generation_ms=%.1f generated_blocks=%d live_blocks=%d" % [generation_ms, int(scene.world_generation_block_count), scene.blocks.size()], 13)
+		return
+	if heightfield_ms <= 0.0 or voxel_fill_ms <= 0.0 or absf(generation_ms - heightfield_ms - voxel_fill_ms) > maxf(5.0, generation_ms * 0.10):
+		_fail("world generation stage timings are invalid: total=%.1f heightfield=%.1f voxel_fill=%.1f" % [generation_ms, heightfield_ms, voxel_fill_ms], 14)
+		return
+	print("WORLD_COLD_START_METRICS total_ready_ms=", snappedf(cold_start_ms, 0.1),
+		" terrain_generation_ms=", snappedf(generation_ms, 0.1),
+		" heightfield_and_relaxation_ms=", snappedf(heightfield_ms, 0.1),
+		" voxel_fill_and_decoration_ms=", snappedf(voxel_fill_ms, 0.1),
+		" blocks=", scene.blocks.size(), " loaded_chunks=", scene.loaded_chunks.size())
 
 	var memory_start := int(Performance.get_monitor(Performance.MEMORY_STATIC))
 	var memory_peak := memory_start
@@ -52,6 +74,10 @@ func _run() -> void:
 	var route_index := 0
 	var max_loaded: int = scene.loaded_chunks.size()
 	var chunk_build_start := int(scene.chunk_build_count)
+	var render_triangles_start := int(scene.chunk_render_triangle_count_total)
+	var full_cube_triangles_start := int(scene.chunk_render_full_cube_triangle_equivalent_total)
+	var render_bytes_start := int(scene.chunk_render_vertex_bytes_total)
+	var render_quads_start := int(scene.chunk_render_face_quads_total)
 	while frames < SESSION_FRAMES:
 		if frames % WAIT_PER_STOP == 0:
 			var stop: Vector3 = ROUTE[route_index % ROUTE.size()]
@@ -81,18 +107,31 @@ func _run() -> void:
 	var built := int(scene.chunk_build_count) - chunk_build_start
 	var peak_ms := float(scene.chunk_build_ms_peak)
 	var peak_chunks := int(scene.chunk_peak_loaded)
+	var render_triangles := int(scene.chunk_render_triangle_count_total) - render_triangles_start
+	var full_cube_triangles := int(scene.chunk_render_full_cube_triangle_equivalent_total) - full_cube_triangles_start
+	var render_bytes := int(scene.chunk_render_vertex_bytes_total) - render_bytes_start
+	var render_quads := int(scene.chunk_render_face_quads_total) - render_quads_start
+	var triangle_ratio := float(render_triangles) / maxf(1.0, float(full_cube_triangles))
 	print("LONG_SESSION_METRICS frames=", frames,
 		" route_stops=", route_index,
 		" chunk_builds=", built,
 		" loaded_peak=", max_loaded,
 		" lifetime_loaded_peak=", peak_chunks,
 		" chunk_build_peak_ms=", peak_ms,
+		" indexed_render_triangles=", render_triangles,
+		" full_cube_triangle_equivalent=", full_cube_triangles,
+		" triangle_ratio=", snappedf(triangle_ratio, 0.001),
+		" exposed_face_quads=", render_quads,
+		" cumulative_render_buffer_bytes=", render_bytes,
 		" memory_start_bytes=", memory_start,
 		" memory_peak_bytes=", memory_peak,
 		" memory_end_bytes=", memory_end,
 		" object_start=", object_start,
 		" object_peak=", object_peak,
 		" object_end=", object_end)
+	if full_cube_triangles <= 0 or render_triangles <= 0 or triangle_ratio >= 0.8:
+		_fail("culled mesh did not reduce triangles by at least 20%% versus full-cube instancing: ratio=%.3f" % triangle_ratio, 12)
+		return
 	if built < 40:
 		_fail("stress route did not exercise enough chunk rebuild/stream operations: %d" % built, 6)
 		return

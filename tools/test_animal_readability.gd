@@ -43,24 +43,70 @@ func _run_checks() -> void:
 			_fail("animal %d collision/body scale is still too small" % kind, 4)
 			return
 
-		var meshes := animal.find_children("*", "MeshInstance3D", true, false)
-		var min_parts: int = int([12, 14, 15, 15][kind])
-		if meshes.size() < min_parts:
-			_fail("animal %d has too few visible mesh parts: %d" % [kind, meshes.size()], 5)
-			return
 		var body := animal.get_child(0) as Node3D
-		if body == null or body.get_child_count() < min_parts:
-			_fail("animal %d lacks enough silhouette/detail pieces" % kind, 6)
+		if body == null:
+			_fail("animal %d has no anatomy root" % kind, 6)
+			return
+		var meshes := body.find_children("*", "MeshInstance3D", true, false)
+		var min_parts: int = int([12, 14, 15, 15][kind])
+		if meshes.size() < min_parts or body.get_child_count() < min_parts:
+			_fail("animal %d has too few visible anatomy parts: meshes=%d children=%d" % [kind, meshes.size(), body.get_child_count()], 5)
+			return
+		var box_detail_parts := 0
+		var rounded_parts := 0
+		var torso_core_count := 0
+		var head_core_count := 0
+		for mesh_variant in meshes:
+			var mesh_instance := mesh_variant as MeshInstance3D
+			if mesh_instance.has_meta("animal_core_role"):
+				if not (mesh_instance.mesh is BoxMesh):
+					_fail("animal %d torso/head core must use a crisp BoxMesh silhouette" % kind, 18)
+					return
+				var core_role := str(mesh_instance.get_meta("animal_core_role"))
+				var core_size: Vector3 = mesh_instance.get_meta("animal_part_size", Vector3.ZERO)
+				if core_role == "torso":
+					torso_core_count += 1
+					if core_size.x < 0.8 or core_size.y < 0.55 or core_size.z < 0.8:
+						_fail("animal %d torso core is undersized: %s" % [kind, str(core_size)], 16)
+						return
+				elif core_role == "head":
+					head_core_count += 1
+					if core_size.x < 0.25 or core_size.y < 0.25 or core_size.z < 0.25:
+						_fail("animal %d head core is undersized: %s" % [kind, str(core_size)], 17)
+						return
+				else:
+					_fail("animal %d has an unknown core role: %s" % [kind, core_role], 19)
+					return
+			else:
+				if mesh_instance.mesh is BoxMesh:
+					box_detail_parts += 1
+				elif mesh_instance.mesh is SphereMesh:
+					rounded_parts += 1
+		if box_detail_parts < int([6, 8, 8, 2][kind]) or torso_core_count != 1 or head_core_count != 1:
+			_fail("animal %d must combine one block-shaped torso, one block-shaped head and species-specific voxel details (boxes=%d rounded_accents=%d torso=%d head=%d)" % [kind, box_detail_parts, rounded_parts, torso_core_count, head_core_count], 12)
 			return
 		var animated_legs: Array = animal.get("_animated_legs")
-		if animated_legs.size() < 2:
-			_fail("animal %d has fewer than two explicitly registered animated legs" % kind, 7)
+		var expected_leg_counts := [4, 2, 4, 4]
+		if animated_legs.size() != expected_leg_counts[kind]:
+			_fail("animal %d has the wrong number of articulated legs: %d" % [kind, animated_legs.size()], 7)
 			return
+		for leg_variant in animated_legs:
+			var leg := leg_variant as MeshInstance3D
+			if kind == 3 and not (leg.mesh is SphereMesh):
+				_fail("sheep legs should retain tapered rounded joints", 13)
+				return
+			if kind != 3 and not (leg.mesh is BoxMesh):
+				_fail("voxel animal leg was softened into a rounded sphere", 14)
+				return
 		if kind == 1:
 			var animated_wings: Array = animal.get("_animated_wings")
 			if animated_wings.size() != 2:
 				_fail("chicken must expose two animated wing panels", 10)
 				return
+			for wing_variant in animated_wings:
+				if not ((wing_variant as MeshInstance3D).mesh is BoxMesh):
+					_fail("chicken wing panels must keep a crisp feathered voxel profile", 15)
+					return
 		animal._dir = Vector3(1.0, 0.0, 0.0)
 		animal._timer = 4.0
 		var before := (animated_legs[0] as MeshInstance3D).rotation.x
