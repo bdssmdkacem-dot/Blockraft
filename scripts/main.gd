@@ -260,7 +260,7 @@ func _setup_materials() -> void:
 		"gold": Color(0.92, 0.78, 0.22), "crystal": Color(0.45, 0.85, 0.95),
 		"leaves": Color(0.15, 0.33, 0.16), "chest": Color(0.55, 0.32, 0.12),
 		"planks": Color(0.68, 0.43, 0.22), "stone_brick": Color(0.58, 0.61, 0.62),
-		"wet_silt": Color("#bfc5aa"),
+		"wet_silt": Color.WHITE,
 	}
 	for key in colors:
 		var mat := StandardMaterial3D.new()
