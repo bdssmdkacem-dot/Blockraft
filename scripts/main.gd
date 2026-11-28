@@ -683,14 +683,16 @@ func _generate_world() -> void:
 	# the scenic channel moves with the seeded centerline and can invalidate
 	# hard-coded points. Trees stay beyond the broad bank and clear bridge lane.
 	var flank_tree_count := 0
-	for side in [-1, 1]:
-		for target_z in [-17, -27]:
+	for side_value in [-1, 1]:
+		var side_sign: int = int(side_value)
+		for target_z_value in [-17, -27]:
+			var target_z: int = int(target_z_value)
 			var best_position := Vector2i.ZERO
 			var best_height := 0
 			var best_score := INF
 			var found_candidate := false
 			for candidate_x_offset in range(8, 19):
-				var candidate_x := side * candidate_x_offset
+				var candidate_x: int = side_sign * candidate_x_offset
 				for candidate_z in range(-31, -10):
 					var candidate_key := Vector2i(candidate_x, candidate_z)
 					if not heights.has(candidate_key):
@@ -714,7 +716,7 @@ func _generate_world() -> void:
 						continue
 					var local_max_step := 0
 					for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-						var neighbor_key := candidate_key + offset
+						var neighbor_key: Vector2i = candidate_key + Vector2i(int(offset.x), int(offset.y))
 						if heights.has(neighbor_key):
 							local_max_step = maxi(local_max_step, absi(candidate_height - int(heights[neighbor_key]["h"])))
 					if local_max_step >= 1 and candidate_height >= 8:
