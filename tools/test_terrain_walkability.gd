@@ -39,6 +39,15 @@ func _run() -> void:
 		_fail("Terrain test did not run a fresh procedural generation pass")
 		return
 
+	# Wet-silt vertex colours define the shoreline palette. A tinted base
+	# material multiplies those colours and washes the bank into pale beige.
+	var material_table: Dictionary = game.get("block_materials")
+	var wet_silt_material := material_table.get("wet_silt") as StandardMaterial3D
+	if wet_silt_material == null or not wet_silt_material.albedo_color.is_equal_approx(Color.WHITE) or wet_silt_material.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
+		_fail("Wet-silt material must preserve its authored vertex colours without a pale base tint")
+		return
+	print("RIVER_SHORELINE_VERTEX_COLOR_PASS: neutral unshaded wet-silt material preserves the bank transition palette")
+
 	var blocks: Dictionary = game.get("blocks")
 	# Verify the generator's actual deterministic tree placements, not
 	# hard-coded coordinates that can drift off the generated terrain.
