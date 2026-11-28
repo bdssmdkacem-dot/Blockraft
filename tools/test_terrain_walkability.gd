@@ -40,21 +40,38 @@ func _run() -> void:
 		return
 
 	var blocks: Dictionary = game.get("blocks")
-	# The river review camera looks along the starter crossing. Require actual
-	# grounded trunks on both visible banks; counting off-screen tree voxels is
-	# not sufficient evidence that the starter valley is visually framed.
-	var visible_flank_tree_bases := 0
-	for tree_candidate in [Vector2i(4, -11), Vector2i(4, -25), Vector2i(-8, -25)]:
-		for tree_y in range(30, -5, -1):
-			var trunk_kind := str(blocks.get(Vector3i(tree_candidate.x, tree_y, tree_candidate.y), ""))
-			var ground_kind := str(blocks.get(Vector3i(tree_candidate.x, tree_y - 1, tree_candidate.y), ""))
-			if trunk_kind == "wood" and GROUND_KINDS.has(ground_kind):
-				visible_flank_tree_bases += 1
-				break
-	if visible_flank_tree_bases < 2:
-		_fail("Starter river view needs at least two grounded flank trees in camera-visible positions; found=%d" % visible_flank_tree_bases)
+	# Verify the generator's actual deterministic tree placements, not
+	# hard-coded coordinates that can drift off the generated terrain.
+	var starter_tree_bases: Array = game.get("starter_forest_tree_bases")
+	var visible_tree_sides: Dictionary = {}
+	for base_variant in starter_tree_bases:
+		var tree_base: Vector3i = base_variant
+		var ground_kind := str(blocks.get(tree_base - Vector3i.UP, ""))
+		if str(blocks.get(tree_base, "")) != "wood" or not GROUND_KINDS.has(ground_kind):
+			_fail("Starter flank tree is not grounded at %s: trunk=%s ground=%s" % [tree_base, str(blocks.get(tree_base, "")), ground_kind])
+			return
+		if tree_base.x <= -7:
+			visible_tree_sides[-1] = true
+		elif tree_base.x >= 7:
+			visible_tree_sides[1] = true
+		else:
+			_fail("Starter flank tree intrudes into the central camera corridor at %s" % tree_base)
+			return
+		if tree_base.z < -31 or tree_base.z > -10:
+			_fail("Starter flank tree is outside the river review view at %s" % tree_base)
+			return
+		var radial_distance := Vector2(float(tree_base.x), float(tree_base.z)).length()
+		var river_clearance := absf(float(tree_base.z) - float(game.call("_primary_river_centerline", float(tree_base.x))))
+		if radial_distance > 12.0 and radial_distance < 48.0:
+			river_clearance = minf(river_clearance, absf(float(tree_base.z) - float(game.call("_scenic_river_centerline", float(tree_base.x)))))
+		if river_clearance < 5.8:
+			_fail("Starter flank tree crowds the river-bank transition at %s: clearance=%.2f" % [tree_base, river_clearance])
+			return
+	if starter_tree_bases.size() < 2 or not visible_tree_sides.has(-1) or not visible_tree_sides.has(1):
+		_fail("Starter river view needs grounded trees on both visible banks; count=%d west=%s east=%s" % [starter_tree_bases.size(), visible_tree_sides.has(-1), visible_tree_sides.has(1)])
 		return
-	print("STARTER_RIVER_VISIBLE_FOREST_PASS grounded_visible_flank_trees=", visible_flank_tree_bases)
+	print("STARTER_RIVER_VISIBLE_FOREST_PASS grounded_flank_trees=", starter_tree_bases.size(), " west=", visible_tree_sides.has(-1), " east=", visible_tree_sides.has(1))
+
 	var surface_heights: Dictionary = {}
 	var water_columns: Dictionary = {}
 	# Columns occupied by the actual bridge deck/approaches are not exposed
