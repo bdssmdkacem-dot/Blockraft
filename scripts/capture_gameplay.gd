@@ -7,8 +7,19 @@ func _initialize() -> void:
 	root.size = Vector2i(1280, 720)
 	call_deferred("_capture_gameplay")
 
-func _clear_river_review_tree_occluders(gameplay: Node3D) -> void:
+func _clear_river_review_tree_occluders(gameplay: Node3D) -> int:
 	var world_blocks: Dictionary = gameplay.get("blocks")
+	var starter_tree_bases: Array = gameplay.get("starter_forest_tree_bases")
+	var protected_tree_positions: Dictionary = {}
+	# Keep the guaranteed flank trees in the review image. Their trunks are
+	# deliberately placed outside the bridge lane and bank transition; remove
+	# only incidental/random trees that could obscure the channel or spawn view.
+	for base_variant in starter_tree_bases:
+		var base: Vector3i = base_variant
+		for dx in range(-1, 2):
+			for dz in range(-1, 2):
+				for dy in range(0, 9):
+					protected_tree_positions[Vector3i(base.x + dx, base.y + dy, base.z + dz)] = true
 	var removed_positions: Array[Vector3i] = []
 	var rebuild_chunks: Dictionary = {}
 	for position_variant in world_blocks.keys():
@@ -16,10 +27,12 @@ func _clear_river_review_tree_occluders(gameplay: Node3D) -> void:
 		var kind := str(world_blocks[position])
 		if kind not in ["wood", "leaves"]:
 			continue
-		# Preserve bridge rails, posts, deck framing and girders. The review-only
-		# scene removes all other tree voxel geometry so both banks remain visible.
-		var is_bridge_timber := position.x >= -2 and position.x <= 2 \
-			and position.y >= 3 and position.y <= 8 \
+		if protected_tree_positions.has(position):
+			continue
+		# Preserve bridge rails, posts, deck framing and girders. These remain
+		# part of the actual crossing rather than removable tree geometry.
+		var is_bridge_timber := position.x >= -2 and position.x <= 2 \\
+			and position.y >= 3 and position.y <= 8 \\
 			and position.z >= -24 and position.z <= -10
 		if is_bridge_timber:
 			continue
@@ -31,7 +44,16 @@ func _clear_river_review_tree_occluders(gameplay: Node3D) -> void:
 			rebuild_chunks[chunk_key] = true
 	for chunk_variant in rebuild_chunks:
 		gameplay.call("_rebuild_chunk", chunk_variant)
-	print("RIVER_REVIEW_TREE_OCCLUDERS_REMOVED=", removed_positions.size(), " rebuilt_chunks=", rebuild_chunks.size())
+	var preserved_flank_trees := 0
+	for base_variant in starter_tree_bases:
+		var base: Vector3i = base_variant
+		var ground_kind := str(world_blocks.get(base - Vector3i.UP, ""))
+		if str(world_blocks.get(base, "")) == "wood" and ground_kind in ["grass", "dirt", "stone", "rock", "sand", "gravel"]:
+			preserved_flank_trees += 1
+	print("RIVER_REVIEW_TREE_OCCLUDERS_REMOVED=", removed_positions.size(),
+		" rebuilt_chunks=", rebuild_chunks.size(),
+		" preserved_flank_trees=", preserved_flank_trees)
+	return preserved_flank_trees
 
 
 func _capture_gameplay() -> void:
@@ -68,7 +90,12 @@ func _capture_gameplay() -> void:
 	# are intentional bridge architecture at the edge of this broad sightline,
 	# so they must not be classified as an obstruction.
 	var world_blocks: Dictionary = gameplay.get("blocks")
-	_clear_river_review_tree_occluders(gameplay)
+	var preserved_flank_trees := _clear_river_review_tree_occluders(gameplay)
+	if preserved_flank_trees < 2:
+		push_error("River review capture must retain at least two grounded flank trees; found=%d" % preserved_flank_trees)
+		quit(16)
+		return
+	print("RIVER_REVIEW_FLANK_FOREST_PRESERVED_PASS trees=", preserved_flank_trees)
 	await process_frame
 	for x in range(-8, 9):
 		for z in range(-8, 9):
