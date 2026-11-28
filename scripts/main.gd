@@ -24,6 +24,7 @@ const WATER_EDGE_CURVE_SEGMENTS := 8
 const WATER_INTERIOR_EDGE_SEGMENTS := 2
 
 var blocks: Dictionary = {}
+var starter_forest_tree_bases: Array[Vector3i] = []
 var block_mesh := BoxMesh.new()
 var block_materials: Dictionary = {}
 var world_root: Node3D
@@ -356,6 +357,7 @@ func _scenic_river_centerline(x: float) -> float:
 func _generate_world() -> void:
 	var generation_started_usec := Time.get_ticks_usec()
 	blocks.clear()
+	starter_forest_tree_bases.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 82417
 	var heights: Dictionary = {}
@@ -676,36 +678,73 @@ func _generate_world() -> void:
 			if not is_river and not steep and height >= 3 and abs(x) > 10 and abs(z) > 10 and rng.randf() < 0.0024:
 				blocks[Vector3i(x, height + 1, z)] = "chest"
 
-	# Frame the starter valley with deterministic tree groups on both sides.
-	# Candidates are checked against the generated river and local surface so
-	# trunks stay grounded and never spawn in water or inside the clear corridor.
+	# Guarantee visible trees on both sides of the starter river. Search the
+	# generated heightfield rather than relying on a few fixed coordinates:
+	# the scenic channel moves with the seeded centerline and can invalidate
+	# hard-coded points. Trees stay beyond the broad bank and clear bridge lane.
 	var flank_tree_count := 0
-	var flank_candidates := [
-		# Place a small, deterministic foreground frame on both river banks.
-		# These positions sit outside the bridge camera's clear corridor and
-		# outside the generated channel, but remain close enough to appear in
-		# the actual starter-valley view rather than only on the distant skyline.
-		Vector2i(4, -11), Vector2i(4, -25), Vector2i(-8, -25),
-		# Retain the wider middle-distance forest groups for depth beyond the
-		# immediate river frame.
-		Vector2i(-18, -22), Vector2i(18, -22),
-		Vector2i(-23, -28), Vector2i(23, -28),
-		Vector2i(-14, -31), Vector2i(14, -31)
-	]
-	for flank_tree in flank_candidates:
-		if flank_tree_count >= 6:
-			break
-		if not heights.has(flank_tree):
-			continue
-		var flank_info: Dictionary = heights[flank_tree]
-		var flank_height := int(flank_info["h"])
-		if bool(flank_info["river"]) or flank_height < 4:
-			continue
-		if blocks.has(Vector3i(flank_tree.x, flank_height + 1, flank_tree.y)):
-			continue
-		_make_tree(flank_tree.x, flank_height + 1, flank_tree.y, rng)
-		flank_tree_count += 1
-	print("STARTER_FOREST_FLANKS trees_placed=", flank_tree_count)
+	for side in [-1, 1]:
+		for target_z in [-17, -27]:
+			var best_position := Vector2i.ZERO
+			var best_height := 0
+			var best_score := INF
+			var found_candidate := false
+			for candidate_x_offset in range(8, 19):
+				var candidate_x := side * candidate_x_offset
+				for candidate_z in range(-31, -10):
+					var candidate_key := Vector2i(candidate_x, candidate_z)
+					if not heights.has(candidate_key):
+						continue
+					var candidate_info: Dictionary = heights[candidate_key]
+					var candidate_height := int(candidate_info["h"])
+					if bool(candidate_info["river"]) or candidate_height < 4 or candidate_height > 12:
+						continue
+					if bool(candidate_info.get("path", false)):
+						continue
+					var radial_distance := Vector2(float(candidate_x), float(candidate_z)).length()
+					var river_clearance := absf(float(candidate_z) - _primary_river_centerline(float(candidate_x)))
+					if radial_distance > 12.0 and radial_distance < 48.0:
+						river_clearance = minf(river_clearance, absf(float(candidate_z) - _scenic_river_centerline(float(candidate_x))))
+					if radial_distance > 11.0 and candidate_z > 0:
+						var tributary_clearance := absf(float(candidate_x) - cos(float(candidate_z) * 0.13) * 5.0 + 10.0)
+						river_clearance = minf(river_clearance, tributary_clearance)
+					# Keep trunks at least 1.4 blocks beyond the 4.4-block bank
+					# transition so the river remains open in the review camera.
+					if river_clearance < 5.8:
+						continue
+					var local_max_step := 0
+					for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+						var neighbor_key := candidate_key + offset
+						if heights.has(neighbor_key):
+							local_max_step = maxi(local_max_step, absi(candidate_height - int(heights[neighbor_key]["h"])))
+					if local_max_step >= 1 and candidate_height >= 8:
+						continue
+					var base_position := Vector3i(candidate_x, candidate_height + 1, candidate_z)
+					var existing_kind := str(blocks.get(base_position, ""))
+					if existing_kind != "" and existing_kind != "wood":
+						continue
+					var too_close_to_previous := false
+					for previous_base in starter_forest_tree_bases:
+						var separation := Vector2(float(previous_base.x - candidate_x), float(previous_base.z - candidate_z)).length()
+						if separation < 6.0:
+							too_close_to_previous = true
+							break
+					if too_close_to_previous:
+						continue
+					var score := absf(float(candidate_x_offset) - 11.0) + absf(float(candidate_z - target_z)) * 0.65 + absf(river_clearance - 7.0) * 0.25
+					if score < best_score:
+						best_score = score
+						best_position = candidate_key
+						best_height = candidate_height
+						found_candidate = true
+			if not found_candidate:
+				continue
+			var tree_base := Vector3i(best_position.x, best_height + 1, best_position.y)
+			if str(blocks.get(tree_base, "")) != "wood":
+				_make_tree(best_position.x, best_height + 1, best_position.y, rng)
+			starter_forest_tree_bases.append(tree_base)
+			flank_tree_count += 1
+	print("STARTER_FOREST_FLANKS trees_placed=", flank_tree_count, " bases=", starter_forest_tree_bases)
 
 	# Guarantee one discoverable chest in the generated overworld. The
 	# procedural rarity roll remains for additional loot, but a fixed seed must
