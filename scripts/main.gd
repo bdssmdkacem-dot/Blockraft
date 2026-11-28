@@ -681,11 +681,12 @@ func _generate_world() -> void:
 	# Guarantee visible trees on both sides of the starter river. Search the
 	# generated heightfield rather than relying on a few fixed coordinates:
 	# the scenic channel moves with the seeded centerline and can invalidate
-	# hard-coded points. Trees stay beyond the broad bank and clear bridge lane.
+	# hard-coded points. Keep the trunks at mid-distance so their crowns frame,
+	# rather than dominate, the river and third-person camera.
 	var flank_tree_count := 0
 	for side_value in [-1, 1]:
 		var side_sign: int = int(side_value)
-		for target_z_value in [-17, -27]:
+		for target_z_value in [-29, -37]:
 			var target_z: int = int(target_z_value)
 			var best_position := Vector2i.ZERO
 			var best_height := 0
@@ -693,7 +694,7 @@ func _generate_world() -> void:
 			var found_candidate := false
 			for candidate_x_offset in range(8, 19):
 				var candidate_x: int = side_sign * candidate_x_offset
-				for candidate_z in range(-31, -10):
+				for candidate_z in range(-40, -20):
 					var candidate_key := Vector2i(candidate_x, candidate_z)
 					if not heights.has(candidate_key):
 						continue
