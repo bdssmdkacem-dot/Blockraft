@@ -57,7 +57,7 @@ func _run() -> void:
 		else:
 			_fail("Starter flank tree intrudes into the central camera corridor at %s" % tree_base)
 			return
-		if tree_base.z < -31 or tree_base.z > -10:
+		if tree_base.z < -40 or tree_base.z > -20:
 			_fail("Starter flank tree is outside the river review view at %s" % tree_base)
 			return
 		var radial_distance := Vector2(float(tree_base.x), float(tree_base.z)).length()
